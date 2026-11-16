@@ -249,7 +249,7 @@
           const forced = ov && ov.action === 'force';
           if (forced || (chk.ok && ctx.rng.chance(def.prob))) {
             if (forced) WS.WhatIf.logDivergence(w, ctx, ov, [id], ['原世界線中的條件：'].concat(chk.reasons));
-            const ev = Events.log(w, ctx, { type: 'historical', defId: def.id, title: def.name, countries: [id], level: 3, major: id === w.focus || def.id === 'sarajevo', causes: chk.reasons.concat(forced ? ['平行世界設定：照原本歷史發生'] : []), trigger: forced ? '玩家的「如果」設定強制發生' : '歷史時點到達且條件成立', parent: forced ? ov.eventId : undefined });
+            const ev = Events.log(w, ctx, { type: 'historical', defId: def.id, title: def.name, countries: [id], level: 3, major: id === w.focus || def.id === 'sarajevo', causes: chk.reasons.concat(forced ? ['平行世界設定：玩家強制讓這件事發生（之後的影響仍由引擎計算）'] : []), trigger: forced ? '玩家的「如果」設定強制發生' : '歷史時點到達且條件成立', parent: forced ? ov.eventId : undefined });
             ev.effects = def.apply(w, c, ctx, ev) || [];
           } else {
             Events.log(w, ctx, { type: 'historical-missed', defId: def.id, title: `歷史事件「${def.name}」沒有發生`, countries: [id], level: 2, causes: chk.reasons, trigger: chk.ok ? '條件成立但機率未觸發' : '前置條件改變' });

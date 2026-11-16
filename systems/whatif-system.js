@@ -34,7 +34,7 @@
     } else if (e.type === 'historical' && e.defId) {
       add('block', `如果「${defOf(e.defId).name}」沒有發生`, { kind: 'event', defId: e.defId, country: cid });
     } else if (e.type === 'historical-missed' && e.defId) {
-      add('force', `如果「${defOf(e.defId).name}」照原本歷史發生`, { kind: 'event', defId: e.defId, country: cid });
+      add('force', `如果「${defOf(e.defId).name}」被強制發生（即使當時條件不成立）`, { kind: 'event', defId: e.defId, country: cid });
     } else if (e.type === 'conditional' && e.defId && defOf(e.defId)) {
       const d = defOf(e.defId), cn = nameOf(w, cid);
       if (e.defId === 'revolution') {
