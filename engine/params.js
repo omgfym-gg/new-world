@@ -45,9 +45,9 @@
       healthWelfareGain: 2.0
     },
     environment: {
-      harvestSd: 0.06,
+      harvestSd: 0.04,                // 全國平均收成波動（大國由多地區平均，2026-11 健康檢查由 0.06 下調）
       droughtChance: 0.03,
-      droughtHarvest: 0.8,
+      droughtHarvest: 0.88,           // 全國性旱災的收成比例（由 0.8 上調）
       foodStockCap: 12,               // 糧食庫存上限（月）
       reserveDepletionYears: 30,      // 儲量低於此年數時開採能力開始下降
       oilShareMax: 0.4,               // 內燃機普及後石油在能源中的最大比重
@@ -121,7 +121,12 @@
       localPowerFromInstability: 0.05,
       inequalityAdjust: 0.05,
       stabilityReversion: 0.08,
-      legitimacyReversion: 0.04
+      legitimacyReversion: 0.04,
+      // 動亂疲乏（示意值，2026-11 健康檢查）：長期動盪後，社會對秩序的渴望會逐漸壓過衝突，讓國家有機會走出動亂
+      turmoilThreshold: 35,           // 穩定度低於此值的年數會累積為「動亂年數」
+      turmoilFatigueYears: 15,        // 累積這麼多年後，疲乏效果達到最大
+      fatigueStability: 3,            // 疲乏最大時，每年對穩定度的正向推力
+      fatigueConflict: 4              // 疲乏最大時，每年對社會衝突的降低
     },
     technology: {
       privateResearchShare: 0.002,

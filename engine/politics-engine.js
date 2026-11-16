@@ -25,6 +25,10 @@
       const pol = c.pol, ec = c.econ, f = c.fiscal;
       const regime = U.regime(w, c.regime) || {};
 
+      // ---- 動亂疲乏：長期不穩會累積，穩定後逐漸消退 ----
+      pol.turmoil = Math.max(0, (pol.turmoil || 0) + (pol.stability < pp.turmoilThreshold ? dt : -2 * dt));
+      const fatigue = Math.min(1, pol.turmoil / pp.turmoilFatigueYears);
+
       // ---- 穩定度 ----
       const factors = {
         '政府合法性': pp.wLegitimacy * (pol.legitimacy - 50),
@@ -37,6 +41,7 @@
         '戰爭消耗': -pp.wExhaustion * pol.exhaustion,
         '物價上漲': -pp.wInflation * Math.max(0, ec.inflation - 0.05)
       };
+      if (fatigue > 0) factors['長期動亂後社會渴望秩序'] = pp.fatigueStability * fatigue;
       let tot = 0;
       for (const k in factors) tot += factors[k];
       // 飽和：越接近上下限越難再變動；另有不受飽和影響的回歸常態力量
@@ -74,6 +79,7 @@
         '失業': 0.2 * (c.demo.unemployment * 100 - 5),
         '衝突自然消退': -pp.conflictReversion * (pol.conflict - 40)
       };
+      if (fatigue > 0) cParts['長期動亂後的厭戰情緒'] = -pp.fatigueConflict * fatigue;
       let dc = 0;
       for (const k in cParts) { dc += cParts[k]; U.cause(c, 'conflict', k, cParts[k] * dt); }
       pol.conflict = U.clamp(pol.conflict + dc * dt, 0, 100);
