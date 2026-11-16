@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <title>世界模擬器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <button class="modal-x" data-act="close-modal" aria-label="關閉">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- 引擎（與介面分離；載入順序固定） -->
+  <script src="engine/rng.js"></script>
+  <script src="engine/params.js"></script>
+  <script src="data/scenario-1911.js"></script>
+  <script src="data/definitions.js"></script>
+  <script src="engine/state-engine.js"></script>
+  <script src="engine/population-engine.js"></script>
+  <script src="engine/environment-engine.js"></script>
+  <script src="engine/economy-engine.js"></script>
+  <script src="engine/politics-engine.js"></script>
+  <script src="engine/technology-engine.js"></script>
+  <script src="engine/diplomacy-engine.js"></script>
+  <script src="engine/military-engine.js"></script>
+  <script src="systems/policy-system.js"></script>
+  <script src="systems/agent-system.js"></script>
+  <script src="systems/event-system.js"></script>
+  <script src="systems/rule-system.js"></script>
+  <script src="systems/history-system.js"></script>
+  <script src="systems/explain-system.js"></script>
+  <script src="systems/save-system.js"></script>
+  <script src="engine/world-engine.js"></script>
+  <!-- 介面 -->
+  <script src="app.js"></script>
+</body>
+</html>
