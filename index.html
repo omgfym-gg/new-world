@@ -16,6 +16,7 @@
     </div>
   </div>
   <div id="toast" class="toast" hidden></div>
+  <div id="alert" class="alert" hidden role="status"></div>
 
   <!-- 引擎（與介面分離；載入順序固定） -->
   <script src="engine/rng.js"></script>
@@ -39,7 +40,9 @@
   <script src="systems/save-system.js"></script>
   <script src="systems/whatif-system.js"></script>
   <script src="engine/world-engine.js"></script>
-  <!-- 介面 -->
+  <!-- 介面（地球只負責畫圖，不參與模擬） -->
+  <script src="ui/earth-dots.js"></script>
+  <script src="ui/globe.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
