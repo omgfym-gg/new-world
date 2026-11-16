@@ -236,4 +236,107 @@
     }
     return L.join('\n');
   };
+
+  // ---------- 合理範圍健康檢查 ----------
+  // 目標不是重現史實，而是確認世界「演得合理」：跑很多個種子，檢查數值有沒有跑出正常範圍。
+  // 範圍來自 20 世紀各國實際出現過的區間（寬鬆設定），見 Backtest.HEALTH_RULES。
+  Backtest.HEALTH_RULES = {
+    cbr: [5, 55],           // 粗出生率（‰）
+    cdr: [3, 45],           // 粗死亡率（‰，不含戰爭與饑荒年份的極端值另計）
+    growth: [-0.15, 0.15],  // 單年 GDP 成長率
+    stuckYears: 40,         // 穩定度連續低於 stuckBelow 超過這麼多年 → 長期動盪卡住
+    stuckBelow: 30,
+    old65: 0.35,            // 65 歲以上比例上限
+    worldPop: [1.5, 4.5],   // 8 國總人口 1913→2008 的倍數（史實約 2.8 倍）
+    worldGdp: [6, 40],      // 8 國總 GDP 1913→2008 的倍數（史實約 19.5 倍）
+    stagnant: 1.0           // 2008 年人均 GDP 低於 1913 年 → 百年停滯
+  };
+
+  Backtest.healthOne = function (seed, endYear) {
+    const U = WS.util;
+    const e = new WS.WorldEngine();
+    e.create({ mode: 'global', focus: 'CHN', seed });
+    const w = e.w;
+    const R = Backtest.HEALTH_RULES;
+    const ids = Object.keys(WS.Data.reference['1911'].countries);
+    const out = { seed, flags: [], base: null, end: null };
+    const stuck = {}, startPc = {};
+    // 該年或前一年有重大事件（戰爭、革命、政變、饑荒、分裂、割地等，等級 ≥ 3）→ 劇烈波動屬合理，不列入
+    const shocked = (id, y) => w.events.some((ev) => ev.level >= 3 && (ev.y === y || ev.y === y - 1) && (ev.countries || []).includes(id));
+    const total = () => { let p = 0, g = 0; for (const id of U.ids(w)) { p += U.popTotal(w.countries[id]); g += w.countries[id].econ.gdp; } return { p, g }; };
+    while (w.year < endYear) {
+      e.step();
+      if (w.month !== 1) continue;
+      const y = w.year - 1;
+      if (y === 1913) { out.base = total(); for (const id of ids) startPc[id] = w.countries[id].econ.gdppc; }
+      for (const id of ids) {
+        const c = w.countries[id];
+        if (!c || !c.alive) continue;
+        const last = c.causes.years[c.causes.years.length - 1];
+        const P = U.popTotal(c);
+        if (last && last.year === y && last.data.population) {
+          const pop = last.data.population;
+          const cbr = (pop['出生'] ? pop['出生'].v : 0) / P * 1000;
+          let normalD = 0;
+          if (pop['死亡']) for (const k in pop['死亡'].sub) if (k === '一般死亡') normalD += -pop['死亡'].sub[k];
+          const cdr = normalD / P * 1000;
+          if (cbr < R.cbr[0] || cbr > R.cbr[1]) out.flags.push({ id, y, kind: 'cbr', v: cbr });
+          if (cdr < R.cdr[0] || cdr > R.cdr[1]) out.flags.push({ id, y, kind: 'cdr', v: cdr });
+        }
+        const g = c.econ.gdpHist.length > 12 ? c.econ.gdp / c.econ.gdpHist[0] - 1 : 0;
+        if (y > w.startYear && (g < R.growth[0] || g > R.growth[1]) && !c.flags.atWar && !shocked(id, y)) out.flags.push({ id, y, kind: 'growth', v: g });
+        if (c.pol.stability < R.stuckBelow) { stuck[id] = (stuck[id] || 0) + 1; if (stuck[id] === R.stuckYears) out.flags.push({ id, y, kind: 'stuck', v: R.stuckYears }); }
+        else stuck[id] = 0;
+        const old = c.pop.c3 / P;
+        if (old > R.old65) out.flags.push({ id, y, kind: 'old', v: old });
+      }
+    }
+    out.end = total();
+    for (const id of ids) {
+      const c = w.countries[id];
+      if (c && c.alive && startPc[id] && c.econ.gdppc < startPc[id] * R.stagnant) out.flags.push({ id, y: endYear, kind: 'stagnant', v: c.econ.gdppc / startPc[id] });
+    }
+    out.popX = out.end.p / out.base.p;
+    out.gdpX = out.end.g / out.base.g;
+    if (out.popX < R.worldPop[0] || out.popX > R.worldPop[1]) out.flags.push({ id: '世界', y: endYear, kind: 'worldPop', v: out.popX });
+    if (out.gdpX < R.worldGdp[0] || out.gdpX > R.worldGdp[1]) out.flags.push({ id: '世界', y: endYear, kind: 'worldGdp', v: out.gdpX });
+    return out;
+  };
+
+  Backtest.HEALTH_NAMES = {
+    cbr: '出生率超出 5–55‰', cdr: '一般死亡率超出 3–45‰', growth: '單年 GDP 成長超出 ±15%（排除戰爭、革命、饑荒等重大事件前後）',
+    stuck: '政局連續 40 年以上穩定度 < 30', old: '65 歲以上超過 35%', stagnant: '百年後人均 GDP 比 1913 年還低',
+    worldPop: '世界人口百年倍數超出 1.5–4.5 倍', worldGdp: '世界 GDP 百年倍數超出 6–40 倍'
+  };
+
+  Backtest.health = function (opts = {}) {
+    const seeds = opts.seeds || Array.from({ length: opts.n || 8 }, (_, i) => 'hc-' + (i + 1));
+    const runs = seeds.map((s) => Backtest.healthOne(s, opts.endYear || 2008));
+    const checks = {};
+    for (const k in Backtest.HEALTH_NAMES) checks[k] = { seeds: 0, countries: {} };
+    for (const r of runs) {
+      const seen = new Set();
+      for (const f of r.flags) {
+        checks[f.kind].countries[f.id] = (checks[f.kind].countries[f.id] || 0) + 1;
+        if (!seen.has(f.kind)) { seen.add(f.kind); checks[f.kind].seeds++; }
+      }
+    }
+    return { seeds, runs, checks };
+  };
+
+  Backtest.healthMarkdown = function (h) {
+    const name = (id) => (WS.Data.scenarios['1911'].countries.find((c) => c.id === id) || {}).name || id;
+    const L = ['# 合理範圍健康檢查（1911 起點）', '', '> 由 `node tools/health-check.js` 產生。目標不是重現史實，而是確認每一條世界線都「演得合理」。',
+      `> 共跑 ${h.seeds.length} 個種子（${h.seeds[0]}…），AI 自主決策，1911 → 2008。`, '',
+      '| 檢查項目 | 出問題的世界線 | 主要發生在 |', '|---|---|---|'];
+    for (const k in h.checks) {
+      const c = h.checks[k];
+      const who = Object.entries(c.countries).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, n]) => `${name(id)}（${n}）`).join('、');
+      L.push(`| ${c.seeds ? '⚠️' : '✅'} ${Backtest.HEALTH_NAMES[k]} | ${c.seeds} / ${h.seeds.length} | ${who || '—'} |`);
+    }
+    L.push('', '括號內是出問題的年數或次數（所有種子加總）。', '', '## 各世界線總量', '', '| 種子 | 人口倍數 | GDP 倍數 |', '|---|---|---|');
+    for (const r of h.runs) L.push(`| ${r.seed} | ${r.popX.toFixed(2)} | ${r.gdpX.toFixed(1)} |`);
+    L.push('', '史實參考：8 國人口約 2.8 倍、GDP 約 19.5 倍。');
+    return L.join('\n');
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

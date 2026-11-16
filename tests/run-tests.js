@@ -434,6 +434,20 @@ test('制度改革：吸收能力越高，追趕成長越快', () => {
   assert.ok(b > a * 1.5, `${b} vs ${a}`);
 });
 
+test('健康檢查：動亂疲乏讓長期不穩的國家有機會恢復，並寫入原因', () => {
+  const e = make(); const c = e.world.countries.CHN;
+  c.pol.turmoil = 20; c.pol.stability = 20; c.pol.conflict = 80;
+  e.advance(12);
+  const st = c.causes.years.at(-1).data.stability, cf = c.causes.years.at(-1).data.conflict;
+  assert.ok(st['長期動亂後社會渴望秩序'].v > 0 && cf['長期動亂後的厭戰情緒'].v < 0);
+});
+test('健康檢查：報表列出每一項檢查與各世界線總量', () => {
+  const h = WS.Backtest.health({ seeds: ['hc-test'], endYear: 1920 });
+  const md = WS.Backtest.healthMarkdown(h);
+  for (const k in WS.Backtest.HEALTH_NAMES) assert.ok(md.includes(WS.Backtest.HEALTH_NAMES[k]), k);
+  assert.ok(h.runs[0].popX > 0 && h.runs[0].gdpX > 0);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
