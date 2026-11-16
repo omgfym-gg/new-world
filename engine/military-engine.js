@@ -116,6 +116,12 @@
   Mil.declareWar = function (w, attackerId, defenderId, ctx, reasons) {
     const U = WS.util;
     if (w.rules.war === false || w.rules.states === false) return null;
+    const ov = WS.WhatIf ? WS.WhatIf.take(w, (o) => o.kind === 'war' && o.a === attackerId && o.d === defenderId) : null;
+    if (ov) {
+      const ev = WS.WhatIf.logDivergence(w, ctx, ov, [attackerId, defenderId], ['原世界線中的開戰理由：'].concat(reasons || []));
+      ev.effects = ['戰爭沒有爆發，雙方維持和平', '之後是否開戰，仍由各國依自身判斷決定'];
+      return null;
+    }
     w.counters.war++;
     const A = w.countries[attackerId], D = w.countries[defenderId];
     const war = {
@@ -137,7 +143,7 @@
     w.wars.push(war);
     Mil.refreshFlags(w, U.ids(w));
     const ev = WS.Events.log(w, ctx, {
-      type: 'war', title: `戰爭爆發：${war.name}`, countries: war.attackers.concat(war.defenders), level: 3,
+      type: 'war', title: `戰爭爆發：${war.name}`, countries: war.attackers.concat(war.defenders), level: 3, warPair: [attackerId, defenderId],
       major: war.attackers.concat(war.defenders).includes(w.focus),
       text: `${A.name}向${D.name}宣戰。` + (joined.length ? joined.join('；') + '。' : ''),
       causes: reasons, effects: ['雙方進入動員，軍費優先', '貿易中斷', ...joined]
