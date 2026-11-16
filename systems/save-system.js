@@ -13,6 +13,11 @@
     // v1 → v2 範例：if (w.version === 1) { ...; w.version = 2; }
     w.customRegimes = w.customRegimes || {};
     w.params = Object.assign(JSON.parse(JSON.stringify(WS.DEFAULT_PARAMS)), w.params || {});
+    // 「如果」平行世界所需欄位（舊存檔補上；舊的玩家政策紀錄轉為可重播的指令）
+    if (w.startMonth == null) w.startMonth = (WS.Data.scenarios[w.scenario] || { startMonth: 1 }).startMonth;
+    if (!w.commandLog) w.commandLog = (w.playerLog || []).map((p) => ({ tick: (p.y - w.startYear) * 12 + (p.m - w.startMonth), y: p.y, m: p.m, cmd: 'policy', args: [p.country, p.policy] }));
+    w.overrides = w.overrides || [];
+    if (w.genesis === undefined) w.genesis = null;
     return w;
   };
 

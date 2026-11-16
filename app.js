@@ -10,7 +10,7 @@
   const RULE_DEFAULTS = Object.fromEntries(Object.entries(WS.Data.rules).map(([k, d]) => [k, d.default]));
   const S = {
     screen: 'start', tab: 'overview', view: null, histFilter: 'major', chartMetric: 'gdp', auto: null,
-    setup: null, compare: null, nl: '', nlResult: null, speed: 'decade'
+    setup: null, compare: null, nl: '', nlResult: null, speed: 'decade', whatif: null, wiMetric: 'gdp'
   };
   function newSetup(mode) {
     return {
@@ -204,11 +204,12 @@
     return a[n - 1] - a[n - 2];
   }
   function eventItem(e) {
-    const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '') + (e.type === 'historical-missed' ? 'missed' : '');
-    return `<li class="${cl}" data-act="event" data-id="${e.id}"><div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
+    const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '') + (e.type === 'historical-missed' ? 'missed ' : '') + (e.type === 'whatif' ? 'wi' : '');
+    const can = WS.WhatIf.options(W(), e).length > 0;
+    return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
   }
   function typeLabel(t) {
-    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統' }[t] || t;
+    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果' }[t] || t;
   }
 
   // ---------- 地圖 ----------
@@ -307,7 +308,7 @@
     return head + `
       <div class="card"><h3>世界地圖</h3>${mapSvg()}</div>
       <div class="grid g2">
-        <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3><ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
+        <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
         <div class="card"><h3>歷史紀錄</h3>${chron.length ? chron.map((c) => `<p class="chron"><b>${c.year} 年</b>\n${esc(c.text)}</p>`).join('') : '<p class="dim">每推進一年，模擬器會根據實際模擬數據寫下一段歷史摘要。</p>'}</div>
       </div>`;
   }
@@ -443,7 +444,8 @@
       </div>
       <div class="card"><h3>平行世界</h3>
         <p class="dim">目前世界線：<b style="color:var(--text)">${esc(w.branch.name)}</b>${w.branch.parent ? `（${w.branch.divergeYear} 年分自「${esc(w.branch.parentName || w.branch.parent)}」，原因：${esc(w.branch.reason)}）` : ''}</p>
-        <div class="row"><button class="btn small" data-act="branch-now">從現在建立分支</button></div>
+        <div class="row"><button class="btn small" data-act="branch-now">從現在建立分支</button>${S.whatif ? `<button class="btn small gold" data-act="whatif-show">上一次的「如果」：${esc(S.whatif.res.report.label)}</button>` : ''}</div>
+        <p class="dim">想問「如果某件事沒發生會怎樣」？在事件時間線按 <b class="gold">如果？</b>，系統會從事件之前重跑一條平行世界並排比較。</p>
         <h3 style="margin-top:14px">歷史回溯</h3>
         <p class="dim">回到過去的快照建立新世界線，原本的歷史保留不變（快照每 5 年一次，存在本次開啟期間）。</p>
         <div class="row">${engine.snapshots.map((s, i) => `<button class="btn small" data-act="rewind" data-i="${i}">${s.year} 年</button>`).join('')}</div>
@@ -521,7 +523,104 @@
       ${e.decision ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">決策過程</h3><p class="dim">候選方案：${e.decision.alternatives.map((a) => esc(a[0]) + ' ' + a[1]).join('、') || '無'}（選中方案評分 ${e.decision.score}）</p>` : ''}
       ${parent ? `<p>前因事件：<button class="link" data-act="event" data-id="${parent.id}">${esc(parent.title)}</button></p>` : ''}
       ${fol.length ? `<p>後續事件：${fol.map((f) => `<button class="link" data-act="event" data-id="${f.id}">${esc(f.title)}</button>`).join('、')}</p>` : ''}
-      <p class="dim" style="margin-top:12px">如果玩家介入，可能改變什麼？到「歷史」頁回溯到事件之前建立分支，改變政策或世界規則後，用歷史比較對照結果。</p>`);
+      ${whatifOptions(e)}`);
+  }
+
+  // ======================= 如果（平行世界） =======================
+  function whatifOptions(e) {
+    const av = engine.whatIfAvailable(e.id);
+    if (!av.opts.length) return '<p class="dim" style="margin-top:12px">想看其他可能？到「歷史」頁回溯到事件之前建立分支，改變政策或世界規則後，用歷史比較對照結果。</p>';
+    if (!av.ok) return `<p class="dim" style="margin-top:12px">「如果」平行世界：${esc(av.reason)}。</p>`;
+    const w = W();
+    return `<div class="wi-box"><h3>如果……？</h3>
+      <p class="dim">系統會回到 ${e.y} 年 ${e.m} 月之前，用同一個種子重跑到現在（${w.year} 年 ${w.month} 月），只改寫這一件事，再把兩個世界並排比較。目前的世界不會被改動。</p>
+      <div class="row">${av.opts.map((o) => `<button class="btn gold" data-act="whatif-run" data-id="${o.target.eventId}" data-k="${o.key}">${esc(o.label)}</button>`).join('')}</div></div>`;
+  }
+  function whatifModal(id) {
+    const w = W();
+    const e = w.events.find((x) => x.id === id);
+    if (!e) return toast('這個事件已超出保存範圍');
+    openModal(`<h2>${esc(e.title)}</h2><p class="dim">${e.y} 年 ${e.m} 月・${typeLabel(e.type)}</p>${whatifOptions(e)}`);
+  }
+  function whatifRun(id, key) {
+    stopAuto();
+    openModal('<h2>正在推演平行世界…</h2><p class="dim">從事件之前的快照，用同一個種子逐月重算。</p>');
+    setTimeout(() => {
+      const parentName = W().branch.name;
+      const res = engine.whatIf(id, key);
+      if (!res.ok) { openModal(`<h2>無法建立平行世界</h2><p>${esc(res.reason)}</p>`); return; }
+      S.whatif = { res, parentName, parentWorldId: W().world_id, parentTick: W().tick };
+      whatifReport();
+    }, 30);
+  }
+
+  function whatifReport() {
+    const { res, parentName } = S.whatif;
+    const R = res.report, w = W(), alt = res.world;
+    const pct = (a, b) => (a ? sg(((b - a) / a) * 100, 0) + '%' : '—');
+    const diffCell = (a, b, f, rel, neutral) => `<td class="num">${f(a)}</td><td class="num">${f(b)}</td><td class="num ${neutral ? '' : cls(b - a)}">${rel ? pct(a, b) : sg(b - a, 0)}</td>`;
+    const fc = R.rows.find((r) => r.id === R.focus);
+    const o = fc && fc.orig, a = fc && fc.alt;
+    const focusRows = o && a ? `
+      <tr><th colspan="4" style="text-align:left;color:var(--gold)">${esc(fc.name)}</th></tr>
+      <tr><td>人口</td>${diffCell(o.pop, a.pop, fPop, true)}</tr>
+      <tr><td>GDP</td>${diffCell(o.gdp, a.gdp, fGdp, true)}</tr>
+      <tr><td>政治穩定</td>${diffCell(o.stability, a.stability, (v) => v.toFixed(0))}</tr>
+      <tr><td>制度</td><td>${esc(o.regime)}</td><td class="${o.regime !== a.regime ? 'gold' : ''}">${esc(a.regime)}</td><td></td></tr>
+      <tr><td>領導人</td><td>${esc(o.leader)}</td><td>${esc(a.leader)}</td><td></td></tr>` : '';
+    const Wo = R.world.orig, Wa = R.world.alt;
+    const metric = S.wiMetric;
+    const cid = R.focus;
+    const chartHtml = cid && w.series.c[cid] && alt.series.c[cid] ? chart(w.series.labels, [
+      { name: '原世界', color: w.countries[cid].color, bold: true, data: w.series.c[cid][metric] },
+      { name: '平行世界', color: '#fbbf24', dash: true, bold: true, data: alignSeries(w.series.labels, alt.series.labels, alt.series.c[cid][metric]) }
+    ], { h: 180, label: WS.History.LABELS[metric] }) : '';
+    const others = R.rows.filter((r) => r.id !== R.focus && r.score > 0.02).slice(0, 5);
+    const reason = R.reasons[cid];
+    const units = { gdp: (v) => sg(v, 0), population: (v) => sg(v, 1), stability: (v) => sg(v, 0) };
+    const why = reason ? ['gdp', 'population', 'stability'].filter((m) => reason[m].length).map((m) =>
+      `<li><b>${esc(WS.Explain.METRIC_NAMES[m])}</b>：${reason[m].map((f) => `${esc(f.factor)}（原世界 ${units[m](f.orig)}／平行世界 ${units[m](f.alt)}）`).join('、')}</li>`).join('') : '';
+    const chain = R.chain.map((c, i) => `<li class="wi-step ${c.kind}">
+        <div class="when">${c.y}.${String(c.m).padStart(2, '0')}・${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</div>
+        <b>${esc(c.title)}</b>
+        ${c.why && c.why.length ? `<div class="dim">${c.kind === 'gone' ? '原世界的原因' : '原因'}：${c.why.map(esc).join('；')}</div>` : ''}
+        ${c.compare && c.compare.length ? `<div class="dim">事後年度紀錄：${c.compare.map(esc).join('；')}</div>` : ''}
+      </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
+    const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${e.y}.${String(e.m).padStart(2, '0')}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
+    openModal(`<h2>平行世界：${esc(R.label)}</h2>
+      <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。從 ${esc(R.from)} 用同一個種子重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。</p>
+      ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
+      <div class="table-wrap"><table class="wi-table">
+        <tr><th></th><th>原世界<br><small>${esc(parentName)}</small></th><th>平行世界</th><th>差距</th></tr>
+        ${focusRows}
+        <tr><th colspan="4" style="text-align:left;color:var(--gold)">全世界</th></tr>
+        <tr><td>人口</td>${diffCell(Wo.pop, Wa.pop, fPop, true)}</tr>
+        <tr><td>GDP</td>${diffCell(Wo.gdp, Wa.gdp, fGdp, true)}</tr>
+        <tr><td>國家數</td>${diffCell(Wo.countries, Wa.countries, (v) => v + ' 個', false, true)}</tr>
+        <tr><td>分岔後爆發的戰爭</td>${diffCell(Wo.wars, Wa.wars, (v) => v + ' 場', false, true)}</tr>
+      </table></div>
+      ${chartHtml ? `<div style="margin-top:10px">${seg2('wi-metric', metric, [['gdp', 'GDP'], ['pop', '人口'], ['stability', '穩定'], ['legitimacy', '合法性']])}${chartHtml}</div>` : ''}
+      <h3 class="wi-h">蝴蝶效應：差異怎麼擴散</h3>
+      <ul class="events wi-chain">${chain}</ul>
+      ${R.onlyOrig.length + R.onlyAlt.length > R.chain.length - 1 ? '<p class="dim">只列出最早的幾步，完整清單在下方。</p>' : ''}
+      ${why ? `<h3 class="wi-h">為什麼${esc(fc ? fc.name : '')}差這麼多（因果帳，分岔後累計）</h3><ul class="list-plain">${why}</ul>` : ''}
+      ${others.length ? `<h3 class="wi-h">其他國家的差異</h3><div class="table-wrap"><table><tr><th>國家</th><th>GDP</th><th>人口</th><th>制度（原→平行）</th></tr>${others.map((r) => r.orig && r.alt
+        ? `<tr><td>${esc(r.name)}</td><td class="num ${cls(r.alt.gdp - r.orig.gdp)}">${pct(r.orig.gdp, r.alt.gdp)}</td><td class="num ${cls(r.alt.pop - r.orig.pop)}">${pct(r.orig.pop, r.alt.pop)}</td><td>${r.orig.regime === r.alt.regime ? esc(r.orig.regime) : `<span class="gold">${esc(r.orig.regime)} → ${esc(r.alt.regime)}</span>`}</td></tr>`
+        : `<tr><td>${esc(r.name)}</td><td colspan="3" class="gold">${r.alt ? '只存在於平行世界' : '只存在於原世界'}</td></tr>`).join('')}</table></div>` : ''}
+      <details class="qa"><summary>只在原世界發生（${R.onlyOrig.length}）</summary><ul class="list-plain">${evList(R.onlyOrig)}</ul></details>
+      <details class="qa"><summary>只在平行世界發生（${R.onlyAlt.length}）</summary><ul class="list-plain">${evList(R.onlyAlt)}</ul></details>
+      ${R.failed.length ? `<p class="dim">你原本的 ${R.failed.length} 項決策在平行世界無法執行：${R.failed.map((f) => `${f.y}.${f.m} ${esc(f.text)}（${esc(f.reason)}）`).join('；')}</p>` : ''}
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" data-act="whatif-enter">進入平行世界</button>
+        <button class="btn" data-act="whatif-chart">在歷史圖表對照</button>
+        <button class="btn" data-act="close-modal">留在原世界</button>
+      </div>`);
+  }
+  function whatifValid() {
+    const st = S.whatif;
+    if (st && st.parentWorldId === W().world_id && st.parentTick === W().tick) return true;
+    toast('世界已經改變，請重新按一次「如果？」');
+    return false;
   }
 
   function decisionModal(evs) {
@@ -658,6 +757,25 @@
       case 'why': whyModal(t.dataset.c, t.dataset.m, t.dataset.s); break;
       case 'why-rel': relModal(t.dataset.a, t.dataset.b); break;
       case 'event': eventModal(t.dataset.id); break;
+      case 'whatif': whatifModal(t.dataset.id); break;
+      case 'whatif-run': whatifRun(t.dataset.id, t.dataset.k); break;
+      case 'whatif-show': if (S.whatif) whatifReport(); break;
+      case 'wi-metric': S.wiMetric = v; whatifReport(); break;
+      case 'whatif-chart': {
+        if (!whatifValid()) break;
+        S.compare = { name: '平行世界：' + S.whatif.res.report.label, series: S.whatif.res.world.series };
+        S.tab = 'history'; closeModal(); render(); window.scrollTo(0, 0); toast('虛線＝平行世界'); break;
+      }
+      case 'whatif-enter': {
+        if (!whatifValid()) break;
+        const parent = W();
+        const { res } = S.whatif;
+        const r1 = WS.Save.write(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
+        const cmp = { name: '原世界：' + parent.branch.name, series: parent.series };
+        switchWorld(res.world, r1.ok ? '原世界已存檔，現在進入平行世界' : '已進入平行世界（原世界未能存檔：' + r1.reason + '）');
+        engine.snapshots = res.snapshots;
+        S.compare = cmp; S.whatif = null; render(); break;
+      }
       case 'hist-filter': S.histFilter = v; render(); break;
       case 'policy': {
         const r = engine.applyPolicy(t.dataset.c, t.dataset.p);

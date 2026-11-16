@@ -178,3 +178,24 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(56, 189, 248,
 .list-plain li { margin: 2px 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+/* ---- 如果（平行世界） ---- */
+.events li { position: relative; }
+.wi-chip { float: right; margin: -2px -4px 0 8px; min-height: 30px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--gold); background: rgba(251, 191, 36, .08); color: var(--gold); font: inherit; font-size: 12.5px; cursor: pointer; }
+.wi-chip:hover, .wi-chip:focus-visible { background: rgba(251, 191, 36, .2); }
+.events li.wi { border-left-color: var(--violet); background: rgba(167, 139, 250, .08); }
+.wi-hint { margin: -4px 0 8px; font-size: 13px; }
+.wi-box { margin-top: 14px; border: 1px solid var(--gold); border-radius: 12px; padding: 12px; background: rgba(251, 191, 36, .06); }
+.wi-box h3 { margin: 0 0 6px; color: var(--gold); font-size: 15px; }
+.wi-box .btn { white-space: normal; text-align: left; }
+.wi-h { color: var(--blue); font-size: 14px; margin: 16px 0 6px; }
+.wi-table td, .wi-table th { white-space: normal; }
+.wi-table small { color: var(--muted); font-weight: 400; }
+.wi-chain { gap: 2px; }
+.wi-chain li { cursor: default; }
+.wi-chain li.wi-step.start { border-left-color: var(--violet); }
+.wi-chain li.wi-step.gone { border-left-color: var(--dim); }
+.wi-chain li.wi-step.gone b { text-decoration: line-through; text-decoration-color: var(--muted); }
+.wi-chain li.wi-step.new { border-left-color: var(--gold); }
+.wi-chain li.wi-step .dim { font-size: 12.5px; margin-top: 2px; }
+.wi-chain li.wi-arrow { background: none; border: 0; padding: 0; text-align: center; color: var(--muted); line-height: 1.1; }

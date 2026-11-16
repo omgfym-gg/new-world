@@ -170,8 +170,8 @@
           `國家目標：${WS.Data.goals[c.goal]}`,
           `領導人 ${c.leader.name} 的侵略傾向 ${(c.leader.aggr * 100).toFixed(0)}`
         ];
-        WS.Military.declareWar(w, c.id, t.id, ctx, reasons);
-        return [`對${o.name}宣戰`];
+        const war = WS.Military.declareWar(w, c.id, t.id, ctx, reasons);
+        return war ? [`對${o.name}宣戰`] : [`最後沒有對${o.name}開戰`];
       }
     },
     sue_peace: {

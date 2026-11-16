@@ -129,6 +129,7 @@
       startYear: sc.startYear,
       year: sc.startYear,
       month: sc.startMonth,
+      startMonth: sc.startMonth,
       tick: 0,
       mode: setup.mode || 'country',
       difficulty: setup.difficulty || 'simple',
@@ -145,7 +146,10 @@
       series: { labels: [], c: {}, world: { pop: [], gdp: [] } },
       counters: { event: 0, war: 0, country: 0, org: 0 },
       validation: { checks: 0, issues: [] },
-      pendingDecision: null
+      pendingDecision: null,
+      genesis: U.clone(setup),   // 世界建立時的設定：可用同一個種子重新生成（「如果」平行世界）
+      commandLog: [],            // 會影響模擬的玩家指令（依 tick 重播）
+      overrides: []              // 「如果」設定：在指定月份改寫一件事
     };
     for (const k in WS.Data.rules) w.rules[k] = WS.Data.rules[k].default;
     Object.assign(w.rules, setup.rules || {});

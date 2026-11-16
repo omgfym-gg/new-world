@@ -233,6 +233,125 @@ test('解釋系統：每個問題都有答案', () => {
   assert.ok(qs.length >= 5 && qs.every((q) => q.q && q.a && q.a.length > 10));
 });
 
+// ---------- 「如果」平行世界 ----------
+const story = () => { const e = make({ seed: '', intervention: 'none' }); e.advance(240); return e; };
+const findEv = (w, f) => w.events.find(f);
+const before = (w, tick) => w.events.filter((x) => WS.WhatIf.tickOf(w, x.y, x.m) < tick).map((x) => x.y + '.' + x.m + ' ' + x.title).join('\n');
+test('如果：歷史事件、條件事件、戰爭都有「如果」選項', () => {
+  const w = story().world;
+  const wu = findEv(w, (x) => x.defId === 'wuchang');
+  assert.deepStrictEqual(WS.WhatIf.options(w, wu).map((o) => o.action), ['block']);
+  const rev = findEv(w, (x) => x.defId === 'revolution' && x.countries[0] === 'CHN');
+  assert.ok(WS.WhatIf.options(w, rev).some((o) => o.label === '如果中國革命失敗'));
+  const war = findEv(w, (x) => x.type === 'war' && x.warPair);
+  assert.strictEqual(WS.WhatIf.options(w, war)[0].target.kind, 'war');
+  const sys = findEv(w, (x) => x.type === 'system');
+  assert.strictEqual(WS.WhatIf.options(w, sys).length, 0);
+});
+test('如果：不改動原本的世界', () => {
+  const e = story(); const s0 = e.serialize();
+  const rev = findEv(e.world, (x) => x.defId === 'revolution' && x.countries[0] === 'CHN');
+  const r = e.whatIf(rev.id, 'fail');
+  assert.ok(r.ok); assert.strictEqual(e.serialize(), s0);
+  assert.notStrictEqual(r.world, e.world);
+});
+test('如果：分岔前歷史完全相同、推進到同一個月、分岔點寫入事件紀錄', () => {
+  const e = story(); const w = e.world;
+  const wu = findEv(w, (x) => x.defId === 'wuchang');
+  const r = e.whatIf(wu.id, 'block'); const a = r.world;
+  const tick = WS.WhatIf.tickOf(w, wu.y, wu.m);
+  assert.strictEqual(before(a, tick), before(w, tick));
+  assert.strictEqual(a.tick, w.tick); assert.strictEqual(a.year, w.year);
+  assert.ok(r.report.applied);
+  const div = findEv(a, (x) => x.type === 'whatif');
+  assert.strictEqual(div.title, '如果「武昌起義」沒有發生');
+  assert.strictEqual(WS.WhatIf.tickOf(a, div.y, div.m), tick);
+  assert.ok(div.causes.length > 1, '分岔點要記錄原本的條件');
+  assert.ok(!a.events.some((x) => x.defId === 'wuchang' && x.type === 'historical'));
+  assert.strictEqual(a.branch.parent, w.branch.id);
+});
+test('如果：同一個「如果」重跑兩次結果完全相同（可重現）', () => {
+  const e = story();
+  const rev = findEv(e.world, (x) => x.defId === 'revolution' && x.countries[0] === 'CHN');
+  const a = e.whatIf(rev.id, 'fail').world, b = e.whatIf(rev.id, 'fail').world;
+  assert.strictEqual(JSON.stringify(a), JSON.stringify(b));
+});
+test('如果：革命失敗 → 同一個月革命仍發生但失敗，制度沒有改變', () => {
+  const e = story(); const w = e.world;
+  const rev = findEv(w, (x) => x.defId === 'revolution' && x.countries[0] === 'CHN');
+  assert.ok(rev.effects.includes('革命成功'));
+  const a = e.whatIf(rev.id, 'fail').world;
+  const r2 = a.events.find((x) => x.defId === 'revolution' && x.countries[0] === 'CHN' && x.y === rev.y && x.m === rev.m);
+  assert.ok(r2 && r2.effects[0].startsWith('革命失敗'), JSON.stringify(r2 && r2.effects));
+  assert.ok(r2.causes.some((c) => c.includes('平行世界設定')));
+  assert.ok(!a.events.some((x) => x.type === 'regime' && x.parent === r2.id));
+});
+test('如果：阻止宣戰 → 那個月沒有這場戰爭', () => {
+  const e = story(); const w = e.world;
+  const war = findEv(w, (x) => x.type === 'war' && x.warPair);
+  const a = e.whatIf(war.id, 'block').world;
+  const [A, D] = war.warPair;
+  assert.ok(!a.wars.some((x) => x.attackers[0] === A && x.defenders[0] === D && x.start.y === war.y && x.start.m === war.m));
+  assert.ok(a.events.some((x) => x.type === 'whatif' && x.countries.includes(A)));
+});
+test('如果：玩家先前的決策會在平行世界依同樣時間重播', () => {
+  const e = make({ seed: '', intervention: 'none' });
+  e.advance(15);
+  const pid = ['education', 'agri_invest', 'industrialize', 'research', 'anticorruption', 'welfare'].find((p) => e.applyPolicy('CHN', p).ok);
+  assert.ok(pid, '至少一項政策可以執行'); assert.strictEqual(e.world.commandLog.length, 1);
+  e.advance(225);
+  const w = e.world;
+  const war = w.events.filter((x) => x.type === 'war' && x.warPair && x.y >= 1913).pop() || w.events.filter((x) => WS.WhatIf.options(w, x).length && x.y >= 1913).pop();
+  const opt = WS.WhatIf.options(w, war)[0];
+  const a = e.whatIf(war.id, opt.key).world;
+  assert.deepStrictEqual(a.commandLog.slice(0, w.commandLog.length).map((c) => c.tick + c.cmd + c.args), w.commandLog.map((c) => c.tick + c.cmd + c.args));
+  assert.strictEqual(before(a, opt.target.tick), before(w, opt.target.tick));
+});
+test('如果：載入存檔後沒有快照時，用世界建立設定重新生成，結果相同', () => {
+  const e = story();
+  const e2 = new WS.WorldEngine(); e2.load(e.serialize());
+  const id = findEv(e.world, (x) => x.defId === 'wuchang').id;
+  const a = e.whatIf(id, 'block'), b = e2.whatIf(id, 'block');
+  assert.ok(b.ok && b.report.from.includes('世界建立'));
+  assert.strictEqual(JSON.stringify(a.world.series), JSON.stringify(b.world.series));
+});
+test('如果：比較報告只引用兩條世界線的實際數值', () => {
+  const e = story(); const w = e.world;
+  const rev = findEv(w, (x) => x.defId === 'revolution' && x.countries[0] === 'CHN');
+  const r = e.whatIf(rev.id, 'fail'); const R = r.report;
+  const row = R.rows.find((x) => x.id === 'CHN');
+  assert.strictEqual(row.orig.gdp, w.countries.CHN.econ.gdp);
+  assert.strictEqual(row.alt.gdp, r.world.countries.CHN.econ.gdp);
+  assert.strictEqual(R.chain[0].kind, 'start');
+  for (const c of R.chain.slice(1)) {
+    const src = c.side === 'orig' ? w : r.world;
+    assert.ok(src.events.some((x) => x.id === c.eventId && x.title === c.title), c.title);
+  }
+  // 因果帳差距 = 兩條世界線各自的累計
+  for (const f of R.reasons.CHN.gdp) assert.ok(Math.abs(f.alt - f.orig - f.diff) < 1e-9);
+});
+test('如果：在平行世界裡再「如果」一次，前一次的改寫仍然保留', () => {
+  const e = story();
+  const wu = findEv(e.world, (x) => x.defId === 'wuchang');
+  const r = e.whatIf(wu.id, 'block');
+  e.load(r.world); e.snapshots = r.snapshots;
+  const later = e.world.events.filter((x) => x.y >= 1914 && WS.WhatIf.options(e.world, x).length && x.type !== 'whatif')[0];
+  assert.ok(later, '平行世界中要有可改寫的後續事件');
+  const r2 = e.whatIf(later.id, WS.WhatIf.options(e.world, later)[0].key);
+  assert.ok(r2.report.applied);
+  assert.ok(r2.world.events.some((x) => x.title === '如果「武昌起義」沒有發生'));
+  assert.strictEqual(r2.world.overrides.filter((o) => o.applied).length, 2);
+});
+test('如果：舊存檔（沒有指令紀錄）可以載入並補上欄位', () => {
+  const e = make(); e.advance(24);
+  const obj = JSON.parse(e.serialize());
+  delete obj.commandLog; delete obj.overrides; delete obj.genesis; delete obj.startMonth;
+  obj.playerLog = [{ y: 1911, m: 6, country: 'CHN', policy: 'education' }];
+  const w = WS.Save.migrate(obj);
+  assert.strictEqual(w.startMonth, 1); assert.deepStrictEqual(w.overrides, []);
+  assert.strictEqual(w.commandLog[0].tick, 5);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

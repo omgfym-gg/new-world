@@ -91,10 +91,15 @@
         const success = U().clamp(0.3 + (pol.conflict - 50) / 100 + (60 - pol.armyLoyalty) / 100 + pol.revolutionPressure / 100, 0.1, 0.9);
         const roll = ctx.rng.next();
         ev.causes.push(`革命成功機率 ${(success * 100).toFixed(0)}%（衝突、軍隊忠誠 ${pol.armyLoyalty.toFixed(0)}、革命壓力）`);
+        let won = roll < success;
+        if (ctx.forced === 'success' || ctx.forced === 'fail') {
+          won = ctx.forced === 'success';
+          ev.causes.push(`平行世界設定：革命${won ? '成功' : '失敗'}（成功機率不變，結果被改寫）`);
+        }
         const P = U().popTotal(c);
         const deaths = P * 0.0005;
         c.pop.c2 -= deaths; U().cause(c, 'population', '死亡', -deaths, '革命動亂');
-        if (roll < success) {
+        if (won) {
           let to = 'republic';
           if (pol.inequality > 60 && c.demo.edu > 20 && ctx.rng.chance(0.5)) to = 'socialist';
           let born = false;
@@ -235,8 +240,16 @@
         if (def.type === 'historical') {
           if (def.country !== id || w.scenario !== def.scenario || w.year !== def.date[0] || w.month !== def.date[1]) continue;
           const chk = def.check(w, c);
-          if (chk.ok && ctx.rng.chance(def.prob)) {
-            const ev = Events.log(w, ctx, { type: 'historical', defId: def.id, title: def.name, countries: [id], level: 3, major: id === w.focus || def.id === 'sarajevo', causes: chk.reasons, trigger: '歷史時點到達且條件成立' });
+          const ov = WS.WhatIf ? WS.WhatIf.take(w, (o) => o.kind === 'event' && o.defId === def.id && o.country === id) : null;
+          if (ov && ov.action === 'block') {
+            const ev = WS.WhatIf.logDivergence(w, ctx, ov, [id], ['原世界線中的條件：'].concat(chk.reasons));
+            ev.effects = [`「${def.name}」在這條世界線沒有發生`];
+            continue;
+          }
+          const forced = ov && ov.action === 'force';
+          if (forced || (chk.ok && ctx.rng.chance(def.prob))) {
+            if (forced) WS.WhatIf.logDivergence(w, ctx, ov, [id], ['原世界線中的條件：'].concat(chk.reasons));
+            const ev = Events.log(w, ctx, { type: 'historical', defId: def.id, title: def.name, countries: [id], level: 3, major: id === w.focus || def.id === 'sarajevo', causes: chk.reasons.concat(forced ? ['平行世界設定：照原本歷史發生'] : []), trigger: forced ? '玩家的「如果」設定強制發生' : '歷史時點到達且條件成立', parent: forced ? ov.eventId : undefined });
             ev.effects = def.apply(w, c, ctx, ev) || [];
           } else {
             Events.log(w, ctx, { type: 'historical-missed', defId: def.id, title: `歷史事件「${def.name}」沒有發生`, countries: [id], level: 2, causes: chk.reasons, trigger: chk.ok ? '條件成立但機率未觸發' : '前置條件改變' });
@@ -249,11 +262,20 @@
         const p = typeof def.prob === 'function' ? def.prob(w, c) : def.prob;
         if (!ctx.rng.chance(p)) continue;
         c.cool[def.id] = w.tick + (def.cooldown || 12);
+        const ov = WS.WhatIf ? WS.WhatIf.take(w, (o) => o.kind === 'event' && o.defId === def.id && o.country === id) : null;
+        if (ov && ov.action === 'block') {
+          const ev = WS.WhatIf.logDivergence(w, ctx, ov, [id], ['原世界線中的條件：'].concat(chk.reasons));
+          ev.effects = [`${c.name}的${def.name}沒有發生`, `同類事件 ${def.cooldown || 12} 個月內不會再觸發，之後仍依條件判斷`];
+          continue;
+        }
+        if (ov) WS.WhatIf.logDivergence(w, ctx, ov, [id], [`原世界線中的條件：本月觸發機率 ${(p * 100).toFixed(1)}%`]);
         const ev = Events.log(w, ctx, {
           type: 'conditional', defId: def.id, title: `${c.name}：${def.name}`, countries: [id], level: ['famine', 'protest'].includes(def.id) ? 2 : 3,
-          major: id === w.focus, causes: chk.reasons, trigger: `條件成立，本月觸發機率 ${(p * 100).toFixed(1)}%`
+          major: id === w.focus, causes: chk.reasons, trigger: `條件成立，本月觸發機率 ${(p * 100).toFixed(1)}%`, parent: ov ? ov.eventId : undefined
         });
+        ctx.forced = ov ? ov.action : null;
         ev.effects = (def.apply(w, c, ctx, ev) || []).concat(ev.effects || []);
+        ctx.forced = null;
         for (const k of ['stability', 'legitimacy', 'support', 'conflict', 'corruption', 'localPower', 'admin', 'armyLoyalty']) c.pol[k] = u.clamp(c.pol[k], 0, 100);
       }
 

@@ -18,12 +18,12 @@
       const conf = WS.Rules.conflicts(Object.assign({}, WS.util.clone(Object.fromEntries(Object.entries(WS.Data.rules).map(([k, d]) => [k, d.default]))), setup.rules || {}));
       if (conf.length) throw new Error('世界規則互相衝突：' + conf.map((c) => c.text).join(' '));
       this.w = WS.State.createWorld(setup);
-      this.snapshots = [{ year: this.w.year, month: this.w.month, json: JSON.stringify(this.w) }];
+      this.snapshots = [{ year: this.w.year, month: this.w.month, tick: this.w.tick, json: JSON.stringify(this.w) }];
       return this.w;
     }
     load(obj) {
       this.w = WS.Save.migrate(obj);
-      this.snapshots = [{ year: this.w.year, month: this.w.month, json: JSON.stringify(this.w) }];
+      this.snapshots = [{ year: this.w.year, month: this.w.month, tick: this.w.tick, json: JSON.stringify(this.w) }];
       return this.w;
     }
     serialize() { return JSON.stringify(this.w); }
@@ -69,7 +69,7 @@
       if (w.month === 1) {
         WS.History.finalizeYear(w, ctx);
         if ((w.year - w.startYear) % 5 === 0) {
-          this.snapshots.push({ year: w.year, month: w.month, json: JSON.stringify(w) });
+          this.snapshots.push({ year: w.year, month: w.month, tick: w.tick, json: JSON.stringify(w) });
           if (this.snapshots.length > 60) this.snapshots.splice(1, 1);
         }
       }
@@ -92,6 +92,21 @@
     advanceYears(n, opts) { return this.advance(12 * n, opts); }
 
     // ---------- 指令 ----------
+    // 會影響模擬結果的指令都記在 commandLog，「如果」平行世界重跑時依同樣的時間點重播
+    record(cmd, args) { this.w.commandLog.push({ tick: this.w.tick, y: this.w.year, m: this.w.month, cmd, args }); }
+    exec(c) {
+      const [a, b] = c.args;
+      switch (c.cmd) {
+        case 'policy': return this.applyPolicy(a, b);
+        case 'rule': return this.changeRule(a, b);
+        case 'param': this.setParam(a, b); return { ok: true };
+        case 'intervention': this.setIntervention(a); return { ok: true };
+        case 'focus': this.setFocus(a); return { ok: true };
+        case 'mode': this.setMode(a); return { ok: true };
+      }
+      return { ok: false, reason: '未知指令' };
+    }
+
     evaluate(cid) { return WS.Agents.evaluate(this.w.countries[cid], this.w); }
 
     applyPolicy(cid, policyId) {
@@ -101,6 +116,7 @@
       const res = WS.Policies.execute(c, this.w, policyId, ctx, 'player');
       this.w.rngState = ctx.rng.s;
       if (res.ok) {
+        this.record('policy', [cid, policyId]);
         const d = WS.Policies.defs[policyId];
         this.w.playerLog.push({ y: this.w.year, m: this.w.month, country: cid, policy: policyId });
         WS.Events.log(this.w, ctx, { type: 'decision', title: `玩家介入：${c.name}執行「${d.name}」`, countries: [cid], level: 2, causes: ['玩家決策'], effects: res.effects });
@@ -112,15 +128,17 @@
       const ctx = { rng: new WS.RNG(this.w.rngState), major: [] };
       const res = WS.Rules.change(this.w, ctx, key, value);
       this.w.rngState = ctx.rng.s;
+      if (res.ok && !res.unchanged) this.record('rule', [key, value]);
       return res;
     }
 
     resolveDecision() { this.w.pendingDecision = null; }
-    setMode(mode) { this.w.mode = mode; }
+    setMode(mode) { if (this.w.mode !== mode) this.record('mode', [mode]); this.w.mode = mode; }
     setDifficulty(d) { this.w.difficulty = d; }                 // 模式切換不重置世界狀態
-    setFocus(cid) { if (this.w.countries[cid]) this.w.focus = cid; }
+    setFocus(cid) { if (this.w.countries[cid] && this.w.focus !== cid) { this.record('focus', [cid]); this.w.focus = cid; } }
     setIntervention(v) {
       const w = this.w;
+      this.record('intervention', [v]);
       w.intervention = v;
       for (const id in w.countries) w.countries[id].controller = 'ai';
       if (v === 'full' && w.countries[w.focus]) w.countries[w.focus].controller = 'player';
@@ -131,8 +149,13 @@
       for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
       const old = o[parts[parts.length - 1]];
       o[parts[parts.length - 1]] = value;
+      this.record('param', [path, value]);
       WS.Events.log(this.w, null, { type: 'rule', title: `模型參數調整：${path}`, countries: [], level: 1, causes: ['進階模式'], effects: [`${old} → ${value}`] });
     }
+
+    // 「如果」平行世界：回傳 { ok, world, snapshots, report }，不改變目前的世界
+    whatIf(eventId, key) { return WS.WhatIf.run(this, eventId, key); }
+    whatIfAvailable(eventId) { return WS.WhatIf.available(this, this.w.events.find((e) => e.id === eventId)); }
 
     createBranch(name, reason, reseed) { return WS.Branch.create(this.w, name, reason, reseed); }
     branchFromSnapshot(index, name, reason) {
