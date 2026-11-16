@@ -352,6 +352,34 @@ test('如果：舊存檔（沒有指令紀錄）可以載入並補上欄位', ()
   assert.strictEqual(w.commandLog[0].tick, 5);
 });
 
+// ---------- 歷史回測 ----------
+test('回測：對照資料涵蓋所有起點國家，年份與數值合理', () => {
+  const ref = WS.Data.reference['1911'];
+  const ids = WS.Data.scenarios['1911'].countries.map((c) => c.id).sort();
+  assert.deepStrictEqual(Object.keys(ref.countries).sort(), ids);
+  for (const id of ids) for (const y of ref.years) assert.ok(ref.countries[id].pop[y] > 0, `${id} ${y}`);
+});
+test('回測：同種子結果相同，且回測不改寫史實資料', () => {
+  const before = JSON.stringify(WS.Data.reference['1911']);
+  const a = WS.Backtest.runOne({ seed: 'bt-test', mode: 'ai', endYear: 1913 });
+  const b = WS.Backtest.runOne({ seed: 'bt-test', mode: 'ai', endYear: 1913 });
+  assert.deepStrictEqual(a.points, b.points);
+  assert.ok(a.points.CHN[1913].pop > 0 && a.ledger.CHN[1910].births > 0);
+  assert.strictEqual(JSON.stringify(WS.Data.reference['1911']), before);
+});
+test('回測：史實政策重播經由引擎指令執行並寫入指令紀錄', () => {
+  const r = WS.Backtest.runOne({ seed: 'bt-test', mode: 'replay', endYear: 1913 });
+  assert.ok(r.policies.length >= 3);
+  assert.ok(r.policies.some((p) => p.ok));
+  assert.ok(r.policies.every((p) => p.ok || p.reason));
+});
+test('回測：報表列出每個國家與人口變化來源', () => {
+  const res = WS.Backtest.run({ seeds: ['bt-test'], mode: 'ai', endYear: 1913 });
+  const md = WS.Backtest.toMarkdown([res]);
+  for (const c of WS.Data.scenarios['1911'].countries) assert.ok(md.includes('### ' + c.name), c.name);
+  assert.ok(md.includes('出生率') && md.includes('1913'));
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
