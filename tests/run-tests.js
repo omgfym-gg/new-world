@@ -380,6 +380,14 @@ test('回測：報表列出每個國家與人口變化來源', () => {
   assert.ok(md.includes('出生率') && md.includes('1913'));
 });
 
+test('快照重跑：從快照繼續推進，結果與原世界完全相同（亂數狀態正確保存）', () => {
+  const e = make(); e.advance(12 * 12);
+  const snap = e.snapshots.find((x) => x.year === 1916);
+  const b = new WS.WorldEngine(); b.load(JSON.parse(snap.json));
+  while (b.world.tick < e.world.tick) b.step();
+  assert.strictEqual(JSON.stringify(b.world.series), JSON.stringify(e.world.series));
+});
+
 // ---------- 校準機制（2026-11） ----------
 test('人口轉型：已開發國家起點不會卡在下限，生育率會隨時間下降', () => {
   const e = make(); const c = e.world.countries.DEU;
@@ -403,6 +411,27 @@ test('生產力成長：追趕與知識累積寫入 GDP 因果帳', () => {
   const g = e.world.countries.CHN.causes.years.at(-1).data.gdp;
   const subs = Object.values(g).flatMap((f) => Object.keys(f.sub));
   assert.ok(subs.includes('追趕先進國家') && subs.includes('知識累積'), subs.join(','));
+});
+
+test('制度改革：市場化改革逐步推進、寫入原因，政局不穩時停滯', () => {
+  const e = make({ intervention: 'none' }); e.advance(1);
+  const c = e.world.countries.JPN; c.pol.stability = 70; c.pol.admin = 70;
+  const m0 = c.econ.market;
+  assert.ok(e.applyPolicy('JPN', 'market_reform').ok);
+  assert.ok(c.econ.market - m0 < 0.01, '不會立刻生效');
+  for (let i = 0; i < 24; i++) { c.pol.stability = 70; c.pol.admin = 70; WS.Economy.reformStep(c, e.world); }
+  assert.ok(c.econ.market > m0 + 0.01, `${c.econ.market} vs ${m0}`);
+  assert.ok(c.causes.cur.market && c.causes.cur.market['市場化改革推進']);
+  const m1 = c.econ.market; c.pol.stability = 10;
+  for (let i = 0; i < 24; i++) WS.Economy.reformStep(c, e.world);
+  assert.strictEqual(c.econ.market, m1, '政局不穩時改革停滯');
+  assert.strictEqual(e.world.commandLog.at(-1).args[1], 'market_reform');
+});
+test('制度改革：吸收能力越高，追趕成長越快', () => {
+  const e = make(); const w = e.world; const c = w.countries.CHN;
+  c.pol.stability = 60; const a = WS.Economy.tfpGrowth(c, w).catch;
+  c.econ.market = 1; c.econ.openness = 0.9; const b = WS.Economy.tfpGrowth(c, w).catch;
+  assert.ok(b > a * 1.5, `${b} vs ${a}`);
 });
 
 // ---------- 輸出 ----------

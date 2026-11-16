@@ -41,7 +41,7 @@
       regime: 'republic', regimeLabel: '', leader: null, leaderPool: [], leaderSince: 0,
       pop: { c0: 0, c1: 0, c2: 0, c3: 0 },
       demo: { fert: 0, mortScale: 1, health: 0.3, health0: 0.3, edu: 30, urban: 0.2, urban0: 0.2, fertFactor0: 1, unemployment: 0.05, births: 0, deaths: 0, migration: 0 },
-      econ: { sec: {}, lab: {}, lab0: {}, invAlloc: { agri: 0.3, ind: 0.4, serv: 0.3 }, gdp: 0, gdpHist: [], growth: 0, savings: 0.1, inflation: 0.02, priceIndex: 100, openness: 0.4, gdppc: 0, alt: false },
+      econ: { sec: {}, lab: {}, lab0: {}, invAlloc: { agri: 0.3, ind: 0.4, serv: 0.3 }, gdp: 0, gdpHist: [], growth: 0, savings: 0.1, inflation: 0.02, priceIndex: 100, openness: 0.4, opennessTarget: null, market: 0.6, marketTarget: 0.6, gdppc: 0, alt: false },
       fiscal: { taxRate: 0.08, revenue: 0, spending: 0, debt: 0, interest: 0, deficitTol: 0.1, budget: {}, budget0: {}, amounts: {} },
       pol: {},
       tech: {}, research: { points: 0, focus: null },

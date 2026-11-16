@@ -34,7 +34,7 @@ engine/
   military-engine.js     軍事能力、動員、戰爭消耗、傷亡、停戰、割地
   world-engine.js        主流程（每月 15 步固定順序）與所有引擎指令
 systems/
-  policy-system.js       17 項政策（AI 與玩家共用，必須通過引擎檢查）
+  policy-system.js       19 項政策（AI 與玩家共用，必須通過引擎檢查）
   agent-system.js        國家自主決策（問題評分 → 候選政策 → 依目標選擇 → 保存原因）
   event-system.js        固定歷史事件（有條件）、條件事件、新國家、新制度
   rule-system.js         世界規則、衝突檢查、自然語言轉規則、制度轉換
@@ -46,7 +46,7 @@ data/
   scenario-1911.js       1911 年 8 國起點資料（人口、GDP 參考 Maddison，其餘為 D 級初始值）
   definitions.js         科技樹、制度、世界規則、規則衝突、自然語言關鍵字
 tests/
-  run-tests.js           51 項自動測試：node tests/run-tests.js
+  run-tests.js           54 項自動測試：node tests/run-tests.js
 tools/backtest.js        歷史回測：node tools/backtest.js → reports/backtest-1911.md
 data/history-reference.js、data/history-policies-1911.js、systems/backtest-system.js   回測用（只在 Node 載入）
 docs/ancient-era.md      遠古時代起點設計文件
