@@ -34,7 +34,7 @@ engine/
   military-engine.js     軍事能力、動員、戰爭消耗、傷亡、停戰、割地
   world-engine.js        主流程（每月 15 步固定順序）與所有引擎指令
 systems/
-  policy-system.js       17 項政策（AI 與玩家共用，必須通過引擎檢查）
+  policy-system.js       19 項政策（AI 與玩家共用，必須通過引擎檢查）
   agent-system.js        國家自主決策（問題評分 → 候選政策 → 依目標選擇 → 保存原因）
   event-system.js        固定歷史事件（有條件）、條件事件、新國家、新制度
   rule-system.js         世界規則、衝突檢查、自然語言轉規則、制度轉換
@@ -46,16 +46,19 @@ data/
   scenario-1911.js       1911 年 8 國起點資料（人口、GDP 參考 Maddison，其餘為 D 級初始值）
   definitions.js         科技樹、制度、世界規則、規則衝突、自然語言關鍵字
 tests/
-  run-tests.js           43 項自動測試：node tests/run-tests.js
+  run-tests.js           54 項自動測試：node tests/run-tests.js
+tools/backtest.js        歷史回測：node tools/backtest.js → reports/backtest-1911.md
+data/history-reference.js、data/history-policies-1911.js、systems/backtest-system.js   回測用（只在 Node 載入）
+docs/ancient-era.md      遠古時代起點設計文件
 ```
 
 ## 已知限制（下一步校準重點）
 
-- 所有係數都是示意值，尚未做歷史回測。目前 100 年長期模擬中，日本因能源儲量耗盡、法國因低生育，人口會偏離真實歷史。
+- 所有係數都是示意值，尚未校準。歷史回測（`node tools/backtest.js`）顯示 1911–2008 年各國人口、GDP 都明顯偏離史實，主因是死亡率與生育率轉型太慢、跨國遷移太強、戰後缺少追趕式成長，詳見 `reports/backtest-1911.md`。
 - 只有 1911 年一個起點、8 個國家；地區只用於割地與分裂。
 - 年度敘述用文字模板，不是 AI。
 - 歷史回溯快照只保存在本次開啟期間（每 5 年一次）；要長期保留請用存檔。
 - 「如果」重跑需要事件之前的快照；沒有快照時（例如載入存檔後）會用世界建立時的設定與完整指令紀錄重新生成。
   這個功能加入之前的舊存檔沒有建立設定，只能改寫載入之後發生的事件。
-- 目前可改寫的事件：固定歷史事件（阻止／照原本歷史發生）、條件事件（阻止；革命可翻轉成敗）、宣戰（阻止）。
+- 目前可改寫的事件：固定歷史事件（阻止／強制發生）、條件事件（阻止；革命可翻轉成敗）、宣戰（阻止）。
   阻止條件事件後，該事件進入冷卻期，之後仍依條件判斷是否再次發生。

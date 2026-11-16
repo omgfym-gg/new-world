@@ -107,6 +107,27 @@
         return [`半年後改為「${WS.Data.regimes[to].name}」`, '合法性 +5', '社會衝突 −5'];
       }
     },
+    market_reform: {
+      name: '市場化改革', desc: '擴大市場交易與企業自主，提高吸收先進技術、重新配置資源的能力。效果要好幾年才逐步出現，政局不穩時可能停滯，也會擴大貧富差距。',
+      effects: { growth: 0.5, tech: 0.2 }, costs: { conflict: 0.3, stability: 0.2 },
+      feasible: (c, w) => w.rules.currency === false ? '沒有貨幣時無法市場化' : c.econ.marketTarget >= 0.95 ? '市場化已接近上限' : c.econ.marketTarget - c.econ.market > 0.08 ? '上一輪改革仍在推進' : true,
+      apply(c) {
+        c.econ.marketTarget = Math.min(1, c.econ.marketTarget + 0.2);
+        c.pol.conflict += 3; c.pol.inequality = Math.min(100, (c.pol.inequality || 0) + 2); c.pol.support -= 2;
+        U().cause(c, 'conflict', '政策：市場化改革', 3);
+        return ['市場化目標 +20%（之後數年逐步推進）', '社會衝突 +3', '貧富差距 +2'];
+      }
+    },
+    open_economy: {
+      name: '對外開放', desc: '降低貿易與投資壁壘，引進外國技術與資本。開放度會逐步提高，但國內受衝擊的產業會不滿。',
+      effects: { growth: 0.4, tech: 0.3 }, costs: { stability: 0.2 },
+      feasible: (c) => c.flags.atWar ? '戰爭中無法開放' : (c.econ.opennessTarget ?? c.econ.openness) >= 0.9 ? '開放度已接近上限' : (c.econ.opennessTarget ?? c.econ.openness) - c.econ.openness > 0.06 ? '上一輪開放仍在推進' : true,
+      apply(c) {
+        c.econ.opennessTarget = Math.min(0.95, (c.econ.opennessTarget ?? c.econ.openness) + 0.15);
+        c.pol.support -= 2; c.pol.inequality = Math.min(100, (c.pol.inequality || 0) + 1);
+        return ['開放度目標 +15%（之後數年逐步推進）', '民眾支持 −2'];
+      }
+    },
     centralize: {
       name: '中央集權', desc: '削弱地方勢力，提高行政效率。',
       effects: { localPower: 1, stability: 0.2 }, costs: { conflict: 0.2, fiscal: 0.2 },

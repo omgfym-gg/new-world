@@ -65,6 +65,8 @@
       // 13. 數值驗證
       ctx.territory = territoryBefore !== Object.values(w.regions).map((r) => r.owner).join();
       this.lastIssues = WS.Validation.step(w, ids2, ctx, prevPop);
+      // 亂數狀態要在拍快照之前寫回，否則從快照重跑（「如果？」、歷史回溯）會用到舊的亂數狀態而走出不同的世界
+      w.rngState = ctx.rng.s;
       // 14. 保存紀錄、15. 歷史敘述（每年一月結算上一年）
       if (w.month === 1) {
         WS.History.finalizeYear(w, ctx);

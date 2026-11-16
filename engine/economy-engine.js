@@ -94,7 +94,8 @@
     c.res.coal = c.res.coal * demand0;
     c.res.oil = c.res.oil * demand0;
     const domestic = Math.min(c.res.energyCap, demand0);
-    c.res.energyRatio = Math.min(1, (domestic + (demand0 - domestic) * c.econ.openness) / Math.max(1e-6, demand0));
+    const eb = e.energyImportBase;
+    c.res.energyRatio = Math.min(1, (domestic + (demand0 - domestic) * (eb + (1 - eb) * c.econ.openness)) / Math.max(1e-6, demand0));
     c.res.pollution = 20 * domestic / Math.max(1e-6, demand0);
     const workers = Econ.workforce(c, w) * (1 - c.demo.unemployment);
     for (const s of SECTORS) {
@@ -111,6 +112,44 @@
     c.demo.healthBias = 0;
     c.demo.healthBias = c.demo.health0 - WS.Population.healthTarget(c, w);
     c.econ.inequality0 = c.pol.inequality;
+  };
+
+  Econ.reformStep = function (c, w) {
+    const e = w.params.economy, U = WS.util, ec = c.econ;
+    const pace = e.reformSpeed * (c.pol.admin / 100) * (c.pol.stability / 100) * dt;
+    if (c.pol.stability < e.reformStallStability) {
+      // 政局不穩：改革停滯，目標逐漸退回現況
+      ec.marketTarget += (ec.market - ec.marketTarget) * 0.2 * dt;
+      if (ec.opennessTarget != null) ec.opennessTarget += (ec.openness - ec.opennessTarget) * 0.2 * dt;
+      return;
+    }
+    const dm = (ec.marketTarget - ec.market) * pace;
+    if (Math.abs(dm) > 1e-9) { ec.market += dm; U.cause(c, 'market', dm > 0 ? '市場化改革推進' : '市場化倒退', dm); }
+    if (ec.opennessTarget != null) {
+      const dO = (ec.opennessTarget - ec.openness) * pace;
+      if (Math.abs(dO) > 1e-9) { ec.openness += dO; U.cause(c, 'openness', dO > 0 ? '對外開放推進' : '開放度下降', dO); }
+    }
+  };
+
+  // 吸收先進技術的能力（0–1）：教育、穩定、市場化（計畫經濟打折）、開放度
+  Econ.absorb = function (c, w) {
+    const e = w.params.economy;
+    const market = (c.econ.market ?? 0.6) * (Econ.isPlanned(c, w) ? e.plannedMarketMult : 1);
+    return Math.sqrt(c.demo.edu / 100) * (c.pol.stability / 100) * market * (e.catchUpOpenBase + (1 - e.catchUpOpenBase) * c.econ.openness);
+  };
+
+  // 每年生產力成長率（回傳 { know, catch }）
+  Econ.tfpGrowth = function (c, w) {
+    const e = w.params.economy;
+    const U = WS.util;
+    let lead = 0;
+    for (const id of U.ids(w)) lead = Math.max(lead, w.countries[id].econ.gdppc || 0);
+    const edu = c.demo.edu / 100, stab = c.pol.stability / 100;
+    const rShare = (c.fiscal.amounts.research || 0) / Math.max(1e-6, c.econ.gdp);
+    const know = e.tfpKnowledge * edu * (0.5 + 0.5 * stab) * (1 + rShare / e.tfpResearchRef);
+    const gap = lead > 0 && c.econ.gdppc > 0 ? Math.min(e.catchUpMaxGap, Math.max(0, Math.log(lead / c.econ.gdppc))) : 0;
+    const ctch = e.catchUpRate * gap * Econ.absorb(c, w);
+    return { know, catch: ctch };
   };
 
   Econ.step = function (w, ids, ctx) {
@@ -140,6 +179,13 @@
       const du = (e.urbanBase + e.urbanGrowth * indShare + e.urbanRail * U.adopt(c, 'railway') + e.urbanCar * U.adopt(c, 'automobile') - 0.01 * c.res.shortage) * (1 - d.urban / e.urbanMax) * dt;
       d.urban = U.clamp(d.urban + du, 0.01, e.urbanMax);
 
+      // 制度改革逐步推進：市場化程度與開放度向目標移動，速度取決於行政效率與穩定度
+      Econ.reformStep(c, w);
+
+      // 生產力成長：知識累積（教育、穩定）＋向最富國家追趕（技術擴散，需要教育與穩定來吸收）
+      const tfp = Econ.tfpGrowth(c, w);
+      for (const s of SECTORS) { ec.sec[s].Aprev = ec.sec[s].A; ec.sec[s].A *= Math.exp((tfp.know + tfp.catch) * dt); }
+
       // 部門生產與成長歸因
       const out = Econ.computeSectors(c, w);
       let gdp = 0;
@@ -153,6 +199,8 @@
           [s === 'agri' ? '收成與氣候' : '能源供應']: Math.log(o.R / sec.R),
           '政治穩定與制度': Math.log(o.I / sec.I)
         };
+        const gA = Math.log(sec.A / (sec.Aprev || sec.A)), gTot = tfp.know + tfp.catch;
+        if (gA && gTot > 0) { terms['知識累積'] = gA * tfp.know / gTot; terms['追趕先進國家'] = gA * tfp.catch / gTot; }
         let tot = 0;
         for (const k in terms) tot += terms[k];
         if (Math.abs(tot) > 1e-12 && Math.abs(dY) > 1e-12)

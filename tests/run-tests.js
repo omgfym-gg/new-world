@@ -352,6 +352,88 @@ test('如果：舊存檔（沒有指令紀錄）可以載入並補上欄位', ()
   assert.strictEqual(w.commandLog[0].tick, 5);
 });
 
+// ---------- 歷史回測 ----------
+test('回測：對照資料涵蓋所有起點國家，年份與數值合理', () => {
+  const ref = WS.Data.reference['1911'];
+  const ids = WS.Data.scenarios['1911'].countries.map((c) => c.id).sort();
+  assert.deepStrictEqual(Object.keys(ref.countries).sort(), ids);
+  for (const id of ids) for (const y of ref.years) assert.ok(ref.countries[id].pop[y] > 0, `${id} ${y}`);
+});
+test('回測：同種子結果相同，且回測不改寫史實資料', () => {
+  const before = JSON.stringify(WS.Data.reference['1911']);
+  const a = WS.Backtest.runOne({ seed: 'bt-test', mode: 'ai', endYear: 1913 });
+  const b = WS.Backtest.runOne({ seed: 'bt-test', mode: 'ai', endYear: 1913 });
+  assert.deepStrictEqual(a.points, b.points);
+  assert.ok(a.points.CHN[1913].pop > 0 && a.ledger.CHN[1910].births > 0);
+  assert.strictEqual(JSON.stringify(WS.Data.reference['1911']), before);
+});
+test('回測：史實政策重播經由引擎指令執行並寫入指令紀錄', () => {
+  const r = WS.Backtest.runOne({ seed: 'bt-test', mode: 'replay', endYear: 1913 });
+  assert.ok(r.policies.length >= 3);
+  assert.ok(r.policies.some((p) => p.ok));
+  assert.ok(r.policies.every((p) => p.ok || p.reason));
+});
+test('回測：報表列出每個國家與人口變化來源', () => {
+  const res = WS.Backtest.run({ seeds: ['bt-test'], mode: 'ai', endYear: 1913 });
+  const md = WS.Backtest.toMarkdown([res]);
+  for (const c of WS.Data.scenarios['1911'].countries) assert.ok(md.includes('### ' + c.name), c.name);
+  assert.ok(md.includes('出生率') && md.includes('1913'));
+});
+
+test('快照重跑：從快照繼續推進，結果與原世界完全相同（亂數狀態正確保存）', () => {
+  const e = make(); e.advance(12 * 12);
+  const snap = e.snapshots.find((x) => x.year === 1916);
+  const b = new WS.WorldEngine(); b.load(JSON.parse(snap.json));
+  while (b.world.tick < e.world.tick) b.step();
+  assert.strictEqual(JSON.stringify(b.world.series), JSON.stringify(e.world.series));
+});
+
+// ---------- 校準機制（2026-11） ----------
+test('人口轉型：已開發國家起點不會卡在下限，生育率會隨時間下降', () => {
+  const e = make(); const c = e.world.countries.DEU;
+  const f0 = c.demo.fert; e.advance(12 * 40);
+  assert.ok(e.world.countries.DEU.demo.fert < f0 * 0.8, `${e.world.countries.DEU.demo.fert} vs ${f0}`);
+});
+test('醫療擴散：貧窮國家也會引進他國醫療科技，醫療水準上升', () => {
+  const e = make(); const h0 = e.world.countries.CHN.demo.health; e.advance(12 * 50);
+  const c = e.world.countries.CHN;
+  assert.ok(c.demo.health > h0 + 0.1, `${c.demo.health} vs ${h0}`);
+  const why = c.causes.years.flatMap((y) => Object.keys((y.data.health) || {}));
+  assert.ok(why.some((k) => k.includes('引進他國醫療科技') || k.includes('生活水準')));
+});
+test('遷移：全世界淨遷移加總為零，且不超過接收國容量', () => {
+  const e = make(); e.advance(24);
+  const m = WS.util.ids(e.world).reduce((s, id) => s + e.world.countries[id].demo.migration, 0);
+  assert.ok(Math.abs(m) < 1e-9, m);
+});
+test('生產力成長：追趕與知識累積寫入 GDP 因果帳', () => {
+  const e = make(); e.advance(14);
+  const g = e.world.countries.CHN.causes.years.at(-1).data.gdp;
+  const subs = Object.values(g).flatMap((f) => Object.keys(f.sub));
+  assert.ok(subs.includes('追趕先進國家') && subs.includes('知識累積'), subs.join(','));
+});
+
+test('制度改革：市場化改革逐步推進、寫入原因，政局不穩時停滯', () => {
+  const e = make({ intervention: 'none' }); e.advance(1);
+  const c = e.world.countries.JPN; c.pol.stability = 70; c.pol.admin = 70;
+  const m0 = c.econ.market;
+  assert.ok(e.applyPolicy('JPN', 'market_reform').ok);
+  assert.ok(c.econ.market - m0 < 0.01, '不會立刻生效');
+  for (let i = 0; i < 24; i++) { c.pol.stability = 70; c.pol.admin = 70; WS.Economy.reformStep(c, e.world); }
+  assert.ok(c.econ.market > m0 + 0.01, `${c.econ.market} vs ${m0}`);
+  assert.ok(c.causes.cur.market && c.causes.cur.market['市場化改革推進']);
+  const m1 = c.econ.market; c.pol.stability = 10;
+  for (let i = 0; i < 24; i++) WS.Economy.reformStep(c, e.world);
+  assert.strictEqual(c.econ.market, m1, '政局不穩時改革停滯');
+  assert.strictEqual(e.world.commandLog.at(-1).args[1], 'market_reform');
+});
+test('制度改革：吸收能力越高，追趕成長越快', () => {
+  const e = make(); const w = e.world; const c = w.countries.CHN;
+  c.pol.stability = 60; const a = WS.Economy.tfpGrowth(c, w).catch;
+  c.econ.market = 1; c.econ.openness = 0.9; const b = WS.Economy.tfpGrowth(c, w).catch;
+  assert.ok(b > a * 1.5, `${b} vs ${a}`);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
