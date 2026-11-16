@@ -24,7 +24,7 @@
       transitionMid: 0.62,
       transitionSteep: 12,
       transitionFloor: 0.02,
-      fertMin: 0.03,                  // 轉型完成後每名育齡人口的年出生數（約對應粗出生率 11–12‰）
+      fertMin: 0.036,                 // 轉型完成後每名育齡人口的年出生數（約對應粗出生率 12–14‰）
       migrationPull: 0.001,           // 人均GDP相對差距造成的遷移傾向
       migrationConflictPush: 0.004,
       migrationCap: 0.003,
@@ -34,6 +34,7 @@
       eduDecay: 0.1,
       eduUrban: 0.5,
       healthAdjustRate: 0.1,
+      healthAgeEffect: [1.0, 0.9, 0.8, 0.45], // 醫療進步降低死亡率的程度（0–14, 15–24, 25–64, 65+；1＝完全依醫療水準下降）
       // 死亡率轉型（示意值，依 2026-11 回測初步校準）
       healthDevGain: 0.25,            // 發展程度（人均 GDP）對醫療水準目標的最大貢獻：營養、住居、醫療可及性
       healthDevRef: 15000,            // 人均 GDP（1990 年國際元）達到此值視為發展成熟

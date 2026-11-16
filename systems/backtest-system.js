@@ -9,6 +9,7 @@
   const Backtest = (WS.Backtest = {});
 
   Backtest.DRIFT_LIMIT = 0.25;  // 偏差超過 ±25% 視為「明顯偏離」
+  Backtest.GDP_KEYS = ['勞動力', '資本投資', '技術進步', '知識累積', '追趕先進國家', '能源供應', '政治穩定與制度', '其他'];
   Backtest.DEFAULT_SEEDS = ['bt-1', 'bt-2', 'bt-3'];
 
   // 疆界家族：原國家＋所有從它分裂出去的新國家（例如俄國分裂後仍以前蘇聯範圍比較）
@@ -36,6 +37,8 @@
     const r = c && c.alive ? c.res : null;
     return {
       pop, gdp, alive: !!(c && c.alive),
+      old: c && c.alive ? c.pop.c3 / U.popTotal(c) : null,
+      young: c && c.alive ? c.pop.c0 / U.popTotal(c) : null,
       energy: r ? r.energyRatio : null,
       reserves: r ? r.coal + r.oil : null,
       shortage: r ? r.shortage : null
@@ -49,9 +52,13 @@
     const pop = entry.data.population;
     if (!pop) return;
     const d = decadeOf(entry.year);
-    const L = store[d] || (store[d] = { years: 0, popSum: 0, births: 0, deaths: 0, migration: 0, deathBy: {} });
+    const L = store[d] || (store[d] = { years: 0, popSum: 0, gdpSum: 0, births: 0, deaths: 0, migration: 0, deathBy: {}, gdpBy: {} });
     L.years += 1;
     L.popSum += WS.util.popTotal(c);
+    L.gdpSum += c.econ.gdp;
+    // GDP 成長來源：把三個部門的歸因細項（勞動力、資本投資、技術進步、追趕…）加總
+    for (const f of Object.values(entry.data.gdp || {}))
+      for (const k in f.sub) L.gdpBy[k] = (L.gdpBy[k] || 0) + f.sub[k];
     if (pop['出生']) L.births += pop['出生'].v;
     if (pop['淨遷移']) L.migration += pop['淨遷移'].v;
     if (pop['死亡']) {
@@ -115,7 +122,7 @@
         const vals = runs.map((r) => r.points[id][y]).filter(Boolean);
         if (!vals.length) continue;
         const avg = (k) => { const a = vals.map((v) => v[k]).filter((x) => x != null); return a.length ? a.reduce((s, x) => s + x, 0) / a.length : null; };
-        const row = { year: y, pop: avg('pop'), gdp: avg('gdp'), energy: avg('energy'), reserves: avg('reserves'), shortage: avg('shortage'), refPop: R.pop[y], refGdp: R.gdp[y] };
+        const row = { year: y, pop: avg('pop'), gdp: avg('gdp'), old: avg('old'), young: avg('young'), energy: avg('energy'), reserves: avg('reserves'), shortage: avg('shortage'), refPop: R.pop[y], refGdp: R.gdp[y] };
         row.popErr = row.refPop ? row.pop / row.refPop - 1 : null;
         row.gdpErr = row.refGdp ? row.gdp / row.refGdp - 1 : null;
         rows.push(row);
@@ -125,7 +132,9 @@
       for (const r of runs) {
         for (const d in r.ledger[id]) {
           const L = r.ledger[id][d];
-          const D = decades[d] || (decades[d] = { n: 0, cbr: 0, cdr: 0, mig: 0, deathBy: {} });
+          const D = decades[d] || (decades[d] = { n: 0, cbr: 0, cdr: 0, mig: 0, deathBy: {}, gdpBy: {} });
+          const avgGdp = L.gdpSum / Math.max(1, L.years);
+          for (const k in L.gdpBy) D.gdpBy[k] = (D.gdpBy[k] || 0) + (L.gdpBy[k] / Math.max(1, L.years)) / Math.max(1e-6, avgGdp) * 100;
           const avgPop = L.popSum / Math.max(1, L.years);
           const per = (v) => (v / Math.max(1, L.years)) / Math.max(1e-6, avgPop) * 1000;
           D.n += 1; D.cbr += per(L.births); D.cdr += per(-L.deaths); D.mig += per(L.migration);
@@ -136,6 +145,7 @@
         const D = decades[d];
         D.cbr /= D.n; D.cdr /= D.n; D.mig /= D.n;
         for (const s in D.deathBy) D.deathBy[s] /= D.n;
+        for (const s in D.gdpBy) D.gdpBy[s] /= D.n;
       }
       const firstDrift = (k) => { const r = rows.find((x) => x[k + 'Err'] != null && Math.abs(x[k + 'Err']) > Backtest.DRIFT_LIMIT); return r ? r.year : null; };
       countries[id] = { rows, decades, territory: R.territory, excluded: !!R.excluded, popDriftFrom: firstDrift('pop'), gdpDriftFrom: firstDrift('gdp') };
@@ -198,13 +208,22 @@
         const C = r.countries[id];
         const name = (WS.Data.scenarios[r.scenario].countries.find((c) => c.id === id) || {}).name || id;
         L.push(`### ${name}${C.excluded ? '（僅供參考）' : ''}`, '', `對照範圍：${C.territory}`, '');
-        L.push('| 年份 | 人口（模擬） | 人口（史實） | 偏差 | GDP（模擬） | GDP（史實） | 偏差 | 能源自給 | 煤＋油儲量 |', '|---|---|---|---|---|---|---|---|---|');
-        for (const x of C.rows) L.push(`| ${x.year} | ${num(x.pop, 1)} | ${num(x.refPop, 1)} | ${pct(x.popErr)} | ${num(x.gdp)} | ${num(x.refGdp)} | ${pct(x.gdpErr)} | ${x.energy == null ? '—' : num(x.energy * 100) + '%'} | ${num(x.reserves)} |`);
+        L.push('| 年份 | 人口（模擬） | 人口（史實） | 偏差 | GDP（模擬） | GDP（史實） | 偏差 | 0–14 歲 | 65 歲以上 | 能源自給 | 煤＋油儲量 |', '|---|---|---|---|---|---|---|---|---|---|---|');
+        const share = (v) => (v == null ? '—' : num(v * 100) + '%');
+        for (const x of C.rows) L.push(`| ${x.year} | ${num(x.pop, 1)} | ${num(x.refPop, 1)} | ${pct(x.popErr)} | ${num(x.gdp)} | ${num(x.refGdp)} | ${pct(x.gdpErr)} | ${share(x.young)} | ${share(x.old)} | ${x.energy == null ? '—' : num(x.energy * 100) + '%'} | ${num(x.reserves)} |`);
         L.push('', '人口變化來源（每千人每年，十年平均）：', '', '| 年代 | 出生率 | 死亡率 | 淨遷移 | 主要死因 |', '|---|---|---|---|---|');
         for (const d of Object.keys(C.decades).sort()) {
           const D = C.decades[d];
           const top = Object.entries(D.deathBy).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(1)}`).join('、');
           L.push(`| ${d}s | ${D.cbr.toFixed(1)} | ${D.cdr.toFixed(1)} | ${D.mig >= 0 ? '+' : ''}${D.mig.toFixed(1)} | ${top || '—'} |`);
+        }
+        const keys = Backtest.GDP_KEYS;
+        L.push('', 'GDP 成長來源（每年 %，十年平均；各項加總約等於 GDP 年成長率）：', '', '| 年代 | ' + keys.join(' | ') + ' | 合計 |', '|---|' + keys.map(() => '---|').join('') + '---|');
+        for (const d of Object.keys(C.decades).sort()) {
+          const g = C.decades[d].gdpBy;
+          const tot = Object.values(g).reduce((a, b) => a + b, 0);
+          const cell = (k) => { const v = k === '其他' ? Object.entries(g).filter(([n]) => !keys.includes(n)).reduce((a, [, x]) => a + x, 0) : (g[k] || 0); return (v >= 0 ? '+' : '') + v.toFixed(2); };
+          L.push(`| ${d}s | ${keys.map(cell).join(' | ')} | ${(tot >= 0 ? '+' : '') + tot.toFixed(2)} |`);
         }
         L.push('');
       }

@@ -70,7 +70,9 @@
       let baseD = 0, foodD = 0, conflictD = 0;
       const deaths = [0, 0, 0, 0];
       KEYS.forEach((k, i) => {
-        const b = c.pop[k] * p.baseMortality[i] * mortMult * dt;
+        // 醫療進步對各年齡層的效果不同：嬰幼兒死亡下降最多，老年死亡下降較少
+        const ageMult = d.mortScale * (1 - p.healthAgeEffect[i] * (1 - mortMult / d.mortScale));
+        const b = c.pop[k] * p.baseMortality[i] * ageMult * dt;
         deaths[i] = b * (1 + foodMult + conflictMult);
         baseD += b; foodD += b * foodMult; conflictD += b * conflictMult;
       });
