@@ -94,7 +94,8 @@
     c.res.coal = c.res.coal * demand0;
     c.res.oil = c.res.oil * demand0;
     const domestic = Math.min(c.res.energyCap, demand0);
-    c.res.energyRatio = Math.min(1, (domestic + (demand0 - domestic) * c.econ.openness) / Math.max(1e-6, demand0));
+    const eb = e.energyImportBase;
+    c.res.energyRatio = Math.min(1, (domestic + (demand0 - domestic) * (eb + (1 - eb) * c.econ.openness)) / Math.max(1e-6, demand0));
     c.res.pollution = 20 * domestic / Math.max(1e-6, demand0);
     const workers = Econ.workforce(c, w) * (1 - c.demo.unemployment);
     for (const s of SECTORS) {
@@ -111,6 +112,19 @@
     c.demo.healthBias = 0;
     c.demo.healthBias = c.demo.health0 - WS.Population.healthTarget(c, w);
     c.econ.inequality0 = c.pol.inequality;
+  };
+
+  // 每年生產力成長率（回傳 { know, catch }）
+  Econ.tfpGrowth = function (c, w) {
+    const e = w.params.economy;
+    const U = WS.util;
+    let lead = 0;
+    for (const id of U.ids(w)) lead = Math.max(lead, w.countries[id].econ.gdppc || 0);
+    const edu = c.demo.edu / 100, stab = c.pol.stability / 100;
+    const know = e.tfpKnowledge * edu * (0.5 + 0.5 * stab);
+    const gap = lead > 0 && c.econ.gdppc > 0 ? Math.min(e.catchUpMaxGap, Math.max(0, Math.log(lead / c.econ.gdppc))) : 0;
+    const ctch = e.catchUpRate * gap * Math.sqrt(edu) * stab;
+    return { know, catch: ctch };
   };
 
   Econ.step = function (w, ids, ctx) {
@@ -140,6 +154,10 @@
       const du = (e.urbanBase + e.urbanGrowth * indShare + e.urbanRail * U.adopt(c, 'railway') + e.urbanCar * U.adopt(c, 'automobile') - 0.01 * c.res.shortage) * (1 - d.urban / e.urbanMax) * dt;
       d.urban = U.clamp(d.urban + du, 0.01, e.urbanMax);
 
+      // 生產力成長：知識累積（教育、穩定）＋向最富國家追趕（技術擴散，需要教育與穩定來吸收）
+      const tfp = Econ.tfpGrowth(c, w);
+      for (const s of SECTORS) { ec.sec[s].Aprev = ec.sec[s].A; ec.sec[s].A *= Math.exp((tfp.know + tfp.catch) * dt); }
+
       // 部門生產與成長歸因
       const out = Econ.computeSectors(c, w);
       let gdp = 0;
@@ -153,6 +171,8 @@
           [s === 'agri' ? '收成與氣候' : '能源供應']: Math.log(o.R / sec.R),
           '政治穩定與制度': Math.log(o.I / sec.I)
         };
+        const gA = Math.log(sec.A / (sec.Aprev || sec.A)), gTot = tfp.know + tfp.catch;
+        if (gA && gTot > 0) { terms['知識累積'] = gA * tfp.know / gTot; terms['追趕先進國家'] = gA * tfp.catch / gTot; }
         let tot = 0;
         for (const k in terms) tot += terms[k];
         if (Math.abs(tot) > 1e-12 && Math.abs(dY) > 1e-12)

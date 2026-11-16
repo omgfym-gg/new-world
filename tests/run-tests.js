@@ -380,6 +380,31 @@ test('回測：報表列出每個國家與人口變化來源', () => {
   assert.ok(md.includes('出生率') && md.includes('1913'));
 });
 
+// ---------- 校準機制（2026-11） ----------
+test('人口轉型：已開發國家起點不會卡在下限，生育率會隨時間下降', () => {
+  const e = make(); const c = e.world.countries.DEU;
+  const f0 = c.demo.fert; e.advance(12 * 40);
+  assert.ok(e.world.countries.DEU.demo.fert < f0 * 0.8, `${e.world.countries.DEU.demo.fert} vs ${f0}`);
+});
+test('醫療擴散：貧窮國家也會引進他國醫療科技，醫療水準上升', () => {
+  const e = make(); const h0 = e.world.countries.CHN.demo.health; e.advance(12 * 50);
+  const c = e.world.countries.CHN;
+  assert.ok(c.demo.health > h0 + 0.1, `${c.demo.health} vs ${h0}`);
+  const why = c.causes.years.flatMap((y) => Object.keys((y.data.health) || {}));
+  assert.ok(why.some((k) => k.includes('引進他國醫療科技') || k.includes('生活水準')));
+});
+test('遷移：全世界淨遷移加總為零，且不超過接收國容量', () => {
+  const e = make(); e.advance(24);
+  const m = WS.util.ids(e.world).reduce((s, id) => s + e.world.countries[id].demo.migration, 0);
+  assert.ok(Math.abs(m) < 1e-9, m);
+});
+test('生產力成長：追趕與知識累積寫入 GDP 因果帳', () => {
+  const e = make(); e.advance(14);
+  const g = e.world.countries.CHN.causes.years.at(-1).data.gdp;
+  const subs = Object.values(g).flatMap((f) => Object.keys(f.sub));
+  assert.ok(subs.includes('追趕先進國家') && subs.includes('知識累積'), subs.join(','));
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

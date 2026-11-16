@@ -111,7 +111,10 @@
 
   State.fertFactor = function (c, w) {
     const p = w.params.population;
-    return U.clamp(1.15 - p.transitionUrban * c.demo.urban - p.transitionEdu * c.demo.edu, 0.3, 1.2);
+    // 人口轉型（S 型）：教育、城市化、嬰幼兒存活（醫療水準）共同組成「轉型指數」，越高生育意願越低。
+    // 舊版是線性公式並夾在 0.3–1.2 之間，已開發國家起點就碰到下限，生育率之後無法再下降。
+    const dev = p.transitionEduW * c.demo.edu / 100 + p.transitionUrbanW * c.demo.urban + p.transitionHealthW * c.demo.health;
+    return p.transitionFloor + (1 - p.transitionFloor) / (1 + Math.exp(p.transitionSteep * (dev - p.transitionMid)));
   };
 
   // ---- 建立世界 ----

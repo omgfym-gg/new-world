@@ -46,7 +46,7 @@ data/
   scenario-1911.js       1911 年 8 國起點資料（人口、GDP 參考 Maddison，其餘為 D 級初始值）
   definitions.js         科技樹、制度、世界規則、規則衝突、自然語言關鍵字
 tests/
-  run-tests.js           47 項自動測試：node tests/run-tests.js
+  run-tests.js           51 項自動測試：node tests/run-tests.js
 tools/backtest.js        歷史回測：node tools/backtest.js → reports/backtest-1911.md
 data/history-reference.js、data/history-policies-1911.js、systems/backtest-system.js   回測用（只在 Node 載入）
 docs/ancient-era.md      遠古時代起點設計文件

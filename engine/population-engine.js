@@ -12,12 +12,38 @@
     let t = c.demo.healthBias || 0;
     for (const id in WS.Data.techs) {
       const e = WS.Data.techs[id].effects.health;
-      if (e) t += U().adopt(c, id) * e;
+      if (e) t += U().adopt(c, id) * e * p.medTechWeight;
     }
     const gdp = Math.max(1e-6, c.econ.gdp);
     t += p.healthWelfareGain * ((c.fiscal.amounts.welfare || 0) / gdp);
+    t += Population.devHealth(c, w) + Population.medDiffusion(c, w);
     t -= w.params.environment.pollutionHealthPenalty * (c.res.pollution / 100);
     return U().clamp(t, 0.05, 0.95);
+  };
+
+  // 發展程度：營養、住居、醫療可及性隨人均 GDP 改善
+  Population.devHealth = function (c, w) {
+    const p = w.params.population;
+    const dev = Math.min(1, Math.max(0, c.econ.gdppc || 0) / p.healthDevRef);
+    return p.healthDevGain * Math.pow(dev, p.healthDevExp);
+  };
+
+  // 醫療知識擴散：世界上已普及的醫療科技，即使本國沒有研發，也會依行政能力逐步引進
+  Population.medLevel = function (c) {
+    let s = 0;
+    for (const id in WS.Data.techs) {
+      const e = WS.Data.techs[id].effects.health;
+      if (e) s += U().adopt(c, id) * e;
+    }
+    return s;
+  };
+  Population.medDiffusion = function (c, w) {
+    const p = w.params.population;
+    let frontier = 0;
+    for (const id of U().ids(w)) frontier = Math.max(frontier, Population.medLevel(w.countries[id]));
+    const gap = Math.max(0, frontier - Population.medLevel(c));
+    const absorb = p.medAbsorbBase + (1 - p.medAbsorbBase) * c.pol.admin / 100;
+    return p.medDiffusion * p.medTechWeight * gap * absorb;
   };
 
   Population.step = function (w, ids, ctx) {
@@ -33,7 +59,8 @@
 
       // 人口轉型：城市化與教育降低生育
       const ff = WS.State.fertFactor(c, w) / d.fertFactor0;
-      d.fert = d.fertBase * ff;
+      // 生育率向「轉型完成後的低生育水準」(fertMin) 收斂，各國起點不同、終點相近
+      d.fert = Math.min(d.fertBase, p.fertMin) + Math.max(0, d.fertBase - p.fertMin) * Math.min(1.3, ff);
       const fertile = c.pop.c1 + c.pop.c2 * p.fertileWeight25to64;
       const births = fertile * d.fert * dt * (1 - p.shortageBirthPenalty * shortage) * (1 - p.warBirthPenalty * atWar);
 
@@ -77,7 +104,8 @@
       const ht = Population.healthTarget(c, w);
       const dh = (ht - d.health) * p.healthAdjustRate * dt;
       d.health += dh;
-      u.cause(c, 'health', ht > d.health ? '醫療科技與公共衛生' : '醫療投入不足或污染', dh);
+      const why = ht <= d.health ? '醫療投入不足或污染' : Population.medDiffusion(c, w) > 0.05 ? '引進他國醫療科技（疫苗、抗生素等）' : Population.devHealth(c, w) > 0.1 ? '生活水準提高（營養、住居、醫療可及性）' : '醫療科技與公共衛生';
+      u.cause(c, 'health', why, dh);
     }
 
     // 遷移：總量守恆，從推力國家流向拉力國家
@@ -95,17 +123,23 @@
       const rel = c.econ.gdp / P / avg;
       let dsr = p.migrationPull * Math.log(Math.max(0.05, rel)) - p.migrationConflictPush * Math.max(0, c.pol.conflict - 55) / 45;
       if (c.flags.atWar) dsr -= 0.001;
+      // 移民阻力：經濟性移出受交通、距離與出境限制影響（以貿易開放度近似）；
+      // 移入受接收國容量與移民政策限制（開放度越低、人口越多越難吸收）
+      if (dsr < 0) dsr *= p.migrationOutBase + (1 - p.migrationOutBase) * c.econ.openness;
+      else dsr *= p.migrationInBase + (1 - p.migrationInBase) * c.econ.openness;
       dsr = u.clamp(dsr * mult, -p.migrationCap * mult, p.migrationCap * mult * 0.7);
       desire[id] = dsr;
       if (dsr < 0) out += -dsr * P * dt; else pullSum += dsr * P;
     }
+    // 接收國容量：實際遷移量 = min(想移出的人數, 各接收國能吸收的總量)，移出國按比例縮減
+    const flow = Math.min(out, pullSum * dt);
+    const outScale = out > 0 ? flow / out : 0;
     for (const id of ids) {
       const c = w.countries[id];
       const P = u.popTotal(c);
       let m = 0;
-      if (desire[id] < 0) m = desire[id] * P * dt;
-      else if (pullSum > 0) m = (out * desire[id] * P) / pullSum;
-      if (pullSum <= 0 && desire[id] < 0) m = 0;
+      if (desire[id] < 0) m = desire[id] * P * dt * outScale;
+      else if (pullSum > 0) m = (flow * desire[id] * P) / pullSum;
       c.demo.migration = m;
       c.pop.c2 = Math.max(0.001, c.pop.c2 + m);
       if (m) u.cause(c, 'population', '淨遷移', m, m < 0 ? (c.pol.conflict > 55 ? '動亂與貧困推力' : '經濟機會較少') : '經濟機會吸引移民');

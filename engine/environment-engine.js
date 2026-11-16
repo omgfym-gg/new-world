@@ -64,7 +64,8 @@
       let cap = r.energyCap * (1 + U.adopt(c, 'nuclear') * 0.3);
       cap *= Math.min(1, reserves / Math.max(1e-6, r.energyCap * p.reserveDepletionYears));
       const domestic = Math.min(cap, demand);
-      let cover = c.econ.openness * (c.flags.atWar ? 0.6 : 1) * (w.rules.currency === false ? 0.6 : 1);
+      const eb = w.params.economy.energyImportBase;
+      let cover = (eb + (1 - eb) * c.econ.openness) * (c.flags.atWar ? 0.6 : 1) * (w.rules.currency === false ? 0.6 : 1);
       if (w.rules.resourceSharing) cover = Math.max(cover, 0.8);
       const supplied = domestic + (demand - domestic) * cover;
       const prevRatio = r.energyRatio;

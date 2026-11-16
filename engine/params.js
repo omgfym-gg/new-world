@@ -17,15 +17,30 @@
       shortageDeathBoost: 1.5,        // 糧食短缺時死亡率增加倍數
       warBirthPenalty: 0.15,
       conflictDeathBoost: 0.08,       // 社會衝突 >70 時死亡率增加
-      transitionUrban: 0.5,           // 人口轉型：城市化降低生育
-      transitionEdu: 0.006,           // 人口轉型：教育降低生育
+      // 人口轉型（示意值，依 2026-11 回測初步校準）：生育意願 = 下限 + (1 − 下限) / (1 + e^(陡度 × (轉型指數 − 中點)))
+      transitionEduW: 0.25,           // 轉型指數中教育的權重
+      transitionUrbanW: 0.25,         // 城市化的權重
+      transitionHealthW: 0.5,         // 嬰幼兒存活（醫療水準）的權重
+      transitionMid: 0.62,
+      transitionSteep: 12,
+      transitionFloor: 0.02,
+      fertMin: 0.03,                  // 轉型完成後每名育齡人口的年出生數（約對應粗出生率 11–12‰）
       migrationPull: 0.001,           // 人均GDP相對差距造成的遷移傾向
       migrationConflictPush: 0.004,
       migrationCap: 0.003,
+      migrationOutBase: 0.2,          // 移民阻力（示意值）：開放度為 0 時仍保留的移出比例
+      migrationInBase: 0.2,           // 開放度為 0 時仍保留的移入比例
       eduGainPerGdpShare: 120,        // 教育支出佔GDP比重對教育水準的年增效果
       eduDecay: 0.1,
       eduUrban: 0.5,
       healthAdjustRate: 0.1,
+      // 死亡率轉型（示意值，依 2026-11 回測初步校準）
+      healthDevGain: 0.25,            // 發展程度（人均 GDP）對醫療水準目標的最大貢獻：營養、住居、醫療可及性
+      healthDevRef: 15000,            // 人均 GDP（1990 年國際元）達到此值視為發展成熟
+      healthDevExp: 0.7,
+      medTechWeight: 2.0,             // 醫療科技對醫療水準的放大倍數（科技樹中的 health 效果 × 此值）
+      medDiffusion: 1.0,              // 世界上已出現的醫療科技（公共衛生、疫苗、抗生素）向其他國家擴散的比例
+      medAbsorbBase: 0.6,             // 擴散吸收能力的基礎值，其餘由行政效率決定
       healthWelfareGain: 2.0
     },
     environment: {
@@ -70,7 +85,12 @@
       noCurrencyEfficiency: 0.93,
       noCapitalismEfficiency: 0.95,
       plannedSavings: 0.16,
-      importFoodGdppcRef: 2000
+      importFoodGdppcRef: 2000,
+      // 生產力成長（示意值，依 2026-11 回測初步校準）：每年 A 的成長率 = 知識累積 + 追趕
+      tfpKnowledge: 0.005,            // 教育普及（100）且政局穩定時，每年知識累積帶來的生產力成長
+      catchUpRate: 0.005,             // 與世界最富國家的差距（對數）每 1 單位帶來的年追趕成長
+      catchUpMaxGap: 2.5,             // 差距上限（對數），避免極貧國家追趕過快
+      energyImportBase: 0.5           // 能源進口：開放度為 0 時仍能進口的缺口比例（國際能源市場）
     },
     politics: {
       wLegitimacy: 0.08,
