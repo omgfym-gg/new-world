@@ -15,6 +15,12 @@
 
     // ---------- 建立 / 載入 ----------
     create(setup) {
+      const sc = WS.Data.scenarios[setup.scenario || '1911'];
+      if (sc && sc.era === 'ancient') {   // 遠古時代：使用遠古引擎（可變時間刻度）
+        this.w = WS.Ancient.createWorld(setup);
+        this.snapshots = [{ year: this.w.year, month: 1, tick: 0, json: JSON.stringify(this.w) }];
+        return this.w;
+      }
       const conf = WS.Rules.conflicts(Object.assign({}, WS.util.clone(Object.fromEntries(Object.entries(WS.Data.rules).map(([k, d]) => [k, d.default]))), setup.rules || {}));
       if (conf.length) throw new Error('世界規則互相衝突：' + conf.map((c) => c.text).join(' '));
       this.w = WS.State.createWorld(setup);
@@ -31,6 +37,7 @@
 
     // ---------- 單期模擬 ----------
     step() {
+      if (WS.Ancient.isAncient(this.w)) return this.stepAncient();
       const w = this.w;
       const U = WS.util;
       const ctx = { rng: new WS.RNG(w.rngState), major: [] };
@@ -81,6 +88,20 @@
       return ctx;
     }
 
+    // 遠古時代：一期＝數年（可變刻度），每 500 年拍一次快照
+    stepAncient() {
+      const w = this.w;
+      const ctx = { rng: new WS.RNG(w.rngState), major: [] };
+      const before = w.year;
+      WS.Ancient.step(w, ctx);
+      w.rngState = ctx.rng.s;
+      if (Math.floor((w.year - w.startYear) / 500) > Math.floor((before - w.startYear) / 500)) {
+        this.snapshots.push({ year: w.year, month: 1, tick: w.tick, json: JSON.stringify(w) });
+        if (this.snapshots.length > 40) this.snapshots.splice(1, 1);
+      }
+      return ctx;
+    }
+
     // 推進 n 個月；偶爾決策模式下遇到重大事件會暫停，讓玩家決定是否介入
     advance(months, opts = {}) {
       const stopOnMajor = opts.stopOnMajor !== false && this.w.intervention === 'occasional';
@@ -93,7 +114,13 @@
       }
       return { advanced: months, stopped: false };
     }
-    advanceYears(n, opts) { return this.advance(12 * n, opts); }
+    advanceYears(n, opts) {
+      if (!WS.Ancient.isAncient(this.w)) return this.advance(12 * n, opts);
+      const target = this.w.year + n;
+      let steps = 0;
+      while (this.w.year < target) { this.step(); steps++; }
+      return { advanced: steps, stopped: false };
+    }
 
     // ---------- 指令 ----------
     // 會影響模擬結果的指令都記在 commandLog，「如果」平行世界重跑時依同樣的時間點重播
