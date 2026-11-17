@@ -434,6 +434,107 @@ test('制度改革：吸收能力越高，追趕成長越快', () => {
   assert.ok(b > a * 1.5, `${b} vs ${a}`);
 });
 
+// ---------- 神之手 ----------
+test('神之手：施展經引擎指令寫入紀錄、扣神力，當下不直接改人口、GDP、穩定度', () => {
+  const e = make(); e.advance(12); const w = e.world;
+  const c = w.countries.CHN;
+  const before = [WS.util.popTotal(c), c.econ.gdp, c.pol.stability, c.demo.health];
+  const en = w.divine.energy;
+  const r = e.divine('health', 'CHN');
+  assert.ok(r.ok, r.reason);
+  assert.deepStrictEqual([WS.util.popTotal(c), c.econ.gdp, c.pol.stability, c.demo.health], before);
+  assert.strictEqual(w.divine.energy, en - w.params.divine.healthCost);
+  const last = w.commandLog[w.commandLog.length - 1];
+  assert.deepStrictEqual([last.cmd, last.args[0], last.args[1]], ['divine', 'health', 'CHN']);
+  assert.ok(w.events.some((x) => x.type === 'divine' && x.causes[0].includes('玩家使用神之手')));
+});
+test('神之手：神力不足或重複施展會被拒絕，且不消耗亂數、不寫紀錄', () => {
+  const e = make(); const w = e.world;
+  assert.ok(e.divine('health', 'CHN').ok);
+  const rng = w.rngState, n = w.commandLog.length;
+  const r = e.divine('health', 'CHN');
+  assert.ok(!r.ok && /衛生援助/.test(r.reason));
+  w.divine.energy = 1;
+  assert.ok(!e.divine('drought', 'JPN').ok);
+  assert.strictEqual(w.rngState, rng); assert.strictEqual(w.commandLog.length, n);
+});
+test('神之手：衛生援助、旱災、知識分享都寫入因果帳，可用「？」追查', () => {
+  const e = make(); const w = e.world;
+  w.divine.energy = 100;
+  assert.ok(e.divine('health', 'CHN').ok);
+  assert.ok(e.divine('drought', 'JPN').ok);
+  e.advance(6);
+  w.divine.energy = 100;
+  const t = WS.Divine.techOptions(w, w.countries.OTT)[0];
+  assert.ok(t, '鄂圖曼應有可分享的已知科技');
+  assert.ok(e.divine('tech', 'OTT', t).ok);
+  e.advance(3);
+  const f = (cid, m) => WS.Explain.metric(w, cid, m, 'current').factors.map((x) => x.name).concat(WS.Explain.metric(w, cid, m, 'last').factors.map((x) => x.name));
+  assert.ok(f('CHN', 'health').includes('神之手：公共衛生援助'));
+  assert.ok(f('JPN', 'food').includes('神之手：局部旱災'));
+  const res = WS.Explain.metric(w, 'OTT', 'research', 'current');
+  assert.ok(res.factors.some((x) => x.sub.some(([k]) => k === '神之手：知識分享')));
+});
+test('神之手：領導人候選者只在自然更替時參與競爭，期限到了就淡出', () => {
+  const e = make(); const w = e.world;
+  const lead = w.countries.USA.leader.name;
+  assert.ok(e.divine('leader', 'USA', 'care').ok);
+  assert.strictEqual(w.countries.USA.leader.name, lead);
+  e.advance(12 * 11);
+  const ev = w.events.filter((x) => x.countries.includes('USA') && (x.type === 'leader' || x.type === 'divine'));
+  const won = ev.find((x) => x.type === 'leader' && x.causes.some((c) => c.includes('勝出')));
+  const faded = ev.find((x) => x.type === 'divine' && /淡出/.test(x.title));
+  assert.ok(won || faded, '候選者應該上台或淡出');
+  if (won) assert.ok(won.causes[0] && !won.causes[0].includes('神之手'), '更替原因應是自然發生的（選舉、繼承…）');
+  assert.ok(!w.countries.USA.divine.candidate);
+});
+test('神之手：同種子＋同指令重播結果完全相同，「如果？」平行世界也會重播干預', () => {
+  const e = make(); e.advance(24);
+  e.divine('drought', 'CHN'); e.advance(12); e.divine('leader', 'CHN', 'reform'); e.advance(60);
+  const w = e.world;
+  const e2 = new WS.WorldEngine(); e2.create(w.genesis);
+  let i = 0;
+  while (e2.world.tick < w.tick) { while (i < w.commandLog.length && w.commandLog[i].tick <= e2.world.tick) assert.ok(e2.exec(w.commandLog[i++]).ok); e2.step(); }
+  assert.strictEqual(e2.serialize(), e.serialize());
+  const tgt = w.events.find((x) => x.type === 'historical' || x.type === 'conditional' && x.defId);
+  if (tgt) {
+    const key = WS.WhatIf.options(w, tgt)[0].key;
+    const r = e.whatIf(tgt.id, key);
+    assert.ok(r.ok && r.report.failed.length === 0);
+    assert.ok(r.world.commandLog.filter((c) => c.cmd === 'divine').length === 2);
+  }
+});
+test('領導人性格：只改變 AI 的政策評分，係數集中在參數表', () => {
+  const e = make(); const w = e.world; const c = w.countries.CHN;
+  c.leader.reform = 0.9; c.leader.care = 0.9;
+  assert.ok(Math.abs(WS.Agents.leaderLean(c, w, 'political_reform') - 0.4 * 0.6) < 1e-9);
+  assert.ok(WS.Agents.leaderLean(c, w, 'welfare') > 0);
+  delete c.leader.care;
+  assert.strictEqual(WS.Agents.leaderLean(c, w, 'welfare'), 0);
+});
+// ---------- 世界頭條 ----------
+test('世界頭條：每年最多 3 則，只引用實際事件與因果帳', () => {
+  const e = make(); e.advance(240); const w = e.world;
+  const by = {};
+  for (const h of w.headlines) by[h.year] = (by[h.year] || 0) + 1;
+  assert.ok(w.headlines.length > 0);
+  assert.ok(Object.values(by).every((n) => n <= w.params.divine.headlinesPerYear));
+  assert.ok(Object.keys(by).length < 20, '不是每年都有頭條');
+  for (const h of w.headlines) {
+    if (h.eventId) { const ev = w.events.find((x) => x.id === h.eventId); assert.ok(ev && ev.y === h.year && ev.title === h.title); }
+    else {
+      assert.ok(h.metric && h.cid);
+      const m = WS.Explain.metric(w, h.cid, h.metric, 'y' + h.year);
+      assert.strictEqual(m.label, h.year + ' 年');
+    }
+  }
+});
+test('舊存檔沒有神之手與頭條欄位，載入時補上', () => {
+  const e = make(); const o = JSON.parse(e.serialize()); delete o.divine; delete o.headlines;
+  const e2 = new WS.WorldEngine(); e2.load(o);
+  assert.ok(e2.world.divine.energy > 0 && Array.isArray(e2.world.headlines));
+  e2.advance(13);
+});
 test('健康檢查：動亂疲乏讓長期不穩的國家有機會恢復，並寫入原因', () => {
   const e = make(); const c = e.world.countries.CHN;
   c.pol.turmoil = 20; c.pol.stability = 20; c.pol.conflict = 80;

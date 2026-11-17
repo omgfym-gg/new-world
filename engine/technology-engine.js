@@ -81,11 +81,25 @@
           U.cause(c, 'research', WS.Data.techs[t].name, add, '經由與' + w.countries[from].name + '的貿易擴散');
         }
       }
+      // 神之手的知識管道：每月增加研究進度（速度在施展時已依教育與運氣決定）
+      const ch = WS.Divine ? WS.Divine.techChannel(c, w) : null;
+      const done = avail.slice();
+      if (ch) {
+        const def = WS.Data.techs[ch.id];
+        const s = c.tech[ch.id] || (c.tech[ch.id] = { progress: 0, adoption: 0 });
+        if (s.progress < def.cost) {
+          const add = def.cost * ch.rate;
+          s.progress += add; ch.gain += add;
+          U.cause(c, 'research', def.name, add, '神之手：知識分享');
+          if (!done.includes(ch.id)) done.push(ch.id);
+        } else ch.closed = true;
+      }
       // 完成研究
-      for (const t of avail) {
+      for (const t of done) {
         const s = c.tech[t], def = WS.Data.techs[t];
         if (s.progress >= def.cost && !s.done) {
           s.done = true;
+          if (ch && ch.id === t) ch.closed = true;
           const first = !w.invented[t];
           if (first) w.invented[t] = { by: id, year: w.year };
           WS.Events.log(w, ctx, {
@@ -93,6 +107,7 @@
             countries: [id], level: first ? 2 : 1, major: first && id === w.focus,
             text: first ? '世界首次出現這項技術，其他國家之後可用較低成本引進。' : '技術進入實際應用階段，接下來需要時間普及。',
             causes: [
+              ...(ch && ch.id === t ? ['神之手開啟的知識管道加速了研究'] : []),
               `科研投入每年約 ${U.fmt(r.budget, 2)}（十億）`,
               `人才倍率 ${r.talent.toFixed(2)}（教育 ${c.demo.edu.toFixed(0)}）`,
               `制度倍率 ${r.inst.toFixed(2)}（穩定度 ${c.pol.stability.toFixed(0)}）`,

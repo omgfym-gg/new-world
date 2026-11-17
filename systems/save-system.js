@@ -18,6 +18,9 @@
     if (!w.commandLog) w.commandLog = (w.playerLog || []).map((p) => ({ tick: (p.y - w.startYear) * 12 + (p.m - w.startMonth), y: p.y, m: p.m, cmd: 'policy', args: [p.country, p.policy] }));
     w.overrides = w.overrides || [];
     if (w.genesis === undefined) w.genesis = null;
+    // 神之手與世界頭條（舊存檔補上）
+    if (!w.divine) w.divine = { energy: w.params.divine.energyStart, log: [], counter: 0 };
+    w.headlines = w.headlines || [];
     return w;
   };
 
