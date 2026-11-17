@@ -333,3 +333,15 @@ body::after {
 .divine-btns .btn { display: flex; align-items: center; gap: 6px; justify-content: flex-start; text-align: left; }
 .divine-btns .btn small { margin-left: auto; color: var(--gold); }
 .dv-h { color: var(--blue); font-size: 14px; margin-top: 12px; }
+/* 即時標記 */
+.hud-tag .live { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: 10.5px; color: #fca5a5; letter-spacing: .1em; margin-bottom: 2px; }
+.hud-tag .live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #f87171; box-shadow: 0 0 8px #f87171; animation: blink 1.2s ease-in-out infinite; }
+
+/* 戰場畫面 */
+.wc-wrap { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(248, 113, 113, .45); box-shadow: 0 0 24px rgba(248, 113, 113, .15); background: #000; }
+.wc-canvas { display: block; width: 100%; height: min(56vw, 320px); }
+.wc-stats { display: grid; gap: 8px; font-size: 13px; }
+@media (min-width: 560px) { .wc-stats { grid-template-columns: 1fr 1fr; } .wc-score { grid-column: 1 / -1; } }
+.wc-side, .wc-score { display: grid; gap: 2px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.wc-side span, .wc-score span { color: var(--muted); }
+.wc-score .bar > i { background: linear-gradient(90deg, #f87171, #fbbf24); }
