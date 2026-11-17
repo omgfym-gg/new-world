@@ -15,6 +15,12 @@
 
     // ---------- 建立 / 載入 ----------
     create(setup) {
+      const sc = WS.Data.scenarios[setup.scenario || '1911'];
+      if (sc && sc.era === 'ancient') {   // 遠古時代：使用遠古引擎（可變時間刻度）
+        this.w = WS.Ancient.createWorld(setup);
+        this.snapshots = [{ year: this.w.year, month: 1, tick: 0, json: JSON.stringify(this.w) }];
+        return this.w;
+      }
       const conf = WS.Rules.conflicts(Object.assign({}, WS.util.clone(Object.fromEntries(Object.entries(WS.Data.rules).map(([k, d]) => [k, d.default]))), setup.rules || {}));
       if (conf.length) throw new Error('世界規則互相衝突：' + conf.map((c) => c.text).join(' '));
       this.w = WS.State.createWorld(setup);
@@ -31,6 +37,7 @@
 
     // ---------- 單期模擬 ----------
     step() {
+      if (WS.Ancient.isAncient(this.w)) return this.stepAncient();
       const w = this.w;
       const U = WS.util;
       const ctx = { rng: new WS.RNG(w.rngState), major: [] };
@@ -81,6 +88,21 @@
       return ctx;
     }
 
+    // 遠古時代：一期＝數年（可變刻度），每 500 年拍一次快照
+    stepAncient() {
+      const w = this.w;
+      const ctx = { rng: new WS.RNG(w.rngState), major: [] };
+      const before = w.year;
+      WS.Ancient.step(w, ctx);
+      WS.Divine.ancientStep(w, ctx);
+      w.rngState = ctx.rng.s;
+      if (Math.floor((w.year - w.startYear) / 500) > Math.floor((before - w.startYear) / 500)) {
+        this.snapshots.push({ year: w.year, month: 1, tick: w.tick, json: JSON.stringify(w) });
+        if (this.snapshots.length > 40) this.snapshots.splice(1, 1);
+      }
+      return ctx;
+    }
+
     // 推進 n 個月；偶爾決策模式下遇到重大事件會暫停，讓玩家決定是否介入
     advance(months, opts = {}) {
       const stopOnMajor = opts.stopOnMajor !== false && this.w.intervention === 'occasional';
@@ -93,7 +115,13 @@
       }
       return { advanced: months, stopped: false };
     }
-    advanceYears(n, opts) { return this.advance(12 * n, opts); }
+    advanceYears(n, opts) {
+      if (!WS.Ancient.isAncient(this.w)) return this.advance(12 * n, opts);
+      const target = this.w.year + n;
+      let steps = 0;
+      while (this.w.year < target) { this.step(); steps++; }
+      return { advanced: steps, stopped: false };
+    }
 
     // ---------- 指令 ----------
     // 會影響模擬結果的指令都記在 commandLog，「如果」平行世界重跑時依同樣的時間點重播
@@ -166,6 +194,23 @@
       o[parts[parts.length - 1]] = value;
       this.record('param', [path, value]);
       WS.Events.log(this.w, null, { type: 'rule', title: `模型參數調整：${path}`, countries: [], level: 1, causes: ['進階模式'], effects: [`${old} → ${value}`] });
+    }
+
+    // 從遠古接到近代：用遠古世界目前的狀態產生近代國家，建立新的近代世界（原本的遠古世界不會被改動）
+    toModern() {
+      const res = WS.EraBridge.build(this.w);
+      if (!res.ok) return res;
+      const prev = this.w;
+      this.create(res.setup);
+      const w = this.w;
+      w.origin = res.origin;
+      WS.Events.log(w, null, {
+        type: 'system', title: `承接遠古世界線「${prev.branch.name}」`, countries: [], level: 3,
+        text: `${res.origin.countries.length} 個國家來自遠古時代的政體與地區（種子「${prev.seed}」）。`,
+        causes: res.origin.countries.slice(0, 12).map((c) => `${c.name}：來自${c.from.join('、')}（${c.type}，人口 ${c.pop.toFixed(1)} 百萬，人均產出約 ${c.gdppc}）`),
+        effects: ['人口沿用遠古的模擬結果；其他近代數值依遠古狀態換算（示意值）', '近代科技從零開始，之後由近代引擎研究']
+      });
+      return { ok: true, world: w, ancient: prev };
     }
 
     // 「如果」平行世界：回傳 { ok, world, snapshots, report }，不改變目前的世界

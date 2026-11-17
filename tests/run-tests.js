@@ -664,6 +664,147 @@ test('存檔空間不足時改存精簡版，載入後繼續推進結果相同',
   for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
 });
 
+// ---------- 遠古時代 ----------
+const makeA = (seed) => { const e = new WS.WorldEngine(); e.create({ scenario: 'bc10000', seed: seed || 'anc' }); return e; };
+const ancFull = (() => { let cache = {}; return (seed) => cache[seed] || (cache[seed] = (() => { const e = makeA(seed); e.advanceYears(11500); return e; })()); })();
+test('遠古：建立西元前 10,000 年世界（18 個地區、全是狩獵採集）', () => {
+  const w = makeA().world, A = WS.Ancient;
+  assert.ok(A.isAncient(w));
+  assert.strictEqual(A.ids(w).length, 18);
+  assert.strictEqual(A.yearLabel(w.year), '西元前 10,000 年');
+  for (const id of A.ids(w)) { const r = w.ancient.regions[id]; assert.strictEqual(r.pop.A + r.pop.U, 0, id); }
+  const p = A.worldPop(w); assert.ok(p > 2 && p < 15, '世界人口 ' + p);
+});
+test('遠古：相同種子 → 完全相同；不同種子 → 歷史不同', () => {
+  const a = makeA('s1'), b = makeA('s1'), c = makeA('s2');
+  a.advanceYears(4000); b.advanceYears(4000); c.advanceYears(4000);
+  assert.strictEqual(JSON.stringify(a.world), JSON.stringify(b.world));
+  assert.notStrictEqual(JSON.stringify(a.world.ancient.firsts), JSON.stringify(c.world.ancient.firsts));
+});
+test('遠古：推進到西元 1500 年沒有 NaN、人口為正、速度 < 10 秒', () => {
+  const t = Date.now(); const e = ancFull('anc'); const w = e.world, A = WS.Ancient;
+  assert.ok(Date.now() - t < 10000);
+  assert.ok(w.year >= 1500);
+  for (const id of A.ids(w)) { const r = w.ancient.regions[id]; for (const k of ['F', 'A', 'U']) assert.ok(isFinite(r.pop[k]) && r.pop[k] >= 0, id + k); assert.ok(isFinite(r.exchange) && isFinite(r.stock) && isFinite(r.fs), id); }
+  assert.strictEqual(w.validation.issues.length, 0);
+});
+test('遠古：人口量級合理（西元前 3000 年 1,500 萬–1 億、西元 1 年 1–4 億）', () => {
+  const e = makeA('anc'), A = WS.Ancient;
+  e.advanceYears(-3000 - e.world.year); const p1 = A.worldPop(e.world);
+  e.advanceYears(1 - e.world.year); const p2 = A.worldPop(e.world);
+  assert.ok(p1 > 15 && p1 < 100, '前 3000 年 ' + p1);
+  assert.ok(p2 > 100 && p2 < 400, '西元 1 年 ' + p2);
+});
+test('遠古：農業從條件好的地方自行出現，不照固定年份', () => {
+  const years = [];
+  for (const s of ['x1', 'x2', 'x3']) {
+    const e = makeA(s); e.advanceYears(4000);
+    const f = e.world.ancient.firsts.crop_domestication;
+    assert.ok(f && f.region, '有農業');
+    assert.ok(WS.Data.ancientRegions.find((r) => r.id === f.region).plants >= 0.3, '在可馴化植物多的地方');
+    years.push(f.year);
+  }
+  assert.ok(new Set(years).size > 1, '不同種子出現年份不同：' + years);
+});
+test('遠古：城市出現在農業之後，文字出現在城市之後', () => {
+  const f = ancFull('anc').world.ancient.firsts;
+  assert.ok(f.city && f.crop_domestication.year < f.city.year);
+  assert.ok(f.writing && f.city.year < f.writing.year);
+});
+test('遠古：地理不允許的地區不會自行發明農業（澳洲）', () => {
+  const r = ancFull('anc').world.ancient.regions.AUS;
+  assert.ok(!(r.tech.crop_domestication && r.tech.crop_domestication.how === '自行發明'));
+  assert.strictEqual(r.pop.A, 0);
+});
+test('遠古：人口變化寫入因果帳（出生 − 死亡 ＝ 變化）', () => {
+  const e = makeA('anc'); e.advanceYears(3000);
+  const w = e.world, r = w.ancient.regions.FER, A = WS.Ancient;
+  const before = A.popOf(r); const pre = { F: r.pop.F, A: r.pop.A, U: r.pop.U };
+  e.step();
+  const yr = r.causes.years[r.causes.years.length - 1].data.population;
+  const sum = Object.values(yr).reduce((s, f) => s + f.v, 0);
+  // 生活方式轉換只是在地區內移動，不改變總人口；遷徙另外記錄
+  const mig = (r.causes.years[r.causes.years.length - 1].data.migration || {});
+  const migSum = Object.values(mig).reduce((s, f) => s + f.v, 0);
+  assert.ok(Math.abs(before + sum + migSum - A.popOf(r)) < 1e-6, `${before} + ${sum} + ${migSum} ≠ ${A.popOf(r)}`);
+  assert.ok(WS.Explain.metric(w, 'FER', 'population', 'last').factors.length > 0);
+  assert.ok(WS.Explain.ancientQuestions(w, 'FER').length >= 4);
+});
+test('遠古：存檔後載入繼續推進，結果與不中斷相同', () => {
+  const a = makeA('sv'); a.advanceYears(5000);
+  const b = new WS.WorldEngine(); b.load(a.serialize());
+  a.advanceYears(1000); b.advanceYears(1000);
+  assert.strictEqual(JSON.stringify(a.world.ancient), JSON.stringify(b.world.ancient));
+});
+
+test('遠古「如果？」：阻止一項自行發明 → 平行世界分岔，原世界不變', () => {
+  const e = makeA('wi'); e.advanceYears(5000);
+  const w = e.world, before = JSON.stringify(w.ancient);
+  const ev = w.events.find((x) => x.type === 'tech' && (x.causes || [])[0] === '自行發明' && x.tick > 0);
+  assert.ok(ev, '有自行發明的事件');
+  const r = e.whatIf(ev.id, 'block');
+  assert.ok(r.ok && r.report.applied, '有攔截到');
+  assert.strictEqual(JSON.stringify(w.ancient), before, '原世界不變');
+  const alt = r.world.ancient.regions[ev.countries[0]].tech[ev.techId];
+  assert.ok(!alt || alt.how !== '自行發明' || alt.year !== ev.y, '平行世界沒有在同時自行發明');
+  assert.ok(r.world.events.some((x) => x.type === 'whatif'), '分岔點寫入事件');
+});
+test('遠古「如果？」：同樣的設定重跑兩次結果相同', () => {
+  const e = makeA('wi2'); e.advanceYears(6000);
+  const ev = e.world.events.find((x) => WS.WhatIf.options(e.world, x).length && x.type === 'polity');
+  assert.ok(ev, '有政體事件');
+  const a = e.whatIf(ev.id, 'block'), b = e.whatIf(ev.id, 'block');
+  assert.strictEqual(JSON.stringify(a.world.ancient), JSON.stringify(b.world.ancient));
+});
+test('遠古神之手：經指令紀錄、寫入因果帳，「如果？」重跑時會重播', () => {
+  const e = makeA('dv'); e.advanceYears(3000);
+  const w = e.world, en = w.divine.energy;
+  const r1 = e.divine('drought', 'FER'), r2 = e.divine('inspire', 'EUR');
+  assert.ok(r1.ok && r2.ok);
+  assert.ok(w.divine.energy < en);
+  assert.strictEqual(w.commandLog.filter((c) => c.cmd === 'divine').length, 2);
+  e.advanceYears(200);
+  const h = WS.Explain.metric(w, 'FER', 'harvest', 30).factors.find((f) => /神之手/.test(f.name));
+  assert.ok(h && h.v < 0, '乾旱寫入收成因果帳');
+  // 從乾旱之前的快照重跑：神之手要在同一期重播
+  const ev = w.events.find((x) => x.type === 'tech' && (x.causes || [])[0] === '自行發明' && x.tick > 0 && x.tick < w.commandLog[0].tick);
+  const r = e.whatIf(ev.id, 'block');
+  assert.ok(r.ok);
+  assert.strictEqual(r.world.divine.log.length, 2, '平行世界也有兩次干預');
+});
+test('遠古神之手：條件不足時不能施展（神力不夠）', () => {
+  const e = makeA('dv2');
+  e.world.divine.energy = 5;
+  const r = e.divine('inspire', 'FER');
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(e.world.commandLog.length, 0);
+});
+test('遠古接到近代：1800 年以後把政體轉成近代國家，人口沿用，近代引擎可以繼續推進', () => {
+  const e = makeA('br');
+  assert.strictEqual(WS.EraBridge.available(e.world).ok, false);
+  e.advanceYears(1801 - e.world.year);
+  const anc = e.world, popA = WS.Ancient.worldPop(anc), ancJson = JSON.stringify(anc.ancient);
+  const r = e.toModern();
+  assert.ok(r.ok, r.reason);
+  const w = e.world, ids = WS.util.ids(w);
+  assert.ok(!WS.Ancient.isAncient(w) && ids.length >= 2);
+  const popM = ids.reduce((s, id) => s + WS.util.popTotal(w.countries[id]), 0);
+  assert.ok(Math.abs(popM - popA) / popA < 0.02, `人口 ${popA} → ${popM}`);
+  assert.ok(w.origin && w.origin.fromAncient);
+  assert.strictEqual(JSON.stringify(anc.ancient), ancJson, '遠古世界不被改動');
+  // 國家數與經濟量級：政體只帶走實際治理的人口，其餘成為各地小國；人均 GDP 接近 1820 年的量級（約 400–1,500）
+  assert.ok(ids.length >= 20 && ids.length <= 80, '國家數 ' + ids.length);
+  const gdpM = ids.reduce((s, id) => s + w.countries[id].econ.gdp, 0);
+  assert.ok(gdpM / popM * 1000 > 450 && gdpM / popM * 1000 < 1200, '世界人均 GDP ' + gdpM / popM * 1000);
+  assert.strictEqual(JSON.stringify(WS.EraBridge.build(anc).setup.scenarioData), JSON.stringify(WS.EraBridge.build(anc).setup.scenarioData), '同一條世界線接到近代結果相同');
+  e.setIntervention('none'); e.advance(120);
+  for (const id of WS.util.ids(e.world)) { const c = e.world.countries[id]; assert.ok(isFinite(c.econ.gdp) && c.econ.gdp > 0 && WS.util.popTotal(c) > 0, id); }
+  // 近代世界存檔載入後繼續推進，結果相同（起點資料存在 genesis 裡）
+  const b = new WS.WorldEngine(); b.load(e.serialize());
+  e.advance(24); b.advance(24);
+  for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

@@ -229,4 +229,88 @@
       independenceDominion: 0.003
     }
   };
+
+  // ---- 遠古時代（engine/ancient-engine.js）參數：全部是示意值，尚未校準 ----
+  // 糧食單位：「人年」（一個人一年所需的食物）。人口單位：百萬人。率都是「每年」。
+  WS.ANCIENT_PARAMS = {
+    // 時間刻度：越接近近代越細（年份以前用該步長）
+    steps: [[-3000, 10], [-500, 5], [1e9, 2]],
+    food: {
+      forageScale: 0.1,               // 野生食物承載力 = 豐富度 × 面積 × 此值 × 氣候 × 科技
+      forageEff: 1.12,                // 採集者在人少時每人可得的食物（> 1 才有剩餘）
+      landProd: 0.12,                  // 可耕地承載力 = 可耕比例 × 面積 × 此值 × 科技
+      farmEff: 1.5,                   // 農民在地多人少時每人可得的食物（作物完全馴化後）
+      irrigationGain: 2.0,            // 灌溉讓可耕地承載力增加（乘上水源條件）
+      knowGain: 0.8, knowScale: 1000, // 精耕經驗：土地生產力 + knowGain × 累積經驗 ÷ knowScale（累積速度依農民密度與交流）
+      herdGain: 0.6,                  // 畜牧讓草原、乾旱地區的承載力增加（乘上可馴化動物）
+      storageBase: 0.03,              // 不需陶器也能保存的食物（年）
+      storageDecay: 0.15,             // 儲糧每年損耗
+      droughtChance: 0.012,           // 每年地區性乾旱機率
+      droughtHarvest: 0.75,           // 乾旱期間收成比例
+      harvestSd: 0.05                 // 每期收成的隨機波動（以每年計，期長越長越平均）
+    },
+    pop: {
+      birthForager: 0.034, birthFarmer: 0.044, birthUrban: 0.036,
+      deathForager: 0.0322, deathFarmer: 0.0405, deathUrban: 0.047,
+      healthMax: 0.006,               // 醫學與防疫最多降低的年死亡率（示意值）
+      crowdDisease: 0.0025,           // 農業人口密度高時的額外死亡（家畜與群聚疾病）
+      famineDeath: 0.35,              // 糧食安全每低於 1 的 1%，死亡率增加 0.35%
+      famineBirth: 2.0,               // 糧食不足時出生率依此次方下降
+      farmShift: 0.004,               // 農耕回報高於採集時，每年轉為農民的比例（乘上回報差）
+      urbanAdjust: 0.02,              // 城市人口每年朝可支持的上限調整的速度
+      cityPop: 0.015,                 // 一座城市約 15,000 人以上（一座「城市」代表一群城鎮）
+      urbanProto: 0.002,              // 還沒有記帳時，剩餘糧食只能養活少數工匠（原始城鎮）
+      urbanBase: 0.006,               // 有記帳後，可支持的城市人口比例（另加科技與政體）
+      bandSize: 30, villageSize: 250, // 顯示用：遊獵群、村落的平均人數
+      migrate: 0.0008,                // 農民向尚未務農的鄰近地區遷移的比例（每年）
+      seedCarry: 0.35                 // 移民帶去的作物知識（相當於研究成本的比例）
+    },
+    tech: {
+      researchBase: 2.0,              // 研究點數 = 此值 × √人口 × (1 + 城市比例加成) × 交流（每個可研究的科技各自累積）
+      urbanBoost: 6,
+      diffusion: 0.0035,              // 鄰近地區已普及的科技，每年經交流傳入的比例（乘上交流程度）
+      adoptRate: 0.012,               // 新科技每年普及的速度
+      luckMin: 0.5, luckMax: 1.6,         // 每個地區發明每項科技的難度倍數（隨機；讓發明年代每次不同）
+      cropAdopt: 0.0015,              // 作物馴化的普及很慢（野生到完全馴化約上千年）
+      knownAt: 0.5                    // 普及度超過此值，才算可以往下研究、傳給鄰居
+    },
+    exchange: { base: 10, settled: 15, urban: 150, urbanMax: 15, polity: 4, adjust: 0.05, aid: 0.25, seaNeedsSailing: 0.25, far: 0.005, farSail: 0.04 },
+    // 接到近代：演進到這一年以後可以「進入近代」，把政體轉成近代國家（換算係數，示意值）
+    bridge: {
+      year: 1800,
+      // 人均 GDP（1990 年國際元）＝ 基礎 ＋ 進階科技比例 × … ＋ 城市比例 × …
+      // 對照：Maddison 1820 年世界平均約 670、西歐約 1,200、中國約 600、非洲約 420（示意值，量級對齊用）
+      gdppcBase: 350, gdppcDev: 330, gdppcUrban: 900,
+      // 教育指數：基礎＋文字＋紙＋印刷＋城市比例 × …（1800 年識字率多在 5–40%，示意值）
+      eduBase: 2, eduWriting: 3, eduPaper: 3, eduPrinting: 7, eduUrban: 25, eduMax: 35,
+      urbanScale: 1.0, urbanMax: 0.2, armyShare: 0.006,  // 城市化換算與上限、兵力占人口比例
+      coalPerIronArea: 1.5, oilPerArea: 0.3,             // 礦藏（與 1911 劇本同單位，未經校準）
+      // 政體能有效治理的人口比例（其餘地方自成小國或部族）：首都所在地區／其他地區，依政體型態（示意值）
+      controlCapital: { chiefdom: 0.45, citystate: 0.35, kingdom: 0.75, empire: 0.85 },
+      controlOther: { chiefdom: 0.3, citystate: 0.25, kingdom: 0.5, empire: 0.65 },
+      controlCohesion: 0.3,        // 凝聚力的影響：控制比例 ×（1 − 此值 ＋ 此值 × 凝聚力/100）
+      splitPop: 4,                 // 政體控制以外的人口，約每 400 萬人分成一個獨立國家（百萬人）
+      minStatePop: 0.4,            // 低於這個人口不另成國家，併入該地區最大的國家（百萬人）
+      maxSplit: 6                  // 每個地區最多分出幾個獨立國家
+    },
+    // 神之手（遠古）：只改變條件；神力每百年恢復（遠古一期好幾年）
+    divine: {
+      energyMax: 100, energyStart: 60,
+      energyRegenPerCentury: 25,      // 每 100 年恢復的神力
+      bountyCost: 20, bountyGain: 0.12, bountyYears: 30,      // 風調雨順：收成增加（乘上運氣）
+      droughtCost: 25, droughtSev: 0.15, droughtYears: 30,    // 長期乾旱：收成減少（乘上運氣）
+      inspireCost: 40, inspireShare: 0.03, inspireYears: 80   // 知識啟發：每年給研究成本的比例（交流越活躍吸收越快）
+    },
+    polity: {
+      chiefdomDensity: 0.1,           // 農民密度（百萬人／面積）超過此值才可能形成酋邦
+      formChance: 0.002,              // 條件成立時每年形成的機率
+      upgradeChance: 0.01,
+      attackChance: 0.004,            // 每年考慮對外擴張的機率
+      attackRatio: 1.3,               // 兵力比至少這麼高才會出兵
+      collapseOverload: 0.006,        // 管轄地區超過行政能力時，每多一個地區每年瓦解機率
+      collapseFamine: 0.02,           // 首都饑荒時每年瓦解機率
+      collapseBase: 0.0006,
+      tribute: 0.02                   // 每個附屬地區讓首都可支持的城市人口比例增加
+    }
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

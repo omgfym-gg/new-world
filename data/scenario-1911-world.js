@@ -90,6 +90,9 @@
     delete def.army;
     return def;
   }
+  // 給其他劇本（例如從遠古接到近代）共用的國家產生器
+  WS.Data.countryTiers = TIERS;
+  WS.Data.makeCountry = mk;
   const gov = (who) => ({ name: who + '派任總督', comp: 0.5, aggr: 0.3, reform: 0.2 });
 
   const added = [

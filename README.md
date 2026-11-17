@@ -52,11 +52,13 @@ data/
   scenario-1911-world.js 1911 全世界起點（51 國，含殖民地與自治領；起始年份選單選「51 國」）
   definitions.js         科技樹、制度、世界規則、規則衝突、自然語言關鍵字
 tests/
-  run-tests.js           64 項自動測試：node tests/run-tests.js
+  run-tests.js           89 項自動測試：node tests/run-tests.js
 tools/backtest.js        歷史回測：node tools/backtest.js → reports/backtest-1911.md
 tools/health-check.js    合理範圍健康檢查：node tools/health-check.js [種子數] [劇本] → reports/health-<劇本>.md
 data/history-reference.js、data/history-policies-1911.js、systems/backtest-system.js   回測用（只在 Node 載入）
-docs/ancient-era.md      遠古時代起點設計文件
+docs/ancient-era.md      遠古時代設計文件（第一版已實作）
+data/ancient.js、engine/ancient-engine.js   遠古時代（西元前 10,000 年起；開始畫面「遠古世界」）
+engine/era-bridge.js     從遠古接到近代（1800 年以後，政體 → 近代國家）
 ```
 
 ## 已知限制（下一步校準重點）
