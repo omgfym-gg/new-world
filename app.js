@@ -137,6 +137,50 @@
       start: war.start
     };
   }
+  // ---------- 事件畫面（依事件紀錄畫的動畫） ----------
+  let scam = null;
+  function sceneFor(e) {
+    if (!e) return null;
+    const w = W();
+    const cols = e.countries.map((c) => w.countries[c] && w.countries[c].color).filter(Boolean);
+    const place = e.countries.map((c) => w.countries[c] && w.countries[c].name).filter(Boolean).slice(0, 3).join('・');
+    const base = { colors: cols.length ? cols : ['#38bdf8'], year: e.y, month: e.m, caption: e.title, place, intensity: 0.6 };
+    const kind = eventKind(e);
+    if (kind === 'war-start') { const war = w.wars.find((x) => x.eventId === e.id); return war ? { war: war.id } : null; }
+    if (kind === 'war-end') return Object.assign(base, { scene: 'peace' });
+    if (kind === 'famine') { const c = w.countries[e.countries[0]]; return Object.assign(base, { scene: 'famine', intensity: U.clamp(0.4 + (c ? c.res.shortage * 2 : 0), 0.4, 1) }); }
+    if (kind === 'newcountry') return Object.assign(base, { scene: 'newcountry' });
+    if (kind === 'org') return Object.assign(base, { scene: 'org', colors: base.colors.slice(0, 6) });
+    if (kind === 'tech' || kind === 'tech-first') {
+      const m = /「(.+?)」/.exec(e.title);
+      const def = m && Object.values(WS.Data.techs).find((d) => d.name === m[1]);
+      return Object.assign(base, { scene: 'tech', variant: def ? def.field : 'industry' });
+    }
+    if (kind === 'divine') return Object.assign(base, { scene: 'upheaval', variant: 'newregime' });
+    if (kind === 'upheaval' || e.defId === 'protest') {
+      const v = e.defId === 'coup' ? 'coup' : e.defId === 'protest' ? 'protest' : e.defId === 'democratization' ? 'democratization'
+        : (e.defId === 'revolution' || e.defId === 'wuchang' || /革命/.test(e.title)) ? 'revolution' : 'newregime';
+      const c = w.countries[e.countries[0]];
+      return Object.assign(base, { scene: 'upheaval', variant: v, intensity: c ? U.clamp((100 - c.pol.stability) / 100, 0.2, 1) : 0.6 });
+    }
+    return null;
+  }
+  function mediaHtml(e) {
+    const sc = sceneFor(e);
+    if (!sc) return '';
+    if (sc.war) return `<div class="wc-wrap ev-media"><canvas class="wc-canvas" id="ev-media" data-war="${esc(sc.war)}" aria-label="戰場動畫"></canvas></div><p class="dim ev-media-note">依模擬數據畫的動畫，不是真實影像・<button class="link" data-act="warcam" data-id="${esc(sc.war)}">看完整戰場畫面</button></p>`;
+    return `<div class="wc-wrap ev-media"><canvas class="wc-canvas" id="ev-media" data-event="${esc(e.id)}" aria-label="事件畫面"></canvas></div><p class="dim ev-media-note">依模擬紀錄畫的動畫，不是真實影像</p>`;
+  }
+  function mountMedia() {
+    const c = document.getElementById('ev-media');
+    if (!c) return;
+    if (cam) { cam.stop(); cam = null; }
+    if (scam) { scam.stop(); scam = null; }
+    if (c.dataset.war) { const id = c.dataset.war; cam = new WSWarCam(c, () => warCamData(id)); return; }
+    const e = W().events.find((x) => x.id === c.dataset.event);
+    const sc = sceneFor(e);
+    if (sc && window.WSSceneCam) scam = new WSSceneCam(c, sc);
+  }
   const ERA_NAME = ['步兵、機槍與火炮', '裝甲部隊（坦克）', '軍用飛機', '噴射機', '飛彈'];
   function warCamPanel(d) {
     const bar = (v) => `<div class="bar"><i style="width:${U.clamp(50 + v / 2, 0, 100)}%"></i></div>`;
@@ -156,6 +200,7 @@
         ${d.eventId ? `<button class="btn small" data-act="event" data-id="${esc(d.eventId)}">為什麼開戰？</button>` : ''}</div>
       <div id="wc-panel">${warCamPanel(d)}</div>`);
     if (cam) cam.stop();
+    if (scam) { scam.stop(); scam = null; }
     cam = new WSWarCam(document.getElementById('wc-canvas'), () => warCamData(warId));
     clearInterval(warCamModal.t);
     warCamModal.t = setInterval(() => {
@@ -194,7 +239,13 @@
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600);
   }
   function openModal(html) { modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0; }
-  function closeModal() { modal.hidden = true; if (cam) { cam.stop(); cam = null; } }
+  function closeModal() {
+    modal.hidden = true;
+    if (cam) { cam.stop(); cam = null; }
+    if (scam) { scam.stop(); scam = null; }
+    // 自動播放因事件暫停：玩家選完、關掉視窗後自動繼續
+    if (S.resumeAuto) { S.resumeAuto = false; if (!S.auto && S.screen === 'game') toggleAuto(); }
+  }
 
   // ======================= 開始畫面 =======================
   function renderStart() {
@@ -697,6 +748,7 @@
     const fol = e.followups.map((f) => w.events.find((x) => x.id === f)).filter(Boolean);
     openModal(`<h2>${esc(e.title)}</h2>
       <p class="dim">${e.y} 年 ${e.m} 月・${typeLabel(e.type)}${e.countries.length ? '・相關：' + e.countries.map((c) => esc(w.countries[c] ? w.countries[c].name : c)).join('、') : ''}</p>
+      ${mediaHtml(e)}
       ${e.text ? `<p>${esc(e.text)}</p>` : ''}
       ${e.trigger ? `<p><span class="tag gold">觸發</span> ${esc(e.trigger)}</p>` : ''}
       ${e.causes.length ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">為什麼會發生</h3><ul class="list-plain">${e.causes.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
@@ -705,6 +757,7 @@
       ${parent ? `<p>前因事件：<button class="link" data-act="event" data-id="${parent.id}">${esc(parent.title)}</button></p>` : ''}
       ${fol.length ? `<p>後續事件：${fol.map((f) => `<button class="link" data-act="event" data-id="${f.id}">${esc(f.title)}</button>`).join('、')}</p>` : ''}
       ${whatifOptions(e)}`);
+    mountMedia();
   }
 
   // ======================= 如果（平行世界） =======================
@@ -808,12 +861,16 @@
     const w = W();
     const focus = w.mode === 'country' ? w.countries[w.focus] : null;
     const ev = focus && focus.alive ? engine.evaluate(focus.id) : null;
+    const pic = evs.find((e) => sceneFor(e));
     openModal(`<h2>重大事件：要介入嗎？</h2>
+      ${S.resumeAuto ? '<p class="dim" style="margin:0 0 8px">自動播放已暫停。選好後關掉這個視窗，世界會自動繼續運轉。</p>' : ''}
+      ${pic ? mediaHtml(pic) : ''}
       <ul class="events">${evs.map(eventItem).join('')}</ul>
       ${ev ? `<h3 style="color:var(--blue);font-size:14px;margin:12px 0 6px">${esc(focus.name)}可採取的政策（系統評分）</h3>
         ${ev.list.filter((p) => p.feasible === true).slice(0, 5).map((p) => `<div class="policy"><div>${esc(p.name)}<small>${esc(WS.Policies.defs[p.id].desc)}</small></div><button class="btn small" data-act="policy" data-c="${focus.id}" data-p="${p.id}" data-close="1">執行</button></div>`).join('')}`
         : '<p class="dim">全球模式：可到「世界」頁修改世界規則來干預。</p>'}
-      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${!ev ? '<button class="btn" data-act="goto-rules">前往修改世界規則</button>' : ''}</div>`);
+      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${!ev ? '<button class="btn" data-act="goto-rules">前往修改世界規則</button>' : ''}${S.resumeAuto ? '<button class="btn" data-act="stay-paused">先停在這裡</button>' : ''}</div>`);
+    mountMedia();
   }
 
   // ======================= 系統 =======================
@@ -879,28 +936,15 @@
     S.auto = setInterval(() => {
       const res = engine.advance(1);
       if (W().month === 1) WS.Save.autosave(W());
-      // 自動播放遇到重大事件不停下：改用不擋畫面的通知，玩家想介入再按「暫停並介入」
-      if (res.stopped) { engine.resolveDecision(); eventAlert(res.events); }
+      // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
+      if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
       if (modal.hidden) render();
     }, 160);
     render();
   }
 
-  let alertTimer = null;
-  function eventAlert(evs) {
-    const el = document.getElementById('alert');
-    if (!el) return;
-    S.alertEvents = evs;
-    el.innerHTML = `<div class="alert-k">重大事件・${W().year}.${String(W().month).padStart(2, '0')}</div>
-      <div class="alert-t">${evs.slice(0, 2).map((e) => esc(e.title)).join('<br>')}${evs.length > 2 ? `<span class="dim">　等 ${evs.length} 件</span>` : ''}</div>
-      <div class="row"><button class="btn small gold" data-act="alert-intervene">暫停並介入</button><button class="btn small" data-act="alert-close">略過</button></div>`;
-    el.hidden = false;
-    clearTimeout(alertTimer); alertTimer = setTimeout(() => (el.hidden = true), 7000);
-  }
-  function hideAlert() { const el = document.getElementById('alert'); if (el) el.hidden = true; clearTimeout(alertTimer); }
-
   function switchWorld(w2, msg) {
-    stopAuto();
+    stopAuto(); S.resumeAuto = false;
     engine.load(w2);
     S.screen = 'game'; S.compare = null; S.speed = W().speed || 'decade';
     WS.Save.autosave(W());
@@ -948,15 +992,15 @@
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;
-      case 'alert-close': hideAlert(); break;
-      case 'alert-intervene': { const evs = S.alertEvents || []; hideAlert(); stopAuto(); render(); if (evs.length) decisionModal(evs); break; }
       case 'wc-mode': if (cam) { cam.mode = v; t.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === t)); } break;
       case 'map-view': S.mapView = v; render(); break;
       case 'open-country': S.view = t.dataset.id; S.tab = 'country'; render(); window.scrollTo(0, 0); break;
       case 'why': whyModal(t.dataset.c, t.dataset.m, t.dataset.s); break;
       case 'why-rel': relModal(t.dataset.a, t.dataset.b); break;
       case 'event': eventModal(t.dataset.id); break;
-      case 'whatif': whatifModal(t.dataset.id); break;
+      case 'whatif': S.resumeAuto = false; whatifModal(t.dataset.id); break;
+      case 'warcam': S.resumeAuto = false; warCamModal(t.dataset.id); break;
+      case 'stay-paused': S.resumeAuto = false; closeModal(); break;
       case 'whatif-run': whatifRun(t.dataset.id, t.dataset.k); break;
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'wi-metric': S.wiMetric = v; whatifReport(); break;
@@ -996,7 +1040,7 @@
         if (!(t.dataset.k in opt)) engine.changeRule(t.dataset.k, JSON.parse(t.dataset.v));
         closeModal(); render(); break;
       }
-      case 'goto-rules': closeModal(); engine.setMode('global'); S.tab = 'world'; render(); break;
+      case 'goto-rules': S.resumeAuto = false; closeModal(); engine.setMode('global'); S.tab = 'world'; render(); break;
       case 'chart-metric': break;
       case 'branch-now':
         openModal(`<h2>建立新的世界線</h2><p class="dim">原世界線會先自動存檔，之後你在新分支做的任何改變都不會影響它。</p>
