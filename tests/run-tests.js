@@ -664,6 +664,79 @@ test('存檔空間不足時改存精簡版，載入後繼續推進結果相同',
   for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
 });
 
+// ---------- 遠古時代 ----------
+const makeA = (seed) => { const e = new WS.WorldEngine(); e.create({ scenario: 'bc10000', seed: seed || 'anc' }); return e; };
+const ancFull = (() => { let cache = {}; return (seed) => cache[seed] || (cache[seed] = (() => { const e = makeA(seed); e.advanceYears(11500); return e; })()); })();
+test('遠古：建立西元前 10,000 年世界（18 個地區、全是狩獵採集）', () => {
+  const w = makeA().world, A = WS.Ancient;
+  assert.ok(A.isAncient(w));
+  assert.strictEqual(A.ids(w).length, 18);
+  assert.strictEqual(A.yearLabel(w.year), '西元前 10,000 年');
+  for (const id of A.ids(w)) { const r = w.ancient.regions[id]; assert.strictEqual(r.pop.A + r.pop.U, 0, id); }
+  const p = A.worldPop(w); assert.ok(p > 2 && p < 15, '世界人口 ' + p);
+});
+test('遠古：相同種子 → 完全相同；不同種子 → 歷史不同', () => {
+  const a = makeA('s1'), b = makeA('s1'), c = makeA('s2');
+  a.advanceYears(4000); b.advanceYears(4000); c.advanceYears(4000);
+  assert.strictEqual(JSON.stringify(a.world), JSON.stringify(b.world));
+  assert.notStrictEqual(JSON.stringify(a.world.ancient.firsts), JSON.stringify(c.world.ancient.firsts));
+});
+test('遠古：推進到西元 1500 年沒有 NaN、人口為正、速度 < 10 秒', () => {
+  const t = Date.now(); const e = ancFull('anc'); const w = e.world, A = WS.Ancient;
+  assert.ok(Date.now() - t < 10000);
+  assert.ok(w.year >= 1500);
+  for (const id of A.ids(w)) { const r = w.ancient.regions[id]; for (const k of ['F', 'A', 'U']) assert.ok(isFinite(r.pop[k]) && r.pop[k] >= 0, id + k); assert.ok(isFinite(r.exchange) && isFinite(r.stock) && isFinite(r.fs), id); }
+  assert.strictEqual(w.validation.issues.length, 0);
+});
+test('遠古：人口量級合理（西元前 3000 年 1,500 萬–1 億、西元 1 年 1–4 億）', () => {
+  const e = makeA('anc'), A = WS.Ancient;
+  e.advanceYears(-3000 - e.world.year); const p1 = A.worldPop(e.world);
+  e.advanceYears(1 - e.world.year); const p2 = A.worldPop(e.world);
+  assert.ok(p1 > 15 && p1 < 100, '前 3000 年 ' + p1);
+  assert.ok(p2 > 100 && p2 < 400, '西元 1 年 ' + p2);
+});
+test('遠古：農業從條件好的地方自行出現，不照固定年份', () => {
+  const years = [];
+  for (const s of ['x1', 'x2', 'x3']) {
+    const e = makeA(s); e.advanceYears(4000);
+    const f = e.world.ancient.firsts.crop_domestication;
+    assert.ok(f && f.region, '有農業');
+    assert.ok(WS.Data.ancientRegions.find((r) => r.id === f.region).plants >= 0.3, '在可馴化植物多的地方');
+    years.push(f.year);
+  }
+  assert.ok(new Set(years).size > 1, '不同種子出現年份不同：' + years);
+});
+test('遠古：城市出現在農業之後，文字出現在城市之後', () => {
+  const f = ancFull('anc').world.ancient.firsts;
+  assert.ok(f.city && f.crop_domestication.year < f.city.year);
+  assert.ok(f.writing && f.city.year < f.writing.year);
+});
+test('遠古：地理不允許的地區不會自行發明農業（澳洲）', () => {
+  const r = ancFull('anc').world.ancient.regions.AUS;
+  assert.ok(!(r.tech.crop_domestication && r.tech.crop_domestication.how === '自行發明'));
+  assert.strictEqual(r.pop.A, 0);
+});
+test('遠古：人口變化寫入因果帳（出生 − 死亡 ＝ 變化）', () => {
+  const e = makeA('anc'); e.advanceYears(3000);
+  const w = e.world, r = w.ancient.regions.FER, A = WS.Ancient;
+  const before = A.popOf(r); const pre = { F: r.pop.F, A: r.pop.A, U: r.pop.U };
+  e.step();
+  const yr = r.causes.years[r.causes.years.length - 1].data.population;
+  const sum = Object.values(yr).reduce((s, f) => s + f.v, 0);
+  // 生活方式轉換只是在地區內移動，不改變總人口；遷徙另外記錄
+  const mig = (r.causes.years[r.causes.years.length - 1].data.migration || {});
+  const migSum = Object.values(mig).reduce((s, f) => s + f.v, 0);
+  assert.ok(Math.abs(before + sum + migSum - A.popOf(r)) < 1e-6, `${before} + ${sum} + ${migSum} ≠ ${A.popOf(r)}`);
+  assert.ok(WS.Explain.metric(w, 'FER', 'population', 'last').factors.length > 0);
+  assert.ok(WS.Explain.ancientQuestions(w, 'FER').length >= 4);
+});
+test('遠古：存檔後載入繼續推進，結果與不中斷相同', () => {
+  const a = makeA('sv'); a.advanceYears(5000);
+  const b = new WS.WorldEngine(); b.load(a.serialize());
+  a.advanceYears(1000); b.advanceYears(1000);
+  assert.strictEqual(JSON.stringify(a.world.ancient), JSON.stringify(b.world.ancient));
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

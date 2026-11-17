@@ -8,11 +8,17 @@
     population: '人口', gdp: 'GDP', stability: '政治穩定度', legitimacy: '政府合法性', conflict: '社會衝突',
     debt: '國債', food: '糧食庫存（月）', education: '教育水準', health: '醫療水準', research: '科研進度', energy: '能源供應'
   };
+  // 遠古時代（地區）的指標
+  Explain.ANCIENT_METRICS = {
+    population: '人口（百萬）', store: '儲糧', aid: '鄰近地區援助', farming: '務農比例（%）', urban: '城市人口（百萬）', exchange: '交流程度', know: '農耕經驗'
+  };
   Explain.LINKS = {
     '政府合法性': 'legitimacy', '經濟狀況': 'gdp', '糧食供應': 'food', '社會衝突': 'conflict', '民眾支持': null,
     '糧食短缺': 'food', '政治穩定度': 'stability', '政治穩定與制度': 'stability', '能源供應': 'energy',
     '技術進步': 'research', '收成與氣候': 'food', '教育提高政治參與要求': 'education', '財政赤字': 'debt'
   };
+  const ANCIENT_LINKS = { '糧食不足': 'store', '交換：送往鄰近地區': 'aid' };
+  const yearText = (w, y) => (w.era === 'ancient' && WS.Ancient ? WS.Ancient.yearLabel(y) : `${y} 年`);
 
   function agg(list) {
     const out = {};
@@ -28,28 +34,31 @@
 
   // scope: 'last'（上一個完整年度）、'current'（本年至今）、數字 N（最近 N 年）
   Explain.metric = function (w, cid, metric, scope = 'last') {
-    const c = w.countries[cid];
+    const anc = w.era === 'ancient';
+    const c = anc ? w.ancient.regions[cid] : w.countries[cid];
     if (!c) return null;
     let data, label;
-    if (scope === 'current') { data = agg([c.causes.cur[metric] || {}]); label = `${w.year} 年至今`; }
+    if (scope === 'current') { data = agg([c.causes.cur[metric] || {}]); label = anc ? '本期' : `${w.year} 年至今`; }
     else if (typeof scope === 'string' && /^y\d+$/.test(scope)) {   // 指定某一年（世界頭條用）
       const yr = +scope.slice(1);
       const ys = c.causes.years.find((x) => x.year === yr);
       data = agg(ys ? [ys.data[metric] || {}] : yr === w.year ? [c.causes.cur[metric] || {}] : []);
-      label = `${yr} 年`;
+      label = yearText(w, yr);
     }
     else {
       const n = scope === 'last' ? 1 : scope;
       const ys = c.causes.years.slice(-n);
-      if (!ys.length) { data = agg([c.causes.cur[metric] || {}]); label = `${w.year} 年至今`; }
+      if (!ys.length) { data = agg([c.causes.cur[metric] || {}]); label = anc ? '本期' : `${w.year} 年至今`; }
+      else if (anc) { data = agg(ys.map((y) => y.data[metric] || {})); label = `${yearText(w, ys[0].year)}起 ${w.year - ys[0].year} 年`; }
       else { data = agg(ys.map((y) => y.data[metric] || {})); label = ys.length === 1 ? `${ys[0].year} 年` : `${ys[0].year}–${ys[ys.length - 1].year} 年`; }
     }
     const factors = Object.entries(data).map(([name, o]) => ({
-      name, v: o.v, link: Explain.LINKS[name] || (Object.keys(o.sub).map((s) => Explain.LINKS[s]).find(Boolean) || null),
+      name, v: o.v, link: anc ? (ANCIENT_LINKS[name] || Object.keys(o.sub).map((s) => ANCIENT_LINKS[s]).find(Boolean) || null)
+        : Explain.LINKS[name] || (Object.keys(o.sub).map((s) => Explain.LINKS[s]).find(Boolean) || null),
       sub: Object.entries(o.sub).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     })).sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
     const total = factors.reduce((s, f) => s + f.v, 0);
-    return { metric, name: Explain.METRIC_NAMES[metric] || metric, label, total, factors };
+    return { metric, name: (anc ? Explain.ANCIENT_METRICS[metric] : Explain.METRIC_NAMES[metric]) || metric, label, total, factors };
   };
 
   const sign = (v, d = 1) => (v >= 0 ? '+' : '') + v.toFixed(d);
@@ -163,6 +172,69 @@
       q: '如果沒有這場戰爭／這個事件，世界會怎樣？',
       a: '模擬器不會用文字臆測。請到「歷史」頁使用「歷史回溯」：回到事件之前的年份建立新分支，改變一項條件（例如禁止戰爭或改變政策），再用「歷史比較」對照兩條世界線的實際模擬數據。'
     });
+    return qs;
+  };
+
+  // ---- 遠古時代：地區的「為什麼」（只讀模擬紀錄與引擎條件）----
+  Explain.ancientQuestions = function (w, rid) {
+    const A = WS.Ancient, r = w.ancient.regions[rid], T = WS.Data.ancientTechs, P = w.params.ancient;
+    const Y = (y) => A.yearLabel(y);
+    const pct = (v) => (v * 100).toFixed(0) + '%';
+    const qs = [];
+    const how = (t) => { const st = r.tech[t]; return st && st.done ? (st.year == null ? '起點前就已具備' : `${Y(st.year)}${st.how || ''}`) : null; };
+    // 1. 人口
+    const pm = Explain.metric(w, rid, 'population', 10);
+    const top = pm.factors.slice(0, 3).map((f) => `${f.name} ${sign(f.v, 3)}`).join('、');
+    qs.push({ q: '為什麼人口這樣變化？', metric: 'population', scope: 10,
+      a: `${pm.label}人口合計變動 ${sign(pm.total, 3)} 百萬。主要因素：${top || '沒有明顯變化'}。目前糧食安全 ${pct(r.fs)}（100% 表示剛好夠吃）` +
+        `，狩獵採集 ${A.popOf(r) ? pct(r.pop.F / A.popOf(r)) : '0%'}、農民 ${A.popOf(r) ? pct(r.pop.A / A.popOf(r)) : '0%'}、城市 ${pct(A.urbanShare(r))}。` +
+        (r.cap.farm > 0 ? `農地承載力約 ${r.cap.farm.toFixed(2)} 百萬人，野生食物約可養活 ${r.cap.forage.toFixed(2)} 百萬人。` : `野生食物約可養活 ${r.cap.forage.toFixed(2)} 百萬人。`) });
+    // 2. 農業
+    if (A.invented(r, 'crop_domestication')) {
+      qs.push({ q: '這裡怎麼開始務農的？', metric: 'farming', scope: 10,
+        a: `作物馴化：${how('crop_domestication')}。目前普及 ${pct(A.adopt(r, 'crop_domestication'))}，務農與城市人口占 ${pct(A.farmShare(r))}。農耕的回報高於採集時，人們會逐漸改為定居務農；累積的農耕經驗讓同樣的土地養活更多人（目前加成 +${(A.knowBonus(w, r) * 100).toFixed(0)}%）。` });
+    } else {
+      const d = T.crop_domestication;
+      const why = [];
+      if (r.plants < 0.3) why.push(`本地可馴化的植物太少（${r.plants}，自行馴化需要 0.3 以上）`);
+      if (d.adoptOnly && !d.adoptOnly(r)) why.push(`可耕地太少（${r.arable}），就算引進作物也種不起來`);
+      const chain = ['plant_management', 'seed_selection'].filter((t) => !A.knows(w, r, t)).map((t) => T[t].name);
+      if (chain.length && r.plants >= 0.2) why.push(`還沒有掌握：${chain.join('、')}`);
+      const nb = r.links.map(([id]) => w.ancient.regions[id]).filter((o) => A.knows(w, o, 'crop_domestication')).map((o) => o.name);
+      qs.push({ q: '為什麼這裡還沒有農業？',
+        a: (why.length ? why.join('；') + '。' : '條件大致具備，正在累積經驗。') + (nb.length ? `鄰近的${nb.join('、')}已經務農，作物可能經交流或移民傳入。` : '鄰近地區也還沒有農業。') });
+    }
+    // 3. 城市
+    if (r.cities.length) {
+      qs.push({ q: '為什麼會有城市？', metric: 'urban', scope: 10,
+        a: `城市人口約 ${Math.round(r.pop.U * 1e6).toLocaleString()} 人（${r.cities.length} 座：${r.cities.map((c) => c.name).join('、')}）。城市靠農民的剩餘糧食養活工匠、祭司、官吏與商人；` +
+          `${A.knows(w, r, 'accounting') ? '有記帳能力，能管理大量剩餘' : '還沒有記帳，只能支持小型城鎮'}${r.polity ? `，政體「${w.ancient.polities[r.polity].name}」的貢賦也支持城市` : ''}。` });
+    } else {
+      const why = [];
+      if (!A.invented(r, 'crop_domestication')) why.push('還沒有農業，沒有足夠的剩餘糧食');
+      if (!A.invented(r, 'storage')) why.push('還不會儲糧');
+      if (!A.knows(w, r, 'accounting')) why.push('還沒有記帳（陶籌與印章），難以管理剩餘');
+      qs.push({ q: '為什麼這裡還沒有城市？', a: (why.join('；') || `城市人口約 ${Math.round(r.pop.U * 1e6).toLocaleString()} 人，還不到一座城市的規模（約 ${Math.round(P.pop.cityPop * 1e6).toLocaleString()} 人）`) + '。' });
+    }
+    // 4. 政體
+    const pol = r.polity ? w.ancient.polities[r.polity] : null;
+    if (pol) {
+      const T2 = WS.Data.ancientPolityTypes;
+      qs.push({ q: `「${pol.name}」是怎麼來的？`,
+        a: `${Y(pol.founded)}形成，目前是${T2[pol.type].name}，首都在${w.ancient.regions[pol.capital].name}，管轄 ${pol.regions.length} 個地區（行政能力約可管 ${A.adminCap(w, pol).toFixed(1)} 個）、凝聚力 ${pol.cohesion.toFixed(0)}。管太多地區、首都饑荒或凝聚力低時容易瓦解。`,
+        eventId: (w.events.slice().reverse().find((e) => e.polity === pol.id) || {}).id });
+    } else {
+      const dens = r.pop.A / r.area;
+      qs.push({ q: '為什麼這裡還沒有政體（酋邦以上）？',
+        a: `需要定居農業（目前 ${pct(A.farmShare(r))}，要 50% 以上）、農民密度夠高（目前 ${(dens * 1000).toFixed(0)}，門檻 ${(P.polity.chiefdomDensity * 1000).toFixed(0)}）、會儲糧與計數。` +
+          (A.knows(w, r, 'crop_domestication') && A.farmShare(r) >= 0.5 && dens >= P.polity.chiefdomDensity && A.knows(w, r, 'storage') && A.knows(w, r, 'counting')
+            ? `條件都已成立，每年約有 ${(P.polity.formChance * 100).toFixed(1)}% 的機會由親族與村落結成酋邦（不保證何時發生）。`
+            : '條件都成立後，才有機會由親族與村落結成酋邦。') });
+    }
+    // 5. 最近的科技
+    const recent = Object.entries(r.tech).filter(([, st]) => st.done && st.year != null).sort((a, b) => b[1].year - a[1].year).slice(0, 4);
+    qs.push({ q: '最近學會了什麼？從哪裡來？',
+      a: recent.length ? recent.map(([t, st]) => `${T[t].name}（${Y(st.year)}，${st.how}，普及 ${pct(st.a)}）`).join('；') + '。自行發明需要人口、城市與交流累積研究；鄰近地區已普及的技術會依交流程度傳入。' : '還沒有新科技。' });
     return qs;
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -38,6 +38,7 @@
   let worldObj = null, worldKey = 0;
   function globeData() {
     if (S.screen !== 'game' || !engine.world) return { markers: [], links: [], focus: null, worldKey: 'start' };
+    if (isAnc()) return ancientGlobeData();
     const w = W();
     if (w !== worldObj) { worldObj = w; worldKey++; }
     const T = window.WS_TERRITORY || {};
@@ -166,6 +167,7 @@
     return null;
   }
   function mediaHtml(e) {
+    if (isAnc()) return '';
     const sc = sceneFor(e);
     if (!sc) return '';
     if (sc.war) return `<div class="wc-wrap ev-media"><canvas class="wc-canvas" id="ev-media" data-war="${esc(sc.war)}" aria-label="戰場動畫"></canvas></div><p class="dim ev-media-note">依模擬數據畫的動畫，不是真實影像・<button class="link" data-act="warcam" data-id="${esc(sc.war)}">看完整戰場畫面</button></p>`;
@@ -280,6 +282,7 @@
           <button class="btn" data-act="continue" ${hasAuto ? '' : 'disabled'}>繼續遊戲<small>${hasAuto ? '回到上次自動存檔' : '尚無自動存檔'}</small></button>
           <button class="btn" data-act="load-menu" ${saves.length ? '' : 'disabled'}>載入存檔<small>${saves.length} 個存檔</small></button>
           <button class="btn gold" data-act="scenario">歷史世界<small>測試劇本《帝國的轉折：1911–1930》</small></button>
+          <button class="btn gold" data-act="ancient">遠古世界<small>《人類的黎明》：從西元前 10,000 年的狩獵採集開始</small></button>
           <button class="btn" data-act="custom-world">自訂世界<small>全球模式：修改世界制度與規則</small></button>
         </div>
         <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
@@ -320,8 +323,8 @@
           ${country ? `<div class="field"><label>國家</label>
             <select data-act="set-select" data-k="focus">${sc.countries.map((c) => `<option value="${c.id}" ${c.id === s.focus ? 'selected' : ''}>${esc(c.name)}（${esc(c.regimeLabel)}）</option>`).join('')}</select></div>` : ''}
           <div class="field"><label>起始年份</label>
-            <select data-act="set-select" data-k="scenario">${Object.values(WS.Data.scenarios).map((x) => `<option value="${x.id}" ${x.id === s.scenario ? 'selected' : ''}>${x.startYear} 年・${x.countries.length} 國${x.id === '1911' ? '（列強，推薦新手）' : '（全世界，含殖民地）'}</option>`).join('')}</select>
-            <span class="dim">目前只有 1911 年起點，分成「8 個列強」與「全世界 ${(WS.Data.scenarios['1911w'] || { countries: [] }).countries.length} 國」兩種。其他年份需要先建立歷史資料。</span></div>
+            <select data-act="set-select" data-k="scenario">${Object.values(WS.Data.scenarios).map((x) => `<option value="${x.id}" ${x.id === s.scenario ? 'selected' : ''}>${x.era === 'ancient' ? '西元前 10,000 年・' + x.countries.length + ' 個地區（遠古）' : x.startYear + ' 年・' + x.countries.length + ' 國' + (x.id === '1911' ? '（列強，推薦新手）' : '（全世界，含殖民地）')}</option>`).join('')}</select>
+            <span class="dim">${sc.era === 'ancient' ? '遠古世界沒有國家：以地區為單位，國家模式與世界規則的設定不會用到。' : `1911 年起點分成「8 個列強」與「全世界 ${(WS.Data.scenarios['1911w'] || { countries: [] }).countries.length} 國」兩種；也可以選遠古（西元前 10,000 年）。`}</span></div>
           ${country
             ? `<div class="field"><label>世界起點</label>${seg('origin', s.origin, [['history', '真實歷史'], ['custom', '自訂世界']])}</div>
                <div class="field"><label>發展方向</label>${seg('direction', s.direction, [['natural', '自然發展'], ['prosper', '繁榮'], ['tech', '科技優先'], ['military', '軍事擴張']])}</div>
@@ -350,6 +353,7 @@
   function buildSummary(s) {
     const sc = WS.Data.scenarios[s.scenario];
     const out = [];
+    if (sc.era === 'ancient') return [`遠古世界・起點${WS.Ancient.yearLabel(sc.startYear)}`, `${sc.countries.length} 個地理區域，從狩獵採集開始；農業、城市、國家、文字會在哪裡出現由模擬決定`, '目前遠古時代沒有「如果？」與神之手'];
     out.push(`${s.mode === 'country' ? '國家模式' : '全球模式'}・${{ simple: '簡易', custom: '自訂', advanced: '進階' }[s.depth]}模式・起點 ${sc.startYear} 年`);
     if (s.mode === 'country') {
       const c = sc.countries.find((x) => x.id === s.focus);
@@ -374,6 +378,7 @@
   function render() {
     if (S.screen === 'start') renderStart();
     else if (S.screen === 'setup') renderSetup();
+    else if (isAnc()) renderAncientGame();
     else renderGame();
     mountGlobe();
   }
@@ -437,7 +442,7 @@
     return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
   }
   function typeLabel(t) {
-    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果', divine: '神之手' }[t] || t;
+    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果', divine: '神之手', city: '城市', migration: '遷徙', polity: '政體', era: '時代' }[t] || t;
   }
 
   // ---------- 地圖 ----------
@@ -739,15 +744,15 @@
     const sc = scope === undefined || scope === 'undefined' ? 'last' : scope === 'current' || scope === 'last' || /^y\d+$/.test(scope) ? scope : Number(scope);
     const r = WS.Explain.metric(w, cid, metric, sc);
     const max = Math.max(1e-9, ...r.factors.map((f) => Math.abs(f.v)));
-    const dec = ['population', 'food', 'research', 'energy'].includes(metric) ? 2 : 1;
-    openModal(`<h2>為什麼會這樣？${esc(w.countries[cid].name)}・${esc(r.name)}</h2>
+    const dec = isAnc() ? (['population', 'urban', 'store', 'aid'].includes(metric) ? 3 : 1) : ['population', 'food', 'research', 'energy'].includes(metric) ? 2 : 1;
+    openModal(`<h2>為什麼會這樣？${esc(nameOf(w, cid))}・${esc(r.name)}</h2>
       <p class="dim">${esc(r.label)}合計變動 <b class="${cls(r.total)}">${sg(r.total, dec)}</b>。點擊因素可查看細項或追蹤更深層原因。</p>
-      ${seg2('why-scope', String(sc), [['last', '上一年'], ['current', '今年至今'], ['10', '近十年']]).replace(/data-act="why-scope"/g, `data-act="why" data-c="${cid}" data-m="${metric}"`).replace(/data-v=/g, 'data-s=')}
+      ${seg2('why-scope', String(sc), isAnc() ? [['last', '上一期'], ['10', '近十期'], ['30', '近三十期']] : [['last', '上一年'], ['current', '今年至今'], ['10', '近十年']]).replace(/data-act="why-scope"/g, `data-act="why" data-c="${cid}" data-m="${metric}"`).replace(/data-v=/g, 'data-s=')}
       <div style="margin-top:12px">${r.factors.map((f) => `<div class="factor"><details><summary class="factor-row" style="list-style:none">
           <span>${esc(f.name)}<div class="fbar"><i class="${f.v >= 0 ? 'pos' : 'neg'}" style="width:${(Math.abs(f.v) / max) * 50}%"></i></div></span>
           <span class="num ${cls(f.v)}" style="text-align:right">${sg(f.v, dec)}</span></summary>
           <div class="subs">${f.sub.map(([s, v]) => `<div>${esc(s)}：<span class="num ${cls(v)}">${sg(v, dec)}</span></div>`).join('')}
-          ${f.link ? `<button class="link" data-act="why" data-c="${cid}" data-m="${f.link}" data-s="${sc}">繼續追蹤：${esc(WS.Explain.METRIC_NAMES[f.link])}的原因 ›</button>` : ''}</div></details></div>`).join('') || '<p class="dim">這段期間沒有記錄到變化。</p>'}</div>`);
+          ${f.link ? `<button class="link" data-act="why" data-c="${cid}" data-m="${f.link}" data-s="${sc}">繼續追蹤：${esc((isAnc() ? WS.Explain.ANCIENT_METRICS : WS.Explain.METRIC_NAMES)[f.link])}的原因 ›</button>` : ''}</div></details></div>`).join('') || '<p class="dim">這段期間沒有記錄到變化。</p>'}</div>`);
   }
 
   function relModal(a, b) {
@@ -767,7 +772,8 @@
     const parent = e.parent && w.events.find((x) => x.id === e.parent);
     const fol = e.followups.map((f) => w.events.find((x) => x.id === f)).filter(Boolean);
     openModal(`<h2>${esc(e.title)}</h2>
-      <p class="dim">${e.y} 年 ${e.m} 月・${typeLabel(e.type)}${e.countries.length ? '・相關：' + e.countries.map((c) => esc(w.countries[c] ? w.countries[c].name : c)).join('、') : ''}</p>
+      <p class="dim">${isAnc() ? esc(yl(e.y)) : `${e.y} 年 ${e.m} 月`}・${typeLabel(e.type)}${e.countries.length ? '・相關：' + e.countries.map((c) => esc(nameOf(w, c))).join('、') : ''}</p>
+      ${e.ref ? `<p class="dim">史實參考：${esc(e.ref)}（只供對照，引擎不會照著發生）</p>` : ''}
       ${mediaHtml(e)}
       ${e.text ? `<p>${esc(e.text)}</p>` : ''}
       ${e.trigger ? `<p><span class="tag gold">觸發</span> ${esc(e.trigger)}</p>` : ''}
@@ -776,7 +782,7 @@
       ${e.decision ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">決策過程</h3><p class="dim">候選方案：${e.decision.alternatives.map((a) => esc(a[0]) + ' ' + a[1]).join('、') || '無'}（選中方案評分 ${e.decision.score}）</p>` : ''}
       ${parent ? `<p>前因事件：<button class="link" data-act="event" data-id="${parent.id}">${esc(parent.title)}</button></p>` : ''}
       ${fol.length ? `<p>後續事件：${fol.map((f) => `<button class="link" data-act="event" data-id="${f.id}">${esc(f.title)}</button>`).join('、')}</p>` : ''}
-      ${whatifOptions(e)}`);
+      ${isAnc() ? '' : whatifOptions(e)}`);
     mountMedia();
   }
 
@@ -1031,6 +1037,241 @@
     return out;
   }
 
+  // ======================= 遠古時代 =======================
+  // 遠古世界沒有國家、GDP；畫面以「地區」為單位。只讀取引擎狀態，不自己算數值。
+  const AN = () => WS.Ancient;
+  const isAnc = () => !!(engine.world && WS.Ancient && WS.Ancient.isAncient(engine.world));
+  const A_SPEEDS = { c1: [100, '百年'], c5: [500, '五百年'], m1: [1000, '千年'] };
+  const yl = (y) => AN().yearLabel(y);
+  const yShort = (y) => (y <= 0 ? '前' + (1 - y) : String(y));
+  const nameOf = (w, id) => (w.countries[id] ? w.countries[id].name : w.ancient && w.ancient.regions[id] ? w.ancient.regions[id].name : id);
+  const fPeople = (m) => (m >= 1 ? m.toFixed(m >= 10 ? 1 : 2) + ' 百萬' : Math.round(m * 1e6).toLocaleString() + ' 人');
+  function aRegion(w) {
+    const ids = AN().ids(w);
+    return S.view && w.ancient.regions[S.view] ? S.view : w.ancient.regions[w.focus] ? w.focus : ids[0];
+  }
+  function polityColor(w, r) { const p = AN().polityOf(w, r); return p ? p.color : r.color; }
+  function ancientGlobeData() {
+    const w = W(), A = AN();
+    if (w !== worldObj) { worldObj = w; worldKey++; }
+    const ids = A.ids(w);
+    const markers = ids.map((id) => {
+      const r = w.ancient.regions[id], p = A.popOf(r);
+      return {
+        id, name: r.name, lat: r.lat, lon: r.lon, color: polityColor(w, r), size: Math.max(2.4, Math.sqrt(p) * 1.6), war: false,
+        anchors: [[r.lat, r.lon, U.clamp(Math.sqrt(r.area) * 1.6, 3, 11)]],
+        light: U.clamp(A.urbanShare(r) * 8, 0, 0.9),
+        famine: U.clamp((1 - r.fs) * 4, 0, 1)
+      };
+    });
+    const links = [];
+    for (const p of Object.values(w.ancient.polities)) if (!p.ended) for (const rid of p.regions) if (rid !== p.capital) links.push({ a: p.capital, b: rid, type: 'alliance' });
+    // 地球上的標籤：最近的世界第一次、新政體、饑荒
+    const tags = [];
+    const LBL = { tech: '新發明', city: '第一座城市', polity: '新政體', conditional: '饑荒' };
+    for (let i = w.events.length - 1; i >= 0 && tags.length < 8; i--) {
+      const e = w.events[i];
+      if (w.year - e.y > 300) break;
+      if (!LBL[e.type] || e.level < 3 || !e.countries[0]) continue;
+      if (tags.some((t) => t.country === e.countries[0])) continue;
+      tags.push({ country: e.countries[0], kind: e.type === 'conditional' ? 'famine' : e.type === 'polity' ? 'newcountry' : 'tech-first', label: LBL[e.type], event: e.id });
+    }
+    return { markers, links, focus: null, fronts: [], scorch: [], events: [], tags, worldKey };
+  }
+  function ancientMapSvg() {
+    const w = W(), A = AN();
+    const X = (lon) => lon + 180, Y = (lat) => 90 - lat;
+    let lines = '';
+    for (const r of Object.values(w.ancient.regions)) for (const [id, kind] of r.links) {
+      if (id < r.id) continue;
+      const o = w.ancient.regions[id];
+      if (Math.abs(r.lon - o.lon) > 180) continue;
+      lines += `<line x1="${X(r.lon)}" y1="${Y(r.lat)}" x2="${X(o.lon)}" y2="${Y(o.lat)}" stroke="${kind === 'land' ? '#334a7a' : '#1e3a5f'}" stroke-width=".5" ${kind === 'land' ? '' : 'stroke-dasharray="2 1.5"'}/>`;
+    }
+    let grid = '';
+    for (let lon = -180; lon <= 180; lon += 30) grid += `<line x1="${X(lon)}" y1="0" x2="${X(lon)}" y2="180" stroke="#1e3463" stroke-width=".2"/>`;
+    for (let lat = -60; lat <= 80; lat += 20) grid += `<line x1="0" y1="${Y(lat)}" x2="360" y2="${Y(lat)}" stroke="#1e3463" stroke-width=".2"/>`;
+    const nodes = A.ids(w).map((id) => {
+      const r = w.ancient.regions[id];
+      const rad = Math.max(2.4, Math.sqrt(A.popOf(r)) * 1.6);
+      const col = polityColor(w, r);
+      return `<g data-act="open-country" data-id="${id}" style="cursor:pointer">
+        <circle cx="${X(r.lon)}" cy="${Y(r.lat)}" r="${rad}" fill="${col}" fill-opacity="${r.caps.agriculture ? 0.5 : 0.2}" stroke="${col}" stroke-width="${r.polity ? 1 : 0.5}"/>
+        ${r.cities.length ? `<circle cx="${X(r.lon)}" cy="${Y(r.lat)}" r="1.2" fill="#ffd68c"/>` : ''}
+        <text x="${X(r.lon)}" y="${Y(r.lat) + rad + 4.5}" font-size="5" fill="#e6ecff" text-anchor="middle">${esc(r.short)}</text></g>`;
+    }).join('');
+    return `<svg class="map" viewBox="0 15 360 135" role="img" aria-label="遠古世界示意地圖">${grid}${lines}${nodes}</svg>
+      <div class="legend" style="margin-top:6px"><span>圓圈大小＝人口</span><span>實心＝已務農</span><span><i style="background:#ffd68c"></i>有城市</span><span>虛線＝需要航海</span></div>`;
+  }
+  function ancientObservatory() {
+    const w = W(), s = AN().summary(w);
+    const toggle = `<div class="seg mini">${[['globe', '球體'], ['flat', '平面']].map(([v, l]) => `<button data-act="map-view" data-v="${v}" class="${S.mapView === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    if (S.mapView === 'flat' || !globe) return `<div class="card"><h3>遠古世界地圖 ${toggle}</h3>${ancientMapSvg()}</div>`;
+    return `<div class="card observatory"><h3>行星觀測窗 ${toggle}</h3>
+      <div class="globe-slot" id="globe-slot">
+        <div class="hud-tag tl"><i class="live">即時</i><b>${esc(yl(w.year))}</b><span>世界線：${esc(w.branch.name)}</span></div>
+        <div class="hud-tag tr">人口<b class="num">${fPeople(s.pop)}</b></div>
+        <div class="hud-tag bl">務農地區<b class="num">${s.farming}</b>城市<b class="num">${s.cities}</b></div>
+        <div class="hud-tag br">政體<b class="num">${s.polities}</b></div>
+      </div>
+      <div class="legend"><span>顏色＝所屬政體</span><span><i style="background:#38bdf8"></i>同一政體</span><span><i style="background:#ffd68c"></i>城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div>
+      <p class="dim" style="margin:4px 0 0">拖曳可轉動・點地區看詳情・點標籤看原因</p></div>`;
+  }
+  function aEventItem(e) {
+    const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '');
+    return `<li class="${cl}" data-act="event" data-id="${e.id}"><div class="when">${esc(yl(e.y))}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
+  }
+  function ancientOverview() {
+    const w = W(), A = AN(), s = A.summary(w);
+    const sw = w.series.world.pop, n = sw.length, lb = w.series.labels;
+    const growth = n > 1 && sw[n - 2] > 0 ? ((sw[n - 1] / sw[n - 2]) ** (1 / Math.max(1, lb[n - 1] - lb[n - 2])) - 1) * 100 : null;
+    const firsts = Object.entries(w.ancient.firsts).filter(([, f]) => f.region).sort((a, b) => b[1].year - a[1].year);
+    const FN = { city: '第一座城市', polity: '第一個政體（酋邦）', citystate: '第一個城邦', kingdom: '第一個王國', empire: '第一個帝國' };
+    const fname = (k) => FN[k] || (WS.Data.ancientTechs[k] ? WS.Data.ancientTechs[k].name : k);
+    const evs = w.events.filter((e) => e.level >= 2).slice(-12).reverse();
+    const rows = A.ids(w).map((id) => w.ancient.regions[id]).sort((a, b) => A.popOf(b) - A.popOf(a));
+    return ancientObservatory() + `
+      <div class="card"><h3>人類世界・${esc(yl(w.year))}</h3><div class="kpis">
+        ${kpi('世界人口', fPeople(s.pop), growth != null ? sg(growth, 3) + '%／年' : null)}
+        ${kpi('務農地區', s.farming + '／' + s.regions, null)}
+        ${kpi('城市', s.cities + ' 座', null)}
+        ${kpi('國家（城邦以上）', s.states + ' 個', null)}
+      </div>
+      <p class="dim" style="margin:10px 0 0">遠古世界沒有國家與 GDP：以 ${s.regions} 個地理區域模擬採集、農耕、儲糧、交換、發明與擴散。每期 ${A.dtFor(w)} 年，越接近近代刻度越細。</p></div>
+      <div class="grid g2">
+        <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3><ul class="events">${evs.map(aEventItem).join('') || '<li class="dim">推進時間，看人類會在哪裡先開始務農。</li>'}</ul></div>
+        <div class="card"><h3>世界第一次</h3>${firsts.length ? `<ul class="list-plain">${firsts.slice(0, 14).map(([k, f]) => `<li><b>${esc(fname(k))}</b>：${esc(w.ancient.regions[f.region].name)}・${esc(yl(f.year))}</li>`).join('')}</ul>` : '<p class="dim">還沒有新的發明。農業、城市、文字……會在哪裡、什麼時候出現，每條世界線都不一樣。</p>'}</div>
+      </div>
+      <div class="card"><h3>各地區</h3><div class="table-wrap"><table>
+        <tr><th>地區</th><th>人口</th><th>務農</th><th>城市</th><th>時代</th></tr>
+        ${rows.map((r) => `<tr data-act="open-country" data-id="${r.id}" style="cursor:pointer"><td>${esc(r.name)}</td><td class="num">${fPeople(A.popOf(r))}</td><td class="num">${(A.farmShare(r) * 100).toFixed(0)}%</td><td class="num">${r.cities.length}</td><td class="dim">${esc(r.era)}${r.polity ? '・' + esc(w.ancient.polities[r.polity].name) : ''}</td></tr>`).join('')}
+      </table></div></div>`;
+  }
+  function geoMeter(label, v) { return `<div class="meter"><span>${label}</span><div class="bar"><i style="width:${U.clamp(v * 100, 0, 100)}%"></i></div><span class="num">${v.toFixed(2)}</span><span></span></div>`; }
+  function ancientRegionTab() {
+    const w = W(), A = AN(), T = WS.Data.ancientTechs, P = w.params.ancient;
+    const id = aRegion(w), r = w.ancient.regions[id];
+    const pop = A.popOf(r), pol = A.polityOf(w, r);
+    const bands = Math.round(r.pop.F * 1e6 / P.pop.bandSize), villages = Math.round(r.pop.A * 1e6 / P.pop.villageSize);
+    const known = Object.entries(r.tech).filter(([, st]) => st.done).sort((a, b) => (b[1].year ?? -1e9) - (a[1].year ?? -1e9));
+    const res = Object.entries(r.tech).filter(([t, st]) => !st.done && st.p > 0).map(([t, st]) => [t, Math.min(0.99, st.p / A.techCost(r, T[t], st))]).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const share = (k) => (pop > 0 ? (r.pop[k] / pop) * 100 : 0);
+    const why = (m) => `<button class="why" style="position:static" data-act="why" data-c="${id}" data-m="${m}" data-s="10" aria-label="為什麼">?</button>`;
+    const KIND = { land: '陸路', sea: '海路（需航海）', far: '遠方（極難往來）' };
+    return `
+      <div class="field"><select data-act="view-select" aria-label="選擇地區">${A.ids(w).map((x) => `<option value="${x}" ${x === id ? 'selected' : ''}>${esc(w.ancient.regions[x].name)}</option>`).join('')}</select></div>
+      <div class="card"><h3><span>${esc(r.name)}</span>${pol ? `<span class="tag gold">${esc(pol.name)}</span>` : ''}</h3>
+        <div class="row"><span class="tag">${esc(r.era)}</span><span class="tag blue">交換方式：${esc(r.exchangeMode)}</span>${r.clim !== 1 ? `<span class="tag">氣候 ${(r.clim * 100).toFixed(0)}%</span>` : ''}</div>
+        <div class="kpis" style="margin-top:10px">
+          ${kpi('人口', fPeople(pop), null, 'population', id)}
+          ${kpi('糧食安全', (r.fs * 100).toFixed(0) + '%', r.stock > 0 ? '儲糧 ' + (r.stock / Math.max(1e-9, pop) * 12).toFixed(1) + ' 月' : null, 'store', id)}
+          ${kpi('務農比例', (A.farmShare(r) * 100).toFixed(0) + '%', null, 'farming', id)}
+          ${kpi('交流程度', r.exchange.toFixed(0), null, 'exchange', id)}
+        </div></div>
+      <div class="grid g2">
+        <div class="card"><h3>生活方式 ${why('population')}</h3>
+          ${meter('狩獵採集', share('F'))}${meter('農民', share('A'))}${meter('城市', share('U'), 'urban', id)}
+          <p class="dim">約 ${bands.toLocaleString()} 個遊獵群（每群約 ${P.pop.bandSize} 人）・約 ${villages.toLocaleString()} 個村落（每村約 ${P.pop.villageSize} 人）</p>
+          <p>城市：${r.cities.length ? r.cities.map((c) => `${esc(c.name)}<span class="dim">（${esc(yl(c.founded))}）</span>`).join('、') : '<span class="dim">尚無</span>'}</p>
+          <p class="dim">野生食物約可養活 ${fPeople(r.cap.forage)}${r.cap.farm > 0 ? `・農地約可養活 ${fPeople(r.cap.farm)}（農耕經驗加成 +${(A.knowBonus(w, r) * 100).toFixed(0)}%）` : ''}</p>
+        </div>
+        <div class="card"><h3>地理條件</h3>
+          ${geoMeter('野生食物', r.wild)}${geoMeter('可耕地', r.arable)}${geoMeter('河流水源', r.river)}${geoMeter('可馴化植物', r.plants)}${geoMeter('可馴化動物', r.animals)}
+          ${geoMeter('銅礦', r.copper)}${geoMeter('錫礦', r.tin)}${geoMeter('鐵礦', r.iron)}${geoMeter('海岸', r.coast)}
+          <p class="dim">地理是固定的；同樣的地理在不同世界線仍可能走出不同歷史。</p>
+        </div>
+        <div class="card"><h3>科技 <span class="dim" style="font-weight:400">研究點數每年約 ${(r.research || 0).toFixed(1)}</span></h3>
+          ${res.length ? `<p>研究中：${res.map(([t, p]) => `${esc(T[t].name)}（${(p * 100).toFixed(0)}%）`).join('、')}</p>` : ''}
+          <div>${known.slice(0, 14).map(([t, st]) => `<div class="meter"><span>${esc(T[t].name)}</span><div class="bar"><i style="width:${st.a * 100}%"></i></div><span class="num">${(st.a * 100).toFixed(0)}%</span><span></span></div>`).join('')}</div>
+          <p class="dim">普及度：發明或引進後，還要時間才會普及。普及一半以上才能往下研究、傳給鄰居。</p>
+        </div>
+        <div class="card"><h3>鄰近地區</h3><ul class="list-plain">${r.links.map(([o, k]) => `<li><button class="link" data-act="view" data-v="${o}">${esc(w.ancient.regions[o].name)}</button><span class="dim">・${KIND[k]}・交流 ${w.ancient.regions[o].exchange.toFixed(0)}</span></li>`).join('')}</ul>
+          <p class="dim">交流程度越高，鄰近的技術越快傳入，歉收時也越容易得到援助。</p></div>
+      </div>`;
+  }
+  function ancientTechTab() {
+    const w = W(), A = AN(), T = WS.Data.ancientTechs, ids = A.ids(w);
+    const FN = WS.Data.ancientFields;
+    return Object.keys(FN).map((f) => `<div class="card"><h3>${esc(FN[f])}</h3>${Object.values(T).filter((d) => d.field === f).map((d) => {
+      const fi = w.ancient.firsts[d.id];
+      const n = ids.filter((id) => A.knows(w, w.ancient.regions[id], d.id)).length;
+      const req = d.req.concat(d.reqAny ? ['（' + d.reqAny.map((x) => T[x].name).join('或') + '）'] : []).map((x) => (T[x] ? T[x].name : x));
+      return `<div class="policy"><div><b>${esc(d.name)}</b>${fi && fi.region ? ` <span class="tag gold">${esc(w.ancient.regions[fi.region].name)}・${esc(yl(fi.year))}</span>` : fi ? ' <span class="tag">起點前已有</span>' : ' <span class="tag">尚未出現</span>'}
+        <small>${req.length ? '需要：' + esc(req.join('、')) + '・' : ''}${n} 個地區已掌握${d.ref ? '・史實參考：' + esc(d.ref) : ''}</small></div></div>`;
+    }).join('')}</div>`).join('') + '<p class="dim">史實參考年代只用來對照，引擎不會照著發生。地理條件不足的地區不會自行發明，但可能經交流引進。</p>';
+  }
+  function ancientHistoryTab() {
+    const w = W(), A = AN(), ids = A.ids(w);
+    const M = { pop: '人口（百萬）', farm: '務農比例（%）', urban: '城市人口比例（%）', exchange: '交流程度', techs: '科技數' };
+    const metric = M[S.aMetric] ? S.aMetric : 'pop';
+    const labels = w.series.labels.map(yShort);
+    const top = ids.slice().sort((a, b) => A.popOf(w.ancient.regions[b]) - A.popOf(w.ancient.regions[a])).slice(0, 8);
+    const series = metric === 'pop' ? [{ name: '世界', color: '#e6ecff', data: w.series.world.pop, bold: true }] : [];
+    for (const id of top) series.push({ name: w.ancient.regions[id].name, color: w.ancient.regions[id].color, data: w.series.c[id][metric] });
+    let evs = w.events.slice().reverse();
+    if (S.histFilter === 'major') evs = evs.filter((e) => e.level >= 3);
+    else if (S.histFilter === 'focus') evs = evs.filter((e) => e.level >= 2);
+    return `<div class="card"><h3>歷史數據</h3>
+        <select data-act="a-metric" style="margin-bottom:8px">${Object.entries(M).map(([k, l]) => `<option value="${k}" ${k === metric ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${chart(labels, series, { label: M[metric], zero: metric !== 'pop' })}<p class="dim">只畫人口前 8 大的地區。</p></div>
+      <div class="card"><h3>歷史回溯</h3><p class="dim">回到過去的快照建立新世界線，原本的歷史保留不變（每 500 年一次，存在本次開啟期間）。</p>
+        <div class="row">${engine.snapshots.map((s, i) => `<button class="btn small" data-act="rewind" data-i="${i}">${esc(yShort(s.year))}</button>`).join('')}</div></div>
+      <div class="card"><h3>事件時間線</h3>${seg2('hist-filter', S.histFilter, [['major', '世界大事'], ['focus', '重要'], ['all', '全部']])}
+        <ul class="events" style="margin-top:10px">${evs.slice(0, 150).map(aEventItem).join('') || '<li class="dim">尚無事件</li>'}</ul></div>`;
+  }
+  function ancientExplainTab() {
+    const w = W(), A = AN();
+    const id = aRegion(w);
+    const qs = WS.Explain.ancientQuestions(w, id);
+    return `<div class="field"><select data-act="view-select" aria-label="選擇地區">${A.ids(w).map((x) => `<option value="${x}" ${x === id ? 'selected' : ''}>${esc(w.ancient.regions[x].name)}</option>`).join('')}</select></div>
+      <div class="card"><h3>世界解釋系統・${esc(w.ancient.regions[id].name)}</h3>
+        <p class="dim">答案全部取自實際模擬紀錄與引擎條件，不是事先寫好的劇情。</p>
+        ${qs.map((q, i) => `<details class="qa" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
+          ${q.metric ? `<p><button class="link" data-act="why" data-c="${id}" data-m="${q.metric}" data-s="${q.scope}">展開完整原因 ›</button></p>` : ''}
+          ${q.eventId ? `<p><button class="link" data-act="event" data-id="${q.eventId}">查看事件 ›</button></p>` : ''}</div></details>`).join('')}
+      </div>
+      <div class="card"><h3>查詢任一指標</h3><div class="row">${Object.entries(WS.Explain.ANCIENT_METRICS).map(([m, n]) => `<button class="btn small" data-act="why" data-c="${id}" data-m="${m}" data-s="10">${n}</button>`).join('')}</div></div>`;
+  }
+  function ancientSystemTab() {
+    const w = W(), saves = WS.Save.list();
+    return `<div class="card"><h3>存檔</h3>
+        <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + yShort(w.year))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}</small></div>
+          <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
+      <div class="card"><h3>這個世界</h3><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
+        <p class="dim">目前遠古時代還不能使用「如果？」平行世界與神之手，之後會加入；也還不能自動接到 1911 年的近代劇本。</p></div>`;
+  }
+  function renderAncientGame() {
+    const w = W();
+    const running = !!S.auto;
+    const tab = { overview: ancientOverview, country: ancientRegionTab, world: ancientTechTab, history: ancientHistoryTab, explain: ancientExplainTab, system: ancientSystemTab }[S.tab] || ancientOverview;
+    app.innerHTML = `
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="sys-id"><i></i>TERRA-0</div>
+          <div class="date num">${esc(yl(w.year))}<small>${esc(w.branch.name)}・每期 ${AN().dtFor(w)} 年</small></div>
+          <span class="spacer"></span>
+        </div>
+        <div class="controls">
+          ${Object.entries(A_SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.aSpeed === k ? 'on' : ''}" data-act="a-advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}
+          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>
+        </div>
+      </div>
+      <div class="content">${tab()}</div>
+      <nav class="nav"><div class="nav-inner">
+        ${[['overview', '◉', '總覽'], ['country', '⛰', '地區'], ['world', '✦', '科技'], ['history', '⟲', '歷史'], ['explain', '？', '為什麼'], ['system', '⚙', '系統']]
+          .map(([k, ic, l]) => `<button data-act="tab" data-v="${k}" class="${S.tab === k ? 'on' : ''}"><span class="ic">${ic}</span>${l}</button>`).join('')}
+      </div></nav>`;
+  }
+  function startAncient(seed) {
+    stopAuto();
+    engine.create({ scenario: 'bc10000', seed: seed || '' });
+    S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null; S.aSpeed = 'c5'; S.histFilter = 'major';
+    WS.Save.autosave(W());
+    render(); window.scrollTo(0, 0);
+  }
+
   // ======================= 動作 =======================
   function startWorld(setup) {
     const s = setup;
@@ -1056,7 +1297,7 @@
     if (S.auto) { stopAuto(); WS.Save.autosave(W()); render(); return; }
     S.auto = setInterval(() => {
       const res = engine.advance(1);
-      if (W().month === 1) WS.Save.autosave(W());
+      if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) WS.Save.autosave(W());
       // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
       if (modal.hidden) render();
@@ -1110,6 +1351,8 @@
       }
       case 'advance': S.speed = v; doAdvance(SPEEDS[v][0]); break;
       case 'auto': toggleAuto(); break;
+      case 'ancient': startAncient('遠古-' + Date.now().toString(36)); toast('《人類的黎明》：每條世界線都不一樣（種子已記錄在「系統」頁）'); break;
+      case 'a-advance': { S.aSpeed = v; engine.advanceYears(A_SPEEDS[v][0]); WS.Save.autosave(W()); render(); break; }
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;
@@ -1188,9 +1431,10 @@
         const snap = engine.snapshots[+t.dataset.i];
         const parent = W();
         const r1 = WS.Save.write(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
-        const nw = engine.branchFromSnapshot(+t.dataset.i, '回溯 ' + snap.year, '歷史回溯至 ' + snap.year + ' 年');
+        const yt = isAnc() ? yl(snap.year) : snap.year + ' 年';
+        const nw = engine.branchFromSnapshot(+t.dataset.i, '回溯 ' + (isAnc() ? yShort(snap.year) : snap.year), '歷史回溯至 ' + yt);
         const snaps = engine.snapshots.filter((s) => s.year <= snap.year);
-        switchWorld(nw, r1.ok ? `原世界線已存檔，已回到 ${snap.year} 年的新分支` : `已回到 ${snap.year} 年（原世界線未能存檔：${r1.reason}）`);
+        switchWorld(nw, r1.ok ? `原世界線已存檔，已回到${yt}的新分支` : `已回到${yt}（原世界線未能存檔：${r1.reason}）`);
         engine.snapshots = snaps.map((s) => s);
         render(); break;
       }
@@ -1225,6 +1469,7 @@
     if (t.dataset.act === 'focus') { engine.setFocus(t.value); S.view = null; render(); }
     if (t.dataset.act === 'view-select') { S.view = t.value; render(); }
     if (t.dataset.act === 'chart-metric') { S.chartMetric = t.value; render(); }
+    if (t.dataset.act === 'a-metric') { S.aMetric = t.value; render(); }
     if (t.dataset.act === 'divine-target') { S.divine.cid = t.value; S.divine.opt = null; divineModal(); }
     if (t.dataset.act === 'divine-opt-select') { S.divine.opt = t.value; divineModal(); }
     if (t.dataset.param) { const v = parseFloat(t.value); if (isFinite(v)) { engine.setParam(t.dataset.param, v); toast('參數已更新'); } }
