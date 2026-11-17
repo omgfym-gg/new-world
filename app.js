@@ -10,8 +10,34 @@
   const RULE_DEFAULTS = Object.fromEntries(Object.entries(WS.Data.rules).map(([k, d]) => [k, d.default]));
   const S = {
     screen: 'start', tab: 'overview', view: null, histFilter: 'major', chartMetric: 'gdp', auto: null,
-    setup: null, compare: null, nl: '', nlResult: null, speed: 'decade', whatif: null, wiMetric: 'gdp'
+    setup: null, compare: null, nl: '', nlResult: null, speed: 'decade', whatif: null, wiMetric: 'gdp', mapView: 'globe'
   };
+  // 會轉的地球（只畫圖）：點國家＝打開該國資料
+  const globe = window.WSGlobe ? WSGlobe.get() : null;
+  if (globe) globe.onPick = (id) => { S.view = id; S.tab = 'country'; render(); window.scrollTo(0, 0); };
+  function globeData() {
+    if (S.screen !== 'game' || !engine.world) return { markers: [], links: [], focus: null };
+    const w = W();
+    const markers = U.ids(w).map((id) => {
+      const c = w.countries[id];
+      return { id, name: c.name, lat: c.lat, lon: c.lon, color: c.color, size: Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5), war: !!c.flags.atWar };
+    });
+    const links = [];
+    for (const k of Object.keys(w.relations)) {
+      const r = w.relations[k];
+      if (!w.countries[r.a].alive || !w.countries[r.b].alive) continue;
+      if (r.war) links.push({ a: r.a, b: r.b, type: 'war' });
+      else if (r.alliance) links.push({ a: r.a, b: r.b, type: 'alliance' });
+    }
+    return { markers, links, focus: w.mode === 'country' ? w.focus : null };
+  }
+  function mountGlobe() {
+    if (!globe) return;
+    const slot = document.getElementById('globe-slot');
+    if (!slot) return;
+    globe.setData(globeData());
+    globe.attach(slot);
+  }
   function newSetup(mode) {
     return {
       mode, depth: 'simple', scenario: '1911', focus: 'CHN', origin: 'history', direction: 'natural',
@@ -44,6 +70,7 @@
     const saves = WS.Save.list();
     app.innerHTML = `
       <div class="start">
+        <div class="globe-slot hero" id="globe-slot"><div class="hud-tag tl">TERRA-3 · 觀測中</div><div class="hud-tag br">文明調整台 v1</div></div>
         <div class="brand">
           <div class="en">WORLD SIMULATOR · 創•世界</div>
           <h1>世界模擬器</h1>
@@ -146,9 +173,10 @@
 
   // ======================= 遊戲畫面 =======================
   function render() {
-    if (S.screen === 'start') return renderStart();
-    if (S.screen === 'setup') return renderSetup();
-    renderGame();
+    if (S.screen === 'start') renderStart();
+    else if (S.screen === 'setup') renderSetup();
+    else renderGame();
+    mountGlobe();
   }
 
   function renderGame() {
@@ -158,6 +186,7 @@
     app.innerHTML = `
       <div class="topbar">
         <div class="topbar-row">
+          <div class="sys-id"><i></i>TERRA-3</div>
           <div class="date num">${w.year} 年 ${w.month} 月<small>${esc(w.branch.name)}</small></div>
           <span class="spacer"></span>
           <div class="seg">${[['country', '國家'], ['global', '全球']].map(([v, l]) => `<button data-act="mode" data-v="${v}" class="${w.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -241,6 +270,26 @@
       <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位</span></div>`;
   }
 
+  // ---------- 觀測窗：地球＋儀表讀數 ----------
+  function observatory() {
+    const w = W();
+    const ids = U.ids(w);
+    const toggle = `<div class="seg mini">${[['globe', '球體'], ['flat', '平面']].map(([v, l]) => `<button data-act="map-view" data-v="${v}" class="${S.mapView === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    if (S.mapView === 'flat' || !globe) return `<div class="card"><h3>世界地圖 ${toggle}</h3>${mapSvg()}</div>`;
+    const pop = ids.reduce((s, id) => s + U.popTotal(w.countries[id]), 0);
+    const gdp = ids.reduce((s, id) => s + w.countries[id].econ.gdp, 0);
+    const wars = w.wars.filter((x) => !x.ended).length;
+    const allies = Object.values(w.relations).filter((r) => r.alliance && !r.war).length;
+    return `<div class="card observatory"><h3>行星觀測窗 ${toggle}</h3>
+      <div class="globe-slot" id="globe-slot">
+        <div class="hud-tag tl"><b>${w.year}</b>.${String(w.month).padStart(2, '0')}<span>世界線：${esc(w.branch.name)}</span></div>
+        <div class="hud-tag tr">人口<b class="num">${fPop(pop)}</b></div>
+        <div class="hud-tag bl">戰爭<b class="num ${wars ? 'bad' : ''}">${wars}</b>同盟<b class="num">${allies}</b></div>
+        <div class="hud-tag br">GDP<b class="num">${fGdp(gdp)}</b></div>
+      </div>
+      <div class="legend"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>光點大小＝人口・拖曳可轉動・點國家看詳情</span></div></div>`;
+  }
+
   // ---------- 圖表 ----------
   function chart(labels, series, opts = {}) {
     const Wd = 640, H = opts.h || 220, pl = 44, pr = 10, pt = 10, pb = 24;
@@ -305,8 +354,7 @@
     }
     const evs = w.events.filter((e) => e.level >= 2 && (w.mode === 'global' || e.level >= 3 || e.countries.includes(w.focus))).slice(-12).reverse();
     const chron = w.chronicle.slice(-3).reverse();
-    return head + `
-      <div class="card"><h3>世界地圖</h3>${mapSvg()}</div>
+    return observatory() + head + `
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
         <div class="card"><h3>歷史紀錄</h3>${chron.length ? chron.map((c) => `<p class="chron"><b>${c.year} 年</b>\n${esc(c.text)}</p>`).join('') : '<p class="dim">每推進一年，模擬器會根據實際模擬數據寫下一段歷史摘要。</p>'}</div>
@@ -682,7 +730,7 @@
     });
     S.speed = s.speed; S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null;
     WS.Save.autosave(W());
-    render();
+    render(); window.scrollTo(0, 0);
   }
 
   function doAdvance(months) {
@@ -698,11 +746,25 @@
     S.auto = setInterval(() => {
       const res = engine.advance(1);
       if (W().month === 1) WS.Save.autosave(W());
-      if (res.stopped) { stopAuto(); render(); decisionModal(res.events); return; }
+      // 自動播放遇到重大事件不停下：改用不擋畫面的通知，玩家想介入再按「暫停並介入」
+      if (res.stopped) { engine.resolveDecision(); eventAlert(res.events); }
       if (modal.hidden) render();
     }, 160);
     render();
   }
+
+  let alertTimer = null;
+  function eventAlert(evs) {
+    const el = document.getElementById('alert');
+    if (!el) return;
+    S.alertEvents = evs;
+    el.innerHTML = `<div class="alert-k">重大事件・${W().year}.${String(W().month).padStart(2, '0')}</div>
+      <div class="alert-t">${evs.slice(0, 2).map((e) => esc(e.title)).join('<br>')}${evs.length > 2 ? `<span class="dim">　等 ${evs.length} 件</span>` : ''}</div>
+      <div class="row"><button class="btn small gold" data-act="alert-intervene">暫停並介入</button><button class="btn small" data-act="alert-close">略過</button></div>`;
+    el.hidden = false;
+    clearTimeout(alertTimer); alertTimer = setTimeout(() => (el.hidden = true), 7000);
+  }
+  function hideAlert() { const el = document.getElementById('alert'); if (el) el.hidden = true; clearTimeout(alertTimer); }
 
   function switchWorld(w2, msg) {
     stopAuto();
@@ -753,6 +815,9 @@
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;
+      case 'alert-close': hideAlert(); break;
+      case 'alert-intervene': { const evs = S.alertEvents || []; hideAlert(); stopAuto(); render(); if (evs.length) decisionModal(evs); break; }
+      case 'map-view': S.mapView = v; render(); break;
       case 'open-country': S.view = t.dataset.id; S.tab = 'country'; render(); window.scrollTo(0, 0); break;
       case 'why': whyModal(t.dataset.c, t.dataset.m, t.dataset.s); break;
       case 'why-rel': relModal(t.dataset.a, t.dataset.b); break;

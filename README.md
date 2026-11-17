@@ -21,6 +21,7 @@
 
 ```
 index.html / styles.css / app.js   介面（只讀取狀態、呼叫引擎指令）
+ui/globe.js、ui/earth-dots.js        會轉的全息地球（只畫圖，不參與模擬）
 engine/
   rng.js                 種子亂數（可重現）
   params.js              ★ 所有模型係數（待校準的示意值，集中在這裡）

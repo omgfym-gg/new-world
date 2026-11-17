@@ -85,6 +85,7 @@
 
 ```
 index.html / styles.css / app.js   介面（只讀取狀態、呼叫引擎指令，不自己算數值）
+ui/globe.js、ui/earth-dots.js        會轉的全息地球（只畫圖；陸地點陣來自 Natural Earth 公有領域資料）
 engine/params.js                   ★ 所有模型係數（待校準）
 engine/world-engine.js             主流程（每月固定 15 步）與所有引擎指令
 engine/*-engine.js                 人口、環境、經濟、政治、科技、外交、軍事
