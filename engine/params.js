@@ -218,7 +218,15 @@
       coupBase: 0.01,
       secessionBase: 0.004,
       electionInterval: 48,
-      monarchDeath: 0.003
+      monarchDeath: 0.003,
+      // 殖民地與自治領獨立（示意值）：每月基礎機率；殖民地另隨教育程度（民族意識）提高
+      independenceBase: 0.003,
+      independenceEduScale: 20,
+      independenceNationEdu: 10,       // 教育超過此值開始形成民族意識
+      independenceMovementEdu: 20,     // 教育超過此值，民族運動不必等宗主國衰退也能成功
+      independenceWave: 0.4,           // 民族自決風潮：每多一個前殖民地獨立，其他殖民地機率乘上 (1 + 此值)，最多 3 倍
+      independenceWaveMax: 3,
+      independenceDominion: 0.003
     }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

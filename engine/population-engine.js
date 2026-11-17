@@ -41,14 +41,26 @@
   };
   Population.medDiffusion = function (c, w) {
     const p = w.params.population;
-    let frontier = 0;
-    for (const id of U().ids(w)) frontier = Math.max(frontier, Population.medLevel(w.countries[id]));
+    const frontier = Population._frontier != null ? Population._frontier : Population.medFrontier(w);
     const gap = Math.max(0, frontier - Population.medLevel(c));
     const absorb = p.medAbsorbBase + (1 - p.medAbsorbBase) * c.pol.admin / 100;
     return p.medDiffusion * p.medTechWeight * gap * absorb;
   };
 
+  // 世界醫療前沿（各國醫療科技普及程度的最大值）
+  Population.medFrontier = function (w) {
+    let frontier = 0;
+    for (const id of U().ids(w)) frontier = Math.max(frontier, Population.medLevel(w.countries[id]));
+    return frontier;
+  };
+
   Population.step = function (w, ids, ctx) {
+    // 本步驟內科技普及不會改變，所以前沿只算一次（國家多時避免重複計算，結果完全相同）
+    Population._frontier = Population.medFrontier(w);
+    try { Population.stepCountries(w, ids, ctx); } finally { Population._frontier = null; }
+  };
+
+  Population.stepCountries = function (w, ids, ctx) {
     const u = U();
     const p = w.params.population;
     const rationing = w.rules.currency === false;

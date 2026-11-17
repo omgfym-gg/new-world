@@ -34,17 +34,39 @@
     if (!st) return [];
     try { return JSON.parse(st.getItem('ws.index') || '[]'); } catch (e) { return []; }
   };
+  // 國家多時存檔會變大（主要是每國 30 年的因果帳）。瀏覽器空間不足時，改存「精簡版」：
+  // 只保留最近幾年的因果帳與決策紀錄，其餘世界狀態完全相同，所以之後的模擬結果不變；只是更早年份的「?」追查會比較簡略。
+  Save.compactYears = 5;
+  Save.compact = function (w) {
+    const out = JSON.parse(JSON.stringify(w));
+    for (const id in out.countries) {
+      const c = out.countries[id];
+      if (c.causes && c.causes.years) c.causes.years = c.causes.years.slice(-Save.compactYears);
+      if (c.decisions) c.decisions = c.decisions.slice(-20);
+    }
+    out.compacted = { year: w.year, keepYears: Save.compactYears };
+    return out;
+  };
+  // 先存完整版，空間不足再存精簡版
+  Save.put = function (st, key, w) {
+    try { st.setItem(key, JSON.stringify(w)); return 'full'; } catch (e) { /* 空間不足 */ }
+    st.removeItem(key);
+    st.setItem(key, JSON.stringify(Save.compact(w)));
+    return 'compact';
+  };
+
   Save.write = function (w, slotName) {
     const st = Save.storage();
     if (!st) return { ok: false, reason: '此環境無法使用瀏覽器儲存' };
     const id = 'S' + Date.now().toString(36);
     const meta = { id, name: slotName || w.name, branch: w.branch.name, branchId: w.branch.id, parent: w.branch.parent, year: w.year, month: w.month, mode: w.mode, focus: w.focus, saved: new Date().toISOString(), world_id: w.world_id };
     try {
-      st.setItem('ws.save.' + id, JSON.stringify(w));
+      const how = Save.put(st, 'ws.save.' + id, w);
+      if (how === 'compact') meta.compact = true;
       const idx = Save.list();
       idx.unshift(meta);
       st.setItem('ws.index', JSON.stringify(idx));
-      return { ok: true, meta };
+      return { ok: true, meta, compact: how === 'compact' };
     } catch (e) {
       return { ok: false, reason: '儲存空間不足，請刪除舊存檔或匯出 JSON（' + e.message + '）' };
     }
@@ -63,7 +85,7 @@
   Save.autosave = function (w) {
     const st = Save.storage();
     if (!st) return;
-    try { st.setItem('ws.autosave', JSON.stringify(w)); } catch (e) { /* 空間不足時略過自動存檔 */ }
+    try { Save.put(st, 'ws.autosave', w); } catch (e) { /* 空間不足時略過自動存檔 */ }
   };
   Save.readAutosave = function () {
     const st = Save.storage();

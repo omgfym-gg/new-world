@@ -43,7 +43,8 @@
     authoritarian: { name: '威權政體', family: 'autocracy', elections: false, repression: true },
     warlord: { name: '軍閥割據', family: 'autocracy', elections: false, repression: true },
     socialist: { name: '社會主義', family: 'socialist', elections: false, repression: true, planned: true },
-    commune: { name: '地區共治', family: 'commune', elections: true, repression: false, planned: true }
+    commune: { name: '地區共治', family: 'commune', elections: true, repression: false, planned: true },
+    colonial: { name: '殖民統治', family: 'autocracy', elections: false, repression: true }
   };
 
   WS.Data.goals = {

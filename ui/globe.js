@@ -440,6 +440,7 @@
     ctx.font = '600 11px "Noto Sans TC","PingFang TC",system-ui,sans-serif';
     ctx.textAlign = 'center';
     const sorted = ms.slice().sort((a, b) => a.size - b.size);
+    const labels = [];
     for (const m of sorted) {
       const q = pt(m.lat, m.lon);
       const p = proj(q.sp, q.cp, q.l, 1);
@@ -461,16 +462,25 @@
         const rr = r + 6, rot = t * 1.2;
         for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(p.x, p.y, rr, rot + k * Math.PI / 2, rot + k * Math.PI / 2 + 0.9); ctx.stroke(); }
       }
-      if (p.z > 0.3) {
-        ctx.fillStyle = 'rgba(5,7,13,.65)';
-        const tw = ctx.measureText(m.name).width + 8;
-        ctx.fillRect(p.x - tw / 2, p.y + r + 3, tw, 15);
-        ctx.fillStyle = m.id === this.data.focus ? '#fde68a' : '#e6ecff';
-        ctx.fillText(m.name, p.x, p.y + r + 14);
-      }
+      if (p.z > 0.3) labels.push({ m, x: p.x, y: p.y, r, a });
       ctx.globalAlpha = 1;
       this.proj.push({ id: m.id, x: p.x, y: p.y, r, z: p.z });
     }
+    // 國名標籤：國家多時會互相重疊，先畫觀察國與大國，被擋住的小國就不畫（點圓點仍可開啟）
+    const placed = [];
+    labels.sort((x, y) => (y.m.id === this.data.focus) - (x.m.id === this.data.focus) || y.m.size - x.m.size);
+    for (const L of labels) {
+      const tw = ctx.measureText(L.m.name).width + 8;
+      const box = [L.x - tw / 2, L.y + L.r + 3, tw, 15];
+      if (placed.some((b) => box[0] < b[0] + b[2] && b[0] < box[0] + box[2] && box[1] < b[1] + b[3] && b[1] < box[1] + box[3])) continue;
+      placed.push(box);
+      ctx.globalAlpha = L.a;
+      ctx.fillStyle = 'rgba(5,7,13,.65)';
+      ctx.fillRect(box[0], box[1], box[2], box[3]);
+      ctx.fillStyle = L.m.id === this.data.focus ? '#fde68a' : '#e6ecff';
+      ctx.fillText(L.m.name, L.x, L.y + L.r + 14);
+    }
+    ctx.globalAlpha = 1;
 
     this._tags(t);
     this._hud(cx, cy, R, t);

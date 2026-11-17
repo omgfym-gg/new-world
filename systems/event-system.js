@@ -64,22 +64,29 @@
   Events.defs = [
     // ===== 固定歷史事件（有條件，不強制發生）=====
     {
-      id: 'wuchang', type: 'historical', name: '武昌起義', scenario: '1911', date: [1911, 10], country: 'CHN',
+      id: 'wuchang', type: 'historical', name: '武昌起義', scenario: ['1911', '1911w'], date: [1911, 10], country: 'CHN',
       check: (w, c) => cond([[c.regime === 'monarchy', '清廷仍為君主專制'], [c.pol.stability < 50, `政治穩定度 ${c.pol.stability.toFixed(0)} < 50`], [c.pol.legitimacy < 40, `政府合法性 ${c.pol.legitimacy.toFixed(0)} < 40`]]),
       prob: 0.85,
       apply(w, c) { c.pol.conflict = Math.min(100, c.pol.conflict + 15); c.pol.revolutionPressure += 40; U().cause(c, 'conflict', '武昌起義', 15); return ['社會衝突 +15', '革命壓力大幅上升（之後數月革命機率提高）']; }
     },
     {
-      id: 'sarajevo', type: 'historical', name: '巴爾幹危機（塞拉耶佛事件）', scenario: '1911', date: [1914, 6], country: 'DEU',
+      id: 'sarajevo', type: 'historical', name: '巴爾幹危機（塞拉耶佛事件）', scenario: ['1911', '1911w'], date: [1914, 6], country: 'DEU',
       check: (w, c) => {
         const r1 = U().relation(w, 'DEU', 'RUS'), r2 = U().relation(w, 'DEU', 'FRA');
         return cond([[w.rules.war !== false && w.rules.states !== false, '世界允許國家間戰爭'], [!!r1 && r1.rel < -10, `德俄關係 ${r1 ? r1.rel.toFixed(0) : '—'} < −10`], [!!r2 && r2.rel < -30, `德法關係 ${r2 ? r2.rel.toFixed(0) : '—'} < −30`]]);
       },
       prob: 1,
-      apply(w, c) { WS.Diplomacy.remember(w, 'DEU', 'RUS', -35, '巴爾幹危機'); WS.Diplomacy.remember(w, 'DEU', 'FRA', -15, '巴爾幹危機'); return ['德俄關係急遽惡化', '德法關係惡化', '各國將依自身判斷決定是否開戰（不強制）']; }
+      apply(w, c) {
+        WS.Diplomacy.remember(w, 'DEU', 'RUS', -35, '巴爾幹危機'); WS.Diplomacy.remember(w, 'DEU', 'FRA', -15, '巴爾幹危機');
+        const out = ['德俄關係急遽惡化', '德法關係惡化'];
+        // 全世界劇本：奧匈與塞爾維亞都還存在時，雙方關係也惡化
+        const live = (id) => w.countries[id] && w.countries[id].alive;
+        if (live('AUT') && live('SRB')) { WS.Diplomacy.remember(w, 'AUT', 'SRB', -45, '塞拉耶佛刺殺事件'); WS.Diplomacy.remember(w, 'AUT', 'RUS', -15, '巴爾幹危機'); out.push('奧匈與塞爾維亞關係急遽惡化', '奧俄關係惡化'); }
+        return out.concat(['各國將依自身判斷決定是否開戰（不強制）']);
+      }
     },
     {
-      id: 'twentyone', type: 'historical', name: '日本對華二十一條要求', scenario: '1911', date: [1915, 1], country: 'JPN',
+      id: 'twentyone', type: 'historical', name: '日本對華二十一條要求', scenario: ['1911', '1911w'], date: [1915, 1], country: 'JPN',
       check: (w, c) => {
         const C = w.countries.CHN; const r = U().relation(w, 'CHN', 'JPN');
         return cond([[!!C && C.alive, '中國存在'], [!!C && c.mil.power > C.mil.power * 1.3, '日本軍力明顯優於中國'], [!!C && C.pol.stability < 55, '中國國內不穩'], [!!r && r.rel < -10, '中日關係緊張']]);
@@ -226,6 +233,65 @@
     }
   ];
 
+  const SUBJECT_SKIP = ['revolution', 'coup', 'warlordism', 'reunification', 'democratization', 'secession'];
+  const PREFIX = /^(英屬|法屬|荷屬|美屬|比屬|德屬|葡屬|西屬|義屬|日屬)/;
+
+  // 已經獨立的前殖民地數量（不含和平取得主權的自治領）
+  const wave = (w) => U().ids(w).filter((id) => w.countries[id].formerOverlord && w.countries[id].formerKind !== 'dominion').length;
+
+  // ---- 殖民地與自治領獨立（條件事件，不照史實年份強制發生）----
+  Events.defs.push({
+    id: 'independence', type: 'conditional', name: '獨立', cooldown: 24,
+    check(w, c) {
+      if (!c.overlord) return cond([[false, '不是殖民地或自治領']]);
+      const O = w.countries[c.overlord];
+      if (!O || !O.alive) return cond([[true, '宗主國已不存在']]);
+      if (c.subjectType === 'dominion') return cond([[w.rules.states !== false, '存在國家'], [c.demo.edu > 70, `教育 ${c.demo.edu.toFixed(0)} > 70，自治傳統成熟`], [c.pol.stability > 50, `穩定度 ${c.pol.stability.toFixed(0)} > 50`]]);
+      const weak = O.pol.exhaustion > 35 || O.pol.stability < 40, p = w.params.events;
+      return cond([
+        [w.rules.states !== false, '存在國家'],
+        [c.pol.legitimacy < 40, `殖民政府合法性 ${c.pol.legitimacy.toFixed(0)} < 40`],
+        [c.demo.edu > p.independenceNationEdu || c.demo.urban > 0.2, `民族意識形成：教育 ${c.demo.edu.toFixed(0)} > ${p.independenceNationEdu} 或都市化 ${(c.demo.urban * 100).toFixed(0)}% > 20%`],
+        [weak || c.demo.edu > p.independenceMovementEdu, `宗主國${O.name}力量衰退（戰爭耗竭 ${O.pol.exhaustion.toFixed(0)} > 35 或穩定度 ${O.pol.stability.toFixed(0)} < 40）或民族運動壯大（教育 > ${p.independenceMovementEdu}）`]
+      ].concat(wave(w) ? [[true, `民族自決風潮：已有 ${wave(w)} 個前殖民地獨立`]] : []));
+    },
+    prob(w, c) {
+      const O = w.countries[c.overlord], p = w.params.events;
+      if (!O || !O.alive) return 1;
+      if (c.subjectType === 'dominion') return p.independenceDominion;
+      const waveMult = Math.min(p.independenceWaveMax, 1 + p.independenceWave * wave(w));
+      return p.independenceBase * (1 + Math.max(0, c.demo.edu - p.independenceNationEdu) / p.independenceEduScale) * waveMult;
+    },
+    apply(w, c, ctx, ev) {
+      const u = U(), oid = c.overlord, O = w.countries[oid];
+      const kind = c.subjectType;
+      const oldName = c.name;
+      c.overlord = null; c.subjectType = null; c.formerOverlord = oid; c.formerKind = kind; c.independence = w.year;
+      if (c.independentName) c.name = c.independentName;
+      else c.name = c.name.replace(PREFIX, '');
+      c.pol.legitimacy = u.clamp(c.pol.legitimacy + 25, 0, 100); u.cause(c, 'legitimacy', '獨立建國', 25);
+      c.pol.support = u.clamp(c.pol.support + 10, 0, 100); u.cause(c, 'support', '獨立建國', 10);
+      const r = u.relation(w, c.id, oid);
+      const out = [`${oldName}脫離${O ? O.name : '宗主國'}獨立`, '合法性 +25', '民眾支持 +10'];
+      if (kind === 'dominion') { r.base = 40; r.baseWhy = '和平取得完全主權的前母國'; out.push('與前母國維持友好'); }
+      else {
+        r.base = -10; r.baseWhy = '前殖民宗主國'; WS.Diplomacy.remember(w, c.id, oid, -20, '殖民統治結束');
+        if (O && O.alive) { O.pol.legitimacy = u.clamp(O.pol.legitimacy - 3, 0, 100); u.cause(O, 'legitimacy', '失去殖民地', -3, c.name); out.push(`${O.name}合法性 −3`); }
+      }
+      Events.log(w, ctx, {
+        type: 'newcountry', title: `新國家獨立：${c.name}`, countries: [c.id, oid], level: 3, parent: ev.id, major: c.id === w.focus || oid === w.focus,
+        text: kind === 'dominion' ? `${oldName}和平取得完全主權，外交與國防自主。` : `${oldName}結束${O ? O.name : '宗主國'}的統治，成為獨立國家「${c.name}」。`,
+        causes: ev.causes.slice(), effects: []
+      });
+      if (c.regime === 'colonial') {
+        const to = c.demo.edu > 40 && c.pol.stability > 40 ? 'republic' : 'authoritarian';
+        const e2 = Events.changeRegime(w, c, to, '殖民統治結束', ['獨立後建立本土政府'], ctx, ev.id);
+        Events.changeLeader(w, c, '獨立運動領袖成為首任領導人', ctx, e2.id);
+      } else c.regimeLabel = c.name + '（' + u.regime(w, c.regime).name + '）';
+      return out;
+    }
+  });
+
   function shiftMil(c) { c.fiscal.budget.military += 0.1; U().normalize(c.fiscal.budget); }
 
   Events.step = function (w, ids, ctx) {
@@ -245,7 +311,7 @@
       }
       for (const def of Events.defs) {
         if (def.type === 'historical') {
-          if (def.country !== id || w.scenario !== def.scenario || w.year !== def.date[0] || w.month !== def.date[1]) continue;
+          if (def.country !== id || ![].concat(def.scenario).includes(w.scenario) || w.year !== def.date[0] || w.month !== def.date[1]) continue;
           const chk = def.check(w, c);
           const ov = WS.WhatIf ? WS.WhatIf.take(w, (o) => o.kind === 'event' && o.defId === def.id && o.country === id) : null;
           if (ov && ov.action === 'block') {
@@ -263,6 +329,8 @@
           }
           continue;
         }
+        // 殖民地、自治領、保護國的政權由宗主國掌握：政變、革命、割據等改由「獨立」事件處理
+        if (c.overlord && SUBJECT_SKIP.includes(def.id)) continue;
         if ((c.cool[def.id] || -1e9) > w.tick) continue;
         const chk = def.check(w, c);
         if (!chk.ok) continue;

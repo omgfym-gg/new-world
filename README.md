@@ -49,11 +49,12 @@ systems/
   headline-system.js     世界頭條：依事件紀錄與因果帳挑出每年最多 3 則重大變化
 data/
   scenario-1911.js       1911 年 8 國起點資料（人口、GDP 參考 Maddison，其餘為 D 級初始值）
+  scenario-1911-world.js 1911 全世界起點（51 國，含殖民地與自治領；起始年份選單選「51 國」）
   definitions.js         科技樹、制度、世界規則、規則衝突、自然語言關鍵字
 tests/
   run-tests.js           64 項自動測試：node tests/run-tests.js
 tools/backtest.js        歷史回測：node tools/backtest.js → reports/backtest-1911.md
-tools/health-check.js    合理範圍健康檢查：node tools/health-check.js → reports/health-1911.md
+tools/health-check.js    合理範圍健康檢查：node tools/health-check.js [種子數] [劇本] → reports/health-<劇本>.md
 data/history-reference.js、data/history-policies-1911.js、systems/backtest-system.js   回測用（只在 Node 載入）
 docs/ancient-era.md      遠古時代起點設計文件
 ```
@@ -61,7 +62,7 @@ docs/ancient-era.md      遠古時代起點設計文件
 ## 已知限制（下一步校準重點）
 
 - 所有係數都是示意值，尚未校準。歷史回測（`node tools/backtest.js`）顯示 1911–2008 年各國人口、GDP 都明顯偏離史實，主因是死亡率與生育率轉型太慢、跨國遷移太強、戰後缺少追趕式成長，詳見 `reports/backtest-1911.md`。
-- 只有 1911 年一個起點、8 個國家；地區只用於割地與分裂。
+- 只有 1911 年一個起點，分 8 國版與全世界 51 國版；地區只用於割地與分裂。
 - 年度敘述用文字模板，不是 AI。
 - 歷史回溯快照只保存在本次開啟期間（每 5 年一次）；要長期保留請用存檔。
 - 「如果」重跑需要事件之前的快照；沒有快照時（例如載入存檔後）會用世界建立時的設定與完整指令紀錄重新生成。

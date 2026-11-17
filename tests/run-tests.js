@@ -570,6 +570,100 @@ test('戰況紀錄不影響模擬結果（拿掉紀錄後世界相同）', () =>
   assert.strictEqual(strip(a.world), strip(b.world));
 });
 
+// ---------- 1911 全世界劇本 ----------
+const makeW = (setup = {}) => make(Object.assign({ mode: 'global', scenario: '1911w', seed: 'wld', intervention: 'none' }, setup));
+test('全世界劇本：51 個國家，資料欄位齊全，所有宗主國都存在', () => {
+  const sc = WS.Data.scenarios['1911w'];
+  assert.ok(sc.countries.length >= 50, '國家數 ' + sc.countries.length);
+  const ids = new Set(sc.countries.map((c) => c.id));
+  assert.strictEqual(ids.size, sc.countries.length, '代號不可重複');
+  for (const c of sc.countries) {
+    for (const k of ['pop', 'gdp', 'cbr', 'cdr', 'urban', 'edu', 'health', 'taxRate', 'lat', 'lon']) assert.ok(isFinite(c[k]), c.id + '.' + k);
+    assert.strictEqual(c.ages.length, 4, c.id); assert.ok(Math.abs(c.ages.reduce((a, b) => a + b) - 1) < 0.02, c.id + ' 年齡結構');
+    assert.ok(c.mil.personnel > 0, c.id + ' 軍隊'); assert.ok(c.regions.length >= 1, c.id + ' 地區');
+    assert.ok(WS.Data.regimes[c.regime], c.id + ' 制度 ' + c.regime);
+    for (const t in c.techs) assert.ok(WS.Data.techs[t], c.id + ' 科技 ' + t);
+    if (c.overlord) assert.ok(ids.has(c.overlord), c.id + ' 宗主國');
+  }
+  for (const [a, b] of sc.relations) assert.ok(ids.has(a) && ids.has(b), a + '-' + b);
+  // 原本 8 國資料與 1911 劇本完全相同
+  for (const c of WS.Data.scenarios['1911'].countries) assert.deepStrictEqual(sc.countries.find((x) => x.id === c.id), c);
+});
+test('全世界劇本：百年推進沒有 NaN、人口與 GDP 為正，世界總量合理', () => {
+  const e = makeW(); e.advance(1200);
+  const w = e.world;
+  for (const id of WS.util.ids(w)) {
+    const c = w.countries[id];
+    assert.ok(WS.util.popTotal(c) > 0 && c.econ.gdp > 0, id);
+    for (const k in c.pol) assert.ok(isFinite(c.pol[k]), id + '.' + k);
+  }
+  const pop = total(w);
+  assert.ok(pop > 2500 && pop < 9000, '2011 年世界人口 ' + pop.toFixed(0) + ' 百萬');
+});
+test('全世界劇本：相同種子結果相同', () => {
+  const a = makeW(); a.advance(240);
+  const b = makeW(); b.advance(240);
+  assert.strictEqual(a.serialize(), b.serialize());
+});
+test('殖民地不能自行宣戰或結盟', () => {
+  const e = makeW(); const w = e.world;
+  const ind = w.countries.IND;
+  assert.strictEqual(ind.overlord, 'GBR');
+  assert.strictEqual(WS.Policies.check(ind, w, 'declare_war'), '外交與宣戰由宗主國決定');
+  assert.strictEqual(WS.Policies.check(ind, w, 'seek_alliance'), '外交由宗主國決定');
+});
+test('宗主國開戰時殖民地一起參戰；殖民地被攻擊時宗主國出兵', () => {
+  const e = makeW(); const w = e.world;
+  const ctx = { rng: new WS.RNG(1), major: [] };
+  const war = WS.Military.declareWar(w, 'GBR', 'DEU', ctx, ['測試']);
+  for (const x of ['IND', 'CAN', 'AUS', 'EGY']) assert.ok(war.attackers.includes(x), x + ' 隨英國參戰');
+  assert.ok(war.defenders.includes('GEA'), '德屬東非隨德國參戰');
+  const e2 = makeW(); const w2 = e2.world;
+  const war2 = WS.Military.declareWar(w2, 'SIA', 'IDC', ctx, ['測試']);
+  assert.ok(war2.defenders.includes('FRA'), '法國保護法屬印度支那');
+  assert.ok(war2.defenders.includes('MAG'), '法國其他殖民地也參戰');
+});
+test('殖民地獨立：條件成立時依機率發生，改名、改制度、寫入原因', () => {
+  const e = makeW(); const w = e.world;
+  const c = w.countries.IND;
+  c.demo.edu = 30; c.pol.legitimacy = 20;
+  w.params.events.independenceBase = 1;
+  e.advance(1);
+  assert.ok(!c.overlord, '已獨立');
+  assert.strictEqual(c.name, '印度');
+  assert.strictEqual(c.formerOverlord, 'GBR');
+  assert.notStrictEqual(c.regime, 'colonial');
+  assert.ok(c.causes.cur.legitimacy['獨立建國'], '合法性變化有原因');
+  const ev = w.events.find((x) => x.type === 'newcountry' && x.countries.includes('IND'));
+  assert.ok(ev && ev.causes.some((s) => /民族/.test(s)), '事件列出條件');
+  assert.notStrictEqual(WS.Policies.check(c, w, 'declare_war'), '外交與宣戰由宗主國決定');
+});
+test('殖民地條件不成立時不會獨立（不照史實年份強制）', () => {
+  const e = makeW(); const w = e.world;
+  const c = w.countries.COD;
+  w.params.events.independenceBase = 1;
+  c.pol.legitimacy = 80;  // 合法性高、教育低
+  const chk = WS.Events.defs.find((d) => d.id === 'independence').check(w, c);
+  assert.strictEqual(chk.ok, false);
+});
+test('加入全世界劇本後，原本 8 國劇本的結果不受影響（不含宗主國欄位）', () => {
+  const e = make({ mode: 'global', seed: 'unit' }); e.advance(120);
+  for (const id of WS.util.ids(e.world)) assert.ok(!('overlord' in e.world.countries[id]), id);
+});
+test('存檔空間不足時改存精簡版，載入後繼續推進結果相同', () => {
+  const e = makeW(); e.advance(144);
+  const store = {}; let limit = 1e12;
+  const fake = { setItem(k, v) { if (v.length > limit) throw new Error('QuotaExceeded'); store[k] = v; }, getItem: (k) => store[k] ?? null, removeItem: (k) => delete store[k] };
+  WS.Save.storage = () => fake;
+  limit = JSON.stringify(e.world).length - 1;
+  const r = WS.Save.write(e.world, 't');
+  assert.ok(r.ok && r.compact, '改存精簡版');
+  const back = WS.Save.read(r.meta.id);
+  const b = new WS.WorldEngine(); b.load(JSON.stringify(back));
+  e.advance(24); b.advance(24);
+  for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
