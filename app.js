@@ -858,6 +858,21 @@
     return false;
   }
 
+  // 全球模式的介入方式：對事件當事國用神之手（只改條件），或按事件旁的「如果？」看另一條世界線
+  function eventDivineHtml(evs) {
+    const w = W();
+    const cid = evs.flatMap((e) => e.countries || []).find((id) => w.countries[id] && w.countries[id].alive);
+    const hasWhatif = evs.some((e) => WS.WhatIf.options(w, e).length > 0);
+    const tip = hasWhatif ? '<p class="dim" style="margin:8px 0 0">想看「如果這件事沒發生」？按事件旁的「如果？」。</p>' : '';
+    if (!cid) return tip;
+    const c = w.countries[cid];
+    const D = w.divine || { energy: 0 };
+    return `<h3 style="color:var(--blue);font-size:14px;margin:12px 0 6px">用神之手介入${esc(c.name)}（神力 ${Math.floor(D.energy)}）</h3>
+      <div class="divine-btns">${Object.entries(WS.Divine.KINDS).map(([k, d]) => {
+        const cost = WS.Divine.cost(w, k);
+        return `<button class="btn small" data-act="divine-open" data-v="${k}" data-c="${cid}" ${D.energy < cost ? 'disabled' : ''}><b>${d.icon}</b> ${esc(d.name)}<small class="num">${cost}</small></button>`;
+      }).join('')}</div>${tip}`;
+  }
   function decisionModal(evs) {
     const w = W();
     const focus = w.mode === 'country' ? w.countries[w.focus] : null;
@@ -869,8 +884,8 @@
       <ul class="events">${evs.map(eventItem).join('')}</ul>
       ${ev ? `<h3 style="color:var(--blue);font-size:14px;margin:12px 0 6px">${esc(focus.name)}可採取的政策（系統評分）</h3>
         ${ev.list.filter((p) => p.feasible === true).slice(0, 5).map((p) => `<div class="policy"><div>${esc(p.name)}<small>${esc(WS.Policies.defs[p.id].desc)}</small></div><button class="btn small" data-act="policy" data-c="${focus.id}" data-p="${p.id}" data-close="1">執行</button></div>`).join('')}`
-        : '<p class="dim">全球模式：可到「世界」頁修改世界規則來干預。</p>'}
-      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${!ev ? '<button class="btn" data-act="goto-rules">前往修改世界規則</button>' : ''}${S.resumeAuto ? '<button class="btn" data-act="stay-paused">先停在這裡</button>' : ''}</div>`);
+        : eventDivineHtml(evs)}
+      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${S.resumeAuto ? '<button class="btn" data-act="stay-paused">先停在這裡</button>' : ''}</div>`);
     mountMedia();
   }
 
@@ -1091,7 +1106,7 @@
       case 'whatif-run': whatifRun(t.dataset.id, t.dataset.k); break;
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'headlines-all': headlinesModal(); break;
-      case 'divine-open': S.divine = { kind: v || 'health', cid: (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
+      case 'divine-open': S.divine = { kind: v || 'health', cid: t.dataset.c || (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
       case 'divine-kind': S.divine.kind = v; S.divine.opt = null; divineModal(); break;
       case 'divine-opt': S.divine.opt = v; divineModal(); break;
       case 'divine-cast': divineCast(); break;
