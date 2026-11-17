@@ -886,18 +886,33 @@
     render();
   }
 
-  let alertTimer = null;
+  // 自動播放時的重大事件通知：一則一張卡片，新的疊在上面，不會蓋掉還沒處理的舊通知
+  const ALERT_MAX = 3, ALERT_LIFE = 20000;
+  let alerts = [], alertSeq = 0, alertTimer = null;
   function eventAlert(evs) {
+    alerts.unshift({ key: ++alertSeq, y: W().year, m: W().month, events: evs, at: Date.now() });
+    drawAlerts();
+  }
+  function drawAlerts() {
     const el = document.getElementById('alert');
     if (!el) return;
-    S.alertEvents = evs;
-    el.innerHTML = `<div class="alert-k">重大事件・${W().year}.${String(W().month).padStart(2, '0')}</div>
-      <div class="alert-t">${evs.slice(0, 2).map((e) => esc(e.title)).join('<br>')}${evs.length > 2 ? `<span class="dim">　等 ${evs.length} 件</span>` : ''}</div>
-      <div class="row"><button class="btn small gold" data-act="alert-intervene">暫停並介入</button><button class="btn small" data-act="alert-close">略過</button></div>`;
+    const now = Date.now();
+    alerts = alerts.filter((a) => now - a.at < ALERT_LIFE);
+    if (!alerts.length) { el.hidden = true; el.innerHTML = ''; clearTimeout(alertTimer); return; }
+    const shown = alerts.slice(0, ALERT_MAX), more = alerts.length - shown.length;
+    el.innerHTML = `${alerts.length > 1 ? `<div class="alert-bar"><span>重大事件 ${alerts.length} 則・世界繼續運轉中</span><button class="link" data-act="alert-clear">全部略過</button></div>` : ''}
+      ${shown.map((a) => `<div class="alert-card">
+        <div class="alert-k">重大事件・${a.y}.${String(a.m).padStart(2, '0')}</div>
+        <ul class="alert-t">${a.events.map((e) => `<li><button class="link" data-act="alert-event" data-id="${esc(e.id)}">${esc(e.title)}</button>${WS.WhatIf.options(W(), e).length ? ` <button class="wi-chip" data-act="alert-whatif" data-id="${esc(e.id)}">如果？</button>` : ''}</li>`).join('')}</ul>
+        <div class="row"><button class="btn small gold" data-act="alert-intervene" data-k="${a.key}">暫停並介入</button><button class="btn small" data-act="alert-close" data-k="${a.key}">略過</button></div>
+      </div>`).join('')}
+      ${more > 0 ? `<div class="alert-more dim">還有 ${more} 則較早的事件，可到「歷史」查看</div>` : ''}`;
     el.hidden = false;
-    clearTimeout(alertTimer); alertTimer = setTimeout(() => (el.hidden = true), 7000);
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(drawAlerts, 1000 + Math.max(0, ALERT_LIFE - (now - alerts[alerts.length - 1].at)));
   }
-  function hideAlert() { const el = document.getElementById('alert'); if (el) el.hidden = true; clearTimeout(alertTimer); }
+  function dropAlert(key) { alerts = key == null ? [] : alerts.filter((a) => a.key !== key); drawAlerts(); }
+  function hideAlert() { dropAlert(null); }
 
   function switchWorld(w2, msg) {
     stopAuto();
@@ -948,8 +963,17 @@
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;
-      case 'alert-close': hideAlert(); break;
-      case 'alert-intervene': { const evs = S.alertEvents || []; hideAlert(); stopAuto(); render(); if (evs.length) decisionModal(evs); break; }
+      case 'alert-clear': hideAlert(); break;
+      case 'alert-close': dropAlert(+t.dataset.k); break;
+      case 'alert-intervene': {
+        const al = alerts.find((x) => x.key === +t.dataset.k);
+        dropAlert(+t.dataset.k); stopAuto(); render();
+        if (al) decisionModal(al.events);
+        break;
+      }
+      // 看原因：自動播放繼續，事件視窗不會被之後的事件換掉
+      case 'alert-event': eventModal(t.dataset.id); break;
+      case 'alert-whatif': stopAuto(); render(); whatifModal(t.dataset.id); break;
       case 'wc-mode': if (cam) { cam.mode = v; t.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === t)); } break;
       case 'map-view': S.mapView = v; render(); break;
       case 'open-country': S.view = t.dataset.id; S.tab = 'country'; render(); window.scrollTo(0, 0); break;
