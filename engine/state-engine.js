@@ -122,7 +122,8 @@
 
   // ---- 建立世界 ----
   State.createWorld = function (setup) {
-    const sc = WS.Data.scenarios[setup.scenario || '1911'];
+    // scenarioData：動態產生的起點（例如從遠古世界接到近代），存在 genesis 裡，所以「如果？」重新生成時也一樣
+    const sc = setup.scenarioData || WS.Data.scenarios[setup.scenario || '1911'];
     const seedStr = setup.seed != null && setup.seed !== '' ? String(setup.seed) : 'world-' + sc.id;
     const w = {
       world_id: 'world_' + WS.hashSeed(seedStr + JSON.stringify(setup)).toString(36),

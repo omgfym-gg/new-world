@@ -10,7 +10,7 @@
   };
   // 遠古時代（地區）的指標
   Explain.ANCIENT_METRICS = {
-    population: '人口（百萬）', store: '儲糧', aid: '鄰近地區援助', farming: '務農比例（%）', urban: '城市人口（百萬）', exchange: '交流程度', know: '農耕經驗'
+    population: '人口（百萬）', store: '儲糧', aid: '鄰近地區援助', harvest: '收成（與平常相比 %）', farming: '務農比例（%）', urban: '城市人口（百萬）', exchange: '交流程度', know: '農耕經驗', research: '神之手啟發的研究點數'
   };
   Explain.LINKS = {
     '政府合法性': 'legitimacy', '經濟狀況': 'gdp', '糧食供應': 'food', '社會衝突': 'conflict', '民眾支持': null,

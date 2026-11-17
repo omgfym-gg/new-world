@@ -8,6 +8,7 @@
   Events.log = function (w, ctx, e) {
     w.counters.event++;
     const ev = Object.assign({ id: 'E' + w.counters.event, y: w.year, m: w.month, level: 1, countries: [], causes: [], effects: [], followups: [] }, e);
+    if (w.era === 'ancient') ev.tick = w.tick;   // 遠古：一期好幾年，用期數定位（「如果？」重跑用）
     if (ev.parent) {
       const p = w.events.find((x) => x.id === ev.parent);
       if (p) p.followups.push(ev.id);

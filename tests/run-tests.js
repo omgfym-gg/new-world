@@ -737,6 +737,69 @@ test('遠古：存檔後載入繼續推進，結果與不中斷相同', () => {
   assert.strictEqual(JSON.stringify(a.world.ancient), JSON.stringify(b.world.ancient));
 });
 
+test('遠古「如果？」：阻止一項自行發明 → 平行世界分岔，原世界不變', () => {
+  const e = makeA('wi'); e.advanceYears(5000);
+  const w = e.world, before = JSON.stringify(w.ancient);
+  const ev = w.events.find((x) => x.type === 'tech' && (x.causes || [])[0] === '自行發明' && x.tick > 0);
+  assert.ok(ev, '有自行發明的事件');
+  const r = e.whatIf(ev.id, 'block');
+  assert.ok(r.ok && r.report.applied, '有攔截到');
+  assert.strictEqual(JSON.stringify(w.ancient), before, '原世界不變');
+  const alt = r.world.ancient.regions[ev.countries[0]].tech[ev.techId];
+  assert.ok(!alt || alt.how !== '自行發明' || alt.year !== ev.y, '平行世界沒有在同時自行發明');
+  assert.ok(r.world.events.some((x) => x.type === 'whatif'), '分岔點寫入事件');
+});
+test('遠古「如果？」：同樣的設定重跑兩次結果相同', () => {
+  const e = makeA('wi2'); e.advanceYears(6000);
+  const ev = e.world.events.find((x) => WS.WhatIf.options(e.world, x).length && x.type === 'polity');
+  assert.ok(ev, '有政體事件');
+  const a = e.whatIf(ev.id, 'block'), b = e.whatIf(ev.id, 'block');
+  assert.strictEqual(JSON.stringify(a.world.ancient), JSON.stringify(b.world.ancient));
+});
+test('遠古神之手：經指令紀錄、寫入因果帳，「如果？」重跑時會重播', () => {
+  const e = makeA('dv'); e.advanceYears(3000);
+  const w = e.world, en = w.divine.energy;
+  const r1 = e.divine('drought', 'FER'), r2 = e.divine('inspire', 'EUR');
+  assert.ok(r1.ok && r2.ok);
+  assert.ok(w.divine.energy < en);
+  assert.strictEqual(w.commandLog.filter((c) => c.cmd === 'divine').length, 2);
+  e.advanceYears(200);
+  const h = WS.Explain.metric(w, 'FER', 'harvest', 30).factors.find((f) => /神之手/.test(f.name));
+  assert.ok(h && h.v < 0, '乾旱寫入收成因果帳');
+  // 從乾旱之前的快照重跑：神之手要在同一期重播
+  const ev = w.events.find((x) => x.type === 'tech' && (x.causes || [])[0] === '自行發明' && x.tick > 0 && x.tick < w.commandLog[0].tick);
+  const r = e.whatIf(ev.id, 'block');
+  assert.ok(r.ok);
+  assert.strictEqual(r.world.divine.log.length, 2, '平行世界也有兩次干預');
+});
+test('遠古神之手：條件不足時不能施展（神力不夠）', () => {
+  const e = makeA('dv2');
+  e.world.divine.energy = 5;
+  const r = e.divine('inspire', 'FER');
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(e.world.commandLog.length, 0);
+});
+test('遠古接到近代：1800 年以後把政體轉成近代國家，人口沿用，近代引擎可以繼續推進', () => {
+  const e = makeA('br');
+  assert.strictEqual(WS.EraBridge.available(e.world).ok, false);
+  e.advanceYears(1801 - e.world.year);
+  const anc = e.world, popA = WS.Ancient.worldPop(anc), ancJson = JSON.stringify(anc.ancient);
+  const r = e.toModern();
+  assert.ok(r.ok, r.reason);
+  const w = e.world, ids = WS.util.ids(w);
+  assert.ok(!WS.Ancient.isAncient(w) && ids.length >= 2);
+  const popM = ids.reduce((s, id) => s + WS.util.popTotal(w.countries[id]), 0);
+  assert.ok(Math.abs(popM - popA) / popA < 0.02, `人口 ${popA} → ${popM}`);
+  assert.ok(w.origin && w.origin.fromAncient);
+  assert.strictEqual(JSON.stringify(anc.ancient), ancJson, '遠古世界不被改動');
+  e.setIntervention('none'); e.advance(120);
+  for (const id of WS.util.ids(e.world)) { const c = e.world.countries[id]; assert.ok(isFinite(c.econ.gdp) && c.econ.gdp > 0 && WS.util.popTotal(c) > 0, id); }
+  // 近代世界存檔載入後繼續推進，結果相同（起點資料存在 genesis 裡）
+  const b = new WS.WorldEngine(); b.load(e.serialize());
+  e.advance(24); b.advance(24);
+  for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

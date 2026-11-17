@@ -550,7 +550,7 @@
       const wars = w.wars.filter((x) => !x.ended).length;
       const orgs = Object.values(w.organizations).filter((o) => o.active).length;
       const sw = w.series.world, n = sw.pop.length;
-      head = `<div class="card"><h3>全球文明狀態</h3><div class="kpis">
+      head = (w.origin && w.origin.fromAncient ? `<div class="card"><h3>承接遠古</h3><p class="dim">這個世界從西元前 10,000 年的遠古世界線（種子「${esc(w.origin.ancientSeed)}」）演進而來，${w.origin.year} 年轉入近代引擎。國家來自當時的政體：${w.origin.countries.map((c) => esc(c.name)).join('、')}。</p></div>` : '') + `<div class="card"><h3>全球文明狀態</h3><div class="kpis">
         ${kpi('世界人口（模擬範圍）', fPop(pop), n > 1 ? sg(((sw.pop[n - 1] - sw.pop[n - 2]) / sw.pop[n - 2]) * 100) + '%／年' : null)}
         ${kpi('世界 GDP' + (w.rules.currency === false ? '（替代估值）' : ''), fGdp(gdp), n > 1 ? sg(((sw.gdp[n - 1] - sw.gdp[n - 2]) / sw.gdp[n - 2]) * 100) + '%／年' : null)}
         ${kpi('政治實體', ids.length + ' 個', null)}
@@ -782,25 +782,25 @@
       ${e.decision ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">決策過程</h3><p class="dim">候選方案：${e.decision.alternatives.map((a) => esc(a[0]) + ' ' + a[1]).join('、') || '無'}（選中方案評分 ${e.decision.score}）</p>` : ''}
       ${parent ? `<p>前因事件：<button class="link" data-act="event" data-id="${parent.id}">${esc(parent.title)}</button></p>` : ''}
       ${fol.length ? `<p>後續事件：${fol.map((f) => `<button class="link" data-act="event" data-id="${f.id}">${esc(f.title)}</button>`).join('、')}</p>` : ''}
-      ${isAnc() ? '' : whatifOptions(e)}`);
+      ${whatifOptions(e)}`);
     mountMedia();
   }
 
   // ======================= 如果（平行世界） =======================
   function whatifOptions(e) {
     const av = engine.whatIfAvailable(e.id);
-    if (!av.opts.length) return '<p class="dim" style="margin-top:12px">想看其他可能？到「歷史」頁回溯到事件之前建立分支，改變政策或世界規則後，用歷史比較對照結果。</p>';
+    if (!av.opts.length) return isAnc() ? '<p class="dim" style="margin-top:12px">這類事件目前不能用「如果？」改寫。可以改寫的有：自行發明、政體形成、出兵、政體瓦解、瘟疫。</p>' : '<p class="dim" style="margin-top:12px">想看其他可能？到「歷史」頁回溯到事件之前建立分支，改變政策或世界規則後，用歷史比較對照結果。</p>';
     if (!av.ok) return `<p class="dim" style="margin-top:12px">「如果」平行世界：${esc(av.reason)}。</p>`;
     const w = W();
     return `<div class="wi-box"><h3>如果……？</h3>
-      <p class="dim">系統會回到 ${e.y} 年 ${e.m} 月之前，用同一個種子重跑到現在（${w.year} 年 ${w.month} 月），只改寫這一件事，再把兩個世界並排比較。目前的世界不會被改動。</p>
+      <p class="dim">系統會回到${isAnc() ? esc(yl(e.y)) : ` ${e.y} 年 ${e.m} 月`}之前，用同一個種子重跑到現在（${isAnc() ? esc(yl(w.year)) : `${w.year} 年 ${w.month} 月`}），只改寫這一件事，再把兩個世界並排比較。目前的世界不會被改動。</p>
       <div class="row">${av.opts.map((o) => `<button class="btn gold" data-act="whatif-run" data-id="${o.target.eventId}" data-k="${o.key}">${esc(o.label)}</button>`).join('')}</div></div>`;
   }
   function whatifModal(id) {
     const w = W();
     const e = w.events.find((x) => x.id === id);
     if (!e) return toast('這個事件已超出保存範圍');
-    openModal(`<h2>${esc(e.title)}</h2><p class="dim">${e.y} 年 ${e.m} 月・${typeLabel(e.type)}</p>${whatifOptions(e)}`);
+    openModal(`<h2>${esc(e.title)}</h2><p class="dim">${isAnc() ? esc(yl(e.y)) : `${e.y} 年 ${e.m} 月`}・${typeLabel(e.type)}</p>${whatifOptions(e)}`);
   }
   function whatifRun(id, key) {
     stopAuto();
@@ -815,6 +815,7 @@
   }
 
   function whatifReport() {
+    if (isAnc()) return ancientWhatifReport();
     const { res, parentName } = S.whatif;
     const R = res.report, w = W(), alt = res.world;
     const pct = (a, b) => (a ? sg(((b - a) / a) * 100, 0) + '%' : '—');
@@ -957,6 +958,7 @@
       ${recent.length ? `<ul class="events" style="margin-top:10px">${recent.map((g) => `<li data-act="event" data-id="${g.eventId}" class="${g.done ? '' : 'l3'}"><div class="when">${g.y}.${String(g.m).padStart(2, '0')}・${g.done ? '已結束' : '進行中'}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${esc(g.status)}</div></li>`).join('')}</ul>` : ''}</div>`;
   }
   function divineModal() {
+    if (isAnc()) return ancientDivineModal();
     const w = W();
     const st = S.divine;
     const ids = U.ids(w);
@@ -998,7 +1000,7 @@
     const w = W();
     const log = ((w.divine && w.divine.log) || []).slice().reverse();
     openModal(`<h2>神之手紀錄</h2><p class="dim">每一次干預與它目前的結果。點一下可以看完整的原因與後續事件。</p>
-      <ul class="events">${log.map((g) => `<li data-act="event" data-id="${g.eventId}"><div class="when">${g.y}.${String(g.m).padStart(2, '0')}・${esc(WS.Divine.KINDS[g.kind].name)}・神力 ${g.cost}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${g.done ? '結果：' : '狀態：'}${esc(g.status)}</div></li>`).join('')}</ul>`);
+      <ul class="events">${log.map((g) => `<li data-act="event" data-id="${g.eventId}"><div class="when">${isAnc() ? esc(yl(g.y)) : `${g.y}.${String(g.m).padStart(2, '0')}`}・${esc(WS.Divine.kinds(w)[g.kind].name)}・神力 ${g.cost}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${g.done ? '結果：' : '狀態：'}${esc(g.status)}</div></li>`).join('')}</ul>`);
   }
 
   function systemTab() {
@@ -1115,11 +1117,12 @@
         <div class="hud-tag br">政體<b class="num">${s.polities}</b></div>
       </div>
       <div class="legend"><span>顏色＝所屬政體</span><span><i style="background:#38bdf8"></i>同一政體</span><span><i style="background:#ffd68c"></i>城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div>
-      <p class="dim" style="margin:4px 0 0">拖曳可轉動・點地區看詳情・點標籤看原因</p></div>`;
+      <p class="dim" style="margin:4px 0 0">拖曳可轉動・點地區看詳情・點標籤看原因・事件旁的 <b class="gold">如果？</b> 可以看另一條世界線</p></div>`;
   }
   function aEventItem(e) {
     const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '');
-    return `<li class="${cl}" data-act="event" data-id="${e.id}"><div class="when">${esc(yl(e.y))}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
+    const can = WS.WhatIf.options(W(), e).length > 0;
+    return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${esc(yl(e.y))}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
   }
   function ancientOverview() {
     const w = W(), A = AN(), s = A.summary(w);
@@ -1138,6 +1141,8 @@
         ${kpi('國家（城邦以上）', s.states + ' 個', null)}
       </div>
       <p class="dim" style="margin:10px 0 0">遠古世界沒有國家與 GDP：以 ${s.regions} 個地理區域模擬採集、農耕、儲糧、交換、發明與擴散。每期 ${A.dtFor(w)} 年，越接近近代刻度越細。</p></div>
+      ${WS.EraBridge.available(w).ok ? bridgeCard() : ''}
+      ${ancientDivineCard()}
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3><ul class="events">${evs.map(aEventItem).join('') || '<li class="dim">推進時間，看人類會在哪裡先開始務農。</li>'}</ul></div>
         <div class="card"><h3>世界第一次</h3>${firsts.length ? `<ul class="list-plain">${firsts.slice(0, 14).map(([k, f]) => `<li><b>${esc(fname(k))}</b>：${esc(w.ancient.regions[f.region].name)}・${esc(yl(f.year))}</li>`).join('')}</ul>` : '<p class="dim">還沒有新的發明。農業、城市、文字……會在哪裡、什麼時候出現，每條世界線都不一樣。</p>'}</div>
@@ -1239,8 +1244,121 @@
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
+      ${bridgeCard()}
       <div class="card"><h3>這個世界</h3><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
-        <p class="dim">目前遠古時代還不能使用「如果？」平行世界與神之手，之後會加入；也還不能自動接到 1911 年的近代劇本。</p></div>`;
+</div>`;
+  }
+
+  function ancientWhatifReport() {
+    const { res, parentName } = S.whatif;
+    const R = res.report;
+    const pct = (a, b) => (a ? sg(((b - a) / a) * 100, 0) + '%' : '—');
+    const Wo = R.world.orig, Wa = R.world.alt;
+    const cell = (a, b, f, rel) => `<td class="num">${f(a)}</td><td class="num">${f(b)}</td><td class="num ${cls(b - a)}">${rel ? pct(a, b) : sg(b - a, 0)}</td>`;
+    const FN = { city: '第一座城市', polity: '第一個政體', citystate: '第一個城邦', kingdom: '第一個王國', empire: '第一個帝國' };
+    const fname = (k) => FN[k] || (WS.Data.ancientTechs[k] ? WS.Data.ancientTechs[k].name : k);
+    const w = W(), rn = (id) => (w.ancient.regions[id] ? w.ancient.regions[id].name : id);
+    const fv = (f) => (f ? `${esc(rn(f.region))}・${esc(yl(f.year))}` : '<span class="dim">尚未出現</span>');
+    const top = R.rows.filter((r) => r.score > 0.02).slice(0, 6);
+    const reason = R.reasons[R.focus] && R.reasons[R.focus].population;
+    const chain = R.chain.map((c, i) => `<li class="wi-step ${c.kind}">
+        <div class="when">${esc(yl(c.y))}・${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</div>
+        <b>${esc(c.title)}</b>${c.why && c.why.length ? `<div class="dim">${c.kind === 'gone' ? '原世界的原因' : '原因'}：${c.why.map(esc).join('；')}</div>` : ''}
+      </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
+    const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${esc(yl(e.y))}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
+    openModal(`<h2>平行世界：${esc(R.label)}</h2>
+      <p class="dim">分岔於${esc(yl(R.y))}。從${esc(R.from)}用同一個種子重跑 ${R.years.toLocaleString()} 年到${esc(yl(R.now.y))}，只有這一件事不同，其他全部由引擎計算。</p>
+      ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
+      <div class="table-wrap"><table class="wi-table">
+        <tr><th></th><th>原世界<br><small>${esc(parentName)}</small></th><th>平行世界</th><th>差距</th></tr>
+        <tr><td>世界人口</td>${cell(Wo.pop, Wa.pop, fPeople, true)}</tr>
+        <tr><td>務農地區</td>${cell(Wo.farming, Wa.farming, (v) => v + ' 個')}</tr>
+        <tr><td>城市</td>${cell(Wo.cities, Wa.cities, (v) => v + ' 座')}</tr>
+        <tr><td>國家（城邦以上）</td>${cell(Wo.states, Wa.states, (v) => v + ' 個')}</tr>
+        <tr><td>有文字的地區</td>${cell(Wo.writing, Wa.writing, (v) => v + ' 個')}</tr>
+      </table></div>
+      ${R.firsts.length ? `<h3 class="wi-h">世界第一次：改變了什麼</h3><div class="table-wrap"><table><tr><th></th><th>原世界</th><th>平行世界</th></tr>${R.firsts.slice(0, 12).map((f) => `<tr><td>${esc(fname(f.key))}</td><td>${fv(f.orig)}</td><td>${fv(f.alt)}</td></tr>`).join('')}</table></div>` : ''}
+      <h3 class="wi-h">蝴蝶效應：差異怎麼擴散</h3>
+      <ul class="events wi-chain">${chain}</ul>
+      ${top.length ? `<h3 class="wi-h">差最多的地區</h3><div class="table-wrap"><table><tr><th>地區</th><th>人口</th><th>城市</th><th>政體（原→平行）</th></tr>${top.map((r) => `<tr><td>${esc(r.name)}</td><td class="num ${cls(r.alt.pop - r.orig.pop)}">${pct(r.orig.pop, r.alt.pop)}</td><td class="num">${r.orig.cities} → ${r.alt.cities}</td><td>${r.orig.polity === r.alt.polity ? esc(r.orig.polity) : `<span class="gold">${esc(r.orig.polity)} → ${esc(r.alt.polity)}</span>`}</td></tr>`).join('')}</table></div>` : ''}
+      ${reason && reason.length ? `<h3 class="wi-h">為什麼${esc(R.rows[0].name)}人口差這麼多（因果帳，分岔後累計，百萬人）</h3><ul class="list-plain">${reason.map((f) => `<li>${esc(f.factor)}：原世界 ${sg(f.orig, 2)}／平行世界 ${sg(f.alt, 2)}</li>`).join('')}</ul>` : ''}
+      <details class="qa"><summary>只在原世界發生（${R.onlyOrig.length}）</summary><ul class="list-plain">${evList(R.onlyOrig)}</ul></details>
+      <details class="qa"><summary>只在平行世界發生（${R.onlyAlt.length}）</summary><ul class="list-plain">${evList(R.onlyAlt)}</ul></details>
+      ${R.failed.length ? `<p class="dim">你原本的 ${R.failed.length} 次干預在平行世界無法執行：${R.failed.map((f) => `${esc(yl(f.y))} ${esc(f.text)}（${esc(f.reason)}）`).join('；')}</p>` : ''}
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" data-act="whatif-enter">進入平行世界</button>
+        <button class="btn" data-act="close-modal">留在原世界</button>
+      </div>`);
+  }
+
+  function ancientDivineCard() {
+    const w = W(), D = w.divine || { energy: 0, log: [] }, p = WS.Divine.params(w);
+    const recent = (D.log || []).slice(-3).reverse();
+    return `<div class="card divine"><h3>神之手 ${(D.log || []).length ? '<button class="link" data-act="divine-log">全部紀錄</button>' : ''}</h3>
+      <div class="energy"><span>神力</span><div class="bar"><i style="width:${(D.energy / p.energyMax) * 100}%"></i></div><span class="num">${Math.floor(D.energy)}／${p.energyMax}</span></div>
+      <p class="dim" style="margin:6px 0 10px">每 100 年恢復 ${p.energyRegenPerCentury}。你只能改變條件（天候、靈感），世界會怎麼反應由引擎決定，結果不保證。</p>
+      <div class="divine-btns">${Object.entries(WS.Divine.ANCIENT_KINDS).map(([k, d]) => {
+        const cost = WS.Divine.cost(w, k);
+        return `<button class="btn small" data-act="divine-open" data-v="${k}" ${D.energy < cost ? 'disabled' : ''}><b>${d.icon}</b> ${esc(d.name)}<small class="num">${cost}</small></button>`;
+      }).join('')}</div>
+      ${recent.length ? `<ul class="events" style="margin-top:10px">${recent.map((g) => `<li data-act="event" data-id="${g.eventId}" class="${g.done ? '' : 'l3'}"><div class="when">${esc(yl(g.y))}・${g.done ? '已結束' : '進行中'}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${esc(g.status)}</div></li>`).join('')}</ul>` : ''}</div>`;
+  }
+  function ancientDivineModal() {
+    const w = W(), A = AN(), st = S.divine;
+    const ids = A.ids(w);
+    if (!WS.Divine.ANCIENT_KINDS[st.kind]) st.kind = 'bounty';
+    if (!w.ancient.regions[st.cid]) st.cid = aRegion(w);
+    const r = w.ancient.regions[st.cid];
+    let optHtml = '';
+    if (st.kind === 'inspire') {
+      const list = WS.Divine.ancientTechOptions(w, r);
+      if (!st.opt || !list.includes(st.opt)) st.opt = list[0] || null;
+      optHtml = list.length ? `<div class="field"><label>要啟發的技術（前置技術已普及、地理條件允許）</label><select data-act="divine-opt-select">${list.map((t) => `<option value="${t}" ${t === st.opt ? 'selected' : ''}>${esc(WS.Data.ancientTechs[t].name)}${w.ancient.firsts[t] && w.ancient.firsts[t].region ? '' : '（世界上還沒有）'}</option>`).join('')}</select></div>` : '';
+    } else st.opt = null;
+    const pv = engine.divinePreview(st.kind, st.cid, st.opt || undefined);
+    openModal(`<h2>神之手</h2>
+      <div class="seg" style="flex-wrap:wrap;margin-bottom:10px">${Object.entries(WS.Divine.ANCIENT_KINDS).map(([k, d]) => `<button data-act="divine-kind" data-v="${k}" class="${st.kind === k ? 'on' : ''}">${d.icon} ${esc(d.name)}</button>`).join('')}</div>
+      <p class="dim">${esc(WS.Divine.ANCIENT_KINDS[st.kind].short)}。耗費神力 <b class="gold">${pv.cost}</b>（目前 ${Math.floor(pv.energy)}）。</p>
+      <div class="field"><label>對象地區</label><select data-act="divine-target">${ids.map((id) => `<option value="${id}" ${id === st.cid ? 'selected' : ''}>${esc(w.ancient.regions[id].name)}</option>`).join('')}</select></div>
+      <p class="dim">${esc(r.era)}・人口 ${fPeople(A.popOf(r))}・糧食安全 ${(r.fs * 100).toFixed(0)}%</p>
+      ${optHtml}
+      <h3 class="dv-h">條件</h3><ul class="list-plain">${pv.checks.map(([ok, t]) => `<li class="${ok ? 'good' : 'bad'}">${ok ? '✔' : '✘'} ${esc(t)}</li>`).join('')}</ul>
+      ${pv.info && pv.info.length ? `<h3 class="dv-h">會改變什麼</h3><ul class="list-plain">${pv.info.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      ${pv.risk && pv.risk.length ? `<h3 class="dv-h">為什麼結果不保證</h3><ul class="list-plain">${pv.risk.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      <div class="row" style="margin-top:12px"><button class="btn gold" data-act="divine-cast" ${pv.ok ? '' : 'disabled'}>施展（神力 −${pv.cost}）</button><button class="btn" data-act="close-modal">取消</button></div>
+      <p class="dim" style="margin-top:8px">施展會記錄在指令紀錄裡；「如果？」平行世界重跑時，也會在同一個時間重播這次干預。</p>`);
+  }
+
+  function bridgeCard() {
+    const w = W(), av = WS.EraBridge.available(w);
+    if (!av.ok) return `<div class="card"><h3>接到近代</h3><p class="dim">${esc(av.reason)}。到時候可以把這條世界線的政體轉成近代國家，改用近代引擎（每月計算人口、經濟、政治、科技、外交、戰爭）繼續演進。</p></div>`;
+    const n = WS.EraBridge.groups(w).length;
+    return `<div class="card divine"><h3>進入近代</h3><p>這條世界線已經走到${esc(yl(w.year))}。可以把目前的 ${n} 個政體與地區轉成近代國家，改用近代引擎繼續演進。</p>
+      <p class="dim">國家、國界、人口都來自這條世界線，不照真實歷史；GDP、教育等近代數值依遠古的實際狀態換算（示意值）。近代科技從零開始。遠古世界會先存檔，不會被改動。</p>
+      <button class="btn gold" data-act="to-modern">進入近代（${w.year} 年起）</button></div>`;
+  }
+  // 只問一次（每條世界線）
+  function bridgeDue() {
+    if (!isAnc() || !WS.EraBridge.available(W()).ok) return false;
+    const k = W().world_id + '/' + W().branch.id;
+    S.bridgeAsked = S.bridgeAsked || {};
+    if (S.bridgeAsked[k]) return false;
+    S.bridgeAsked[k] = true;
+    return true;
+  }
+  function bridgeModal() {
+    openModal(`<h2>世界走到了近代的門檻</h2>${bridgeCard().replace(/^<div class="card divine"><h3>進入近代<\/h3>/, '').replace(/<\/div>$/, '')}<div class="row" style="margin-top:8px"><button class="btn" data-act="close-modal">先留在遠古，繼續看</button></div>`);
+  }
+  function toModern() {
+    stopAuto(); S.resumeAuto = false;
+    const prev = W();
+    const r1 = WS.Save.write(prev, prev.name + '・' + prev.branch.name + '・' + prev.year + '（遠古）');
+    const res = engine.toModern();
+    if (!res.ok) { toast(res.reason); return; }
+    S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null; S.speed = 'decade';
+    WS.Save.autosave(W());
+    closeModal(); render(); window.scrollTo(0, 0);
+    toast(r1.ok ? '遠古世界已存檔，現在進入近代' : '已進入近代（遠古世界未能存檔：' + r1.reason + '）');
   }
   function renderAncientGame() {
     const w = W();
@@ -1300,6 +1418,8 @@
       if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) WS.Save.autosave(W());
       // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
+      // 遠古世界走到近代門檻：暫停，問玩家要不要進入近代（只問一次）
+      if (bridgeDue()) { stopAuto(); render(); bridgeModal(); return; }
       if (modal.hidden) render();
     }, 160);
     render();
@@ -1351,8 +1471,13 @@
       }
       case 'advance': S.speed = v; doAdvance(SPEEDS[v][0]); break;
       case 'auto': toggleAuto(); break;
+      case 'to-modern': toModern(); break;
       case 'ancient': startAncient('遠古-' + Date.now().toString(36)); toast('《人類的黎明》：每條世界線都不一樣（種子已記錄在「系統」頁）'); break;
-      case 'a-advance': { S.aSpeed = v; engine.advanceYears(A_SPEEDS[v][0]); WS.Save.autosave(W()); render(); break; }
+      case 'a-advance': {
+        S.aSpeed = v;
+        // 第一次走到近代門檻時停在門檻上，讓玩家決定要不要進入近代
+        const by = W().params.ancient.bridge.year, y0 = W().year;
+        engine.advanceYears(y0 < by ? Math.min(A_SPEEDS[v][0], by - y0) : A_SPEEDS[v][0]); WS.Save.autosave(W()); render(); if (bridgeDue()) bridgeModal(); break; }
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;

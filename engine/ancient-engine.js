@@ -107,7 +107,7 @@
       series: { labels: [], c: {}, world: { pop: [], gdp: [] } },
       counters: { event: 0, war: 0, country: 0, org: 0, polity: 0, city: 0 },
       validation: { checks: 0, issues: [] }, pendingDecision: null,
-      genesis: u.clone(setup), commandLog: [], overrides: [], divine: { energy: 0, log: [], counter: 0 }, headlines: [],
+      genesis: u.clone(setup), commandLog: [], overrides: [], divine: { energy: WS.ANCIENT_PARAMS.divine.energyStart, log: [], counter: 0 }, headlines: [],
       ancient: { regions: {}, polities: {}, firsts: {}, names: {}, dt: 10 }
     };
     for (const k in WS.Data.rules) w.rules[k] = WS.Data.rules[k].default;
@@ -196,6 +196,14 @@
     for (let i = 0; i < dt; i++) if (ctx.rng.chance(p.droughtChance)) droughts++;
     r.droughts = droughts;
     r.harvest = Math.max(0.4, (1 - (1 - p.droughtHarvest) * droughts / dt) * (1 + ctx.rng.normal(0, p.harvestSd / Math.sqrt(dt))));
+    U().cause(r, 'harvest', droughts ? '乾旱年' : '天候波動', (r.harvest - 1) * 100);
+    // 神之手：風調雨順或長期乾旱（只改變收成條件，之後的糧食、人口變化由引擎計算）
+    const dm = WS.Divine ? WS.Divine.ancientHarvest(r, w) : 1;
+    if (dm !== 1) {
+      const before = r.harvest;
+      r.harvest = Math.max(0.2, r.harvest * dm);
+      U().cause(r, 'harvest', dm > 1 ? '神之手：風調雨順' : '神之手：長期乾旱', (r.harvest - before) * 100);
+    }
   };
 
   // ---- 4. 糧食 ----
@@ -248,7 +256,8 @@
     const u = U(), pp = w.params.ancient.pop;
     const fs = r.fs;
     const bm = Math.pow(Math.min(1, fs), pp.famineBirth);
-    const fam = pp.famineDeath * Math.max(0, 1 - fs);
+    // 饑荒死亡：一期好幾年，但缺糧時人口減少後每人可得的食物就會回升，所以一期內最多減少到「剛好吃得飽」為止
+    const fam = Math.min(pp.famineDeath * Math.max(0, 1 - fs), -Math.log(Math.max(0.05, Math.min(1, fs))) / dt);
     const dens = u.clamp(r.pop.A / Math.max(1e-9, r.cap.farm || 1), 0, 1.5);
     const crowd = pp.crowdDisease * dens * (A.invented(r, 'animal_domestication') ? 1.3 : 1);
     const rates = {
@@ -335,6 +344,23 @@
     r.exchangeTarget = target;
   };
 
+  // 「如果？」平行世界的掛鉤：在指定的期數攔截一件事（只在平行世界有設定時才會作用）
+  // permanent：攔截之後一直有效（例如「這個地區沒有自己發明某項技術」，之後只能等鄰居傳入）
+  A.blocked = function (w, ctx, kind, pred, permanent) {
+    const list = w.overrides;
+    if (!list || !list.length) return false;
+    if (permanent && list.some((o) => o.applied && o.kind === kind && pred(o))) return true;
+    const o = WS.WhatIf.take(w, (x) => x.kind === kind && pred(x));
+    if (!o) return false;
+    const ev = WS.Events.log(w, ctx, {
+      type: 'whatif', title: o.label, countries: o.region ? [o.region] : o.countries || [], level: 3,
+      text: '這是平行世界的分岔點：只有這一件事被改寫，其他一切照同一個種子由引擎計算。',
+      causes: ['玩家的「如果」設定（平行世界）'], trigger: `在${A.yearLabel(w.year)}攔截`
+    });
+    o.eventId = ev.id;
+    return true;
+  };
+
   // ---- 8. 科技 ----
   A.reqOk = function (w, r, d) {
     if (d.req.some((x) => !A.knows(w, r, x))) return false;
@@ -357,7 +383,20 @@
         const st = r.tech[d.id] || (r.tech[d.id] = { p: 0, done: false, a: 0 });
         if (!st.k) st.k = pt.luckMin + (pt.luckMax - pt.luckMin) * ctx.rng.next();
         st.p += pts * dt;
-        if (st.p >= A.techCost(r, d, st)) A.invent(w, r, d, '自行發明', ctx, cand.length ? [`研究點數每年約 ${pts.toFixed(2)}（人口 ${u.fmt(pop, 2)} 百萬、城市人口 ${(A.urbanShare(r) * 100).toFixed(1)}%、交流 ${r.exchange.toFixed(0)}）`] : []);
+        if (st.p >= A.techCost(r, d, st) && !A.blocked(w, ctx, 'invent', (o) => o.region === r.id && o.techId === d.id, true)) A.invent(w, r, d, '自行發明', ctx, cand.length ? [`研究點數每年約 ${pts.toFixed(2)}（人口 ${u.fmt(pop, 2)} 百萬、城市人口 ${(A.urbanShare(r) * 100).toFixed(1)}%、交流 ${r.exchange.toFixed(0)}）`] : []);
+      }
+      // 神之手：知識啟發（每期增加研究進度，速度取決於交流程度與運氣）
+      const ch = WS.Divine ? WS.Divine.ancientChannel(r, w) : null;
+      if (ch) {
+        const d = TECH()[ch.id];
+        const st = r.tech[ch.id] || (r.tech[ch.id] = { p: 0, done: false, a: 0 });
+        if (st.done) ch.closed = true;
+        else {
+          const add = ch.rate * A.techCost(r, d, st) * dt * (0.5 + r.exchange / 100);
+          st.p += add; ch.gain += add;
+          u.cause(r, 'research', '神之手：知識啟發', add, d.name);
+          if (st.p >= A.techCost(r, d, st)) { A.invent(w, r, d, '受神之手啟發而發明', ctx, [`神之手開啟的知識啟發（累計 ${Math.round(ch.gain).toLocaleString()} 點）`]); ch.closed = true; }
+        }
       }
       // 經交流傳入：鄰近地區已普及的科技（前置科技要先具備；地理條件不足的仍可引進，例如作物）
       for (const [id, kind] of r.links) {
@@ -470,6 +509,7 @@
       const dens = r.pop.A / r.area;
       if (!(A.knows(w, r, 'crop_domestication') && A.farmShare(r) >= 0.5 && dens >= pp.chiefdomDensity && A.knows(w, r, 'storage') && A.knows(w, r, 'counting'))) continue;
       if (!ctx.rng.chance(1 - Math.pow(1 - pp.formChance, dt))) continue;
+      if (A.blocked(w, ctx, 'polity', (o) => o.region === r.id)) continue;
       w.counters.polity++;
       const id = 'P' + String(w.counters.polity).padStart(3, '0');
       const pol = { id, name: A.nameFor(w, r, 'chiefdom'), type: 'chiefdom', capital: r.id, regions: [r.id], cohesion: 60, founded: w.year, color: r.color };
@@ -524,19 +564,20 @@
       if (pol.ended) continue;
       // 瓦解
       const pc = (pp.collapseBase + pp.collapseOverload * over + (cap.fs < 0.85 ? pp.collapseFamine : 0)) * (pol.cohesion < 30 ? 2 : 1);
-      if (ctx.rng.chance(1 - Math.pow(1 - pc, dt))) A.collapse(w, pol, ctx, { over, adm, famine: cap.fs < 0.85 });
+      if (ctx.rng.chance(1 - Math.pow(1 - pc, dt)) && !A.blocked(w, ctx, 'collapse', (o) => o.polity === pol.id)) A.collapse(w, pol, ctx, { over, adm, famine: cap.fs < 0.85 });
     }
   };
   A.conquer = function (w, pol, best, ctx) {
     const u = U();
     const { t, tp, ratio } = best;
+    if (A.blocked(w, ctx, 'war', (o) => o.a === pol.id && o.d === t.id)) return;
     const win = ctx.rng.chance(ratio * ratio / (1 + ratio * ratio));
     w.counters.war++;
     const cap = w.ancient.regions[pol.capital];
     if (!win) {
       pol.cohesion = Math.max(0, pol.cohesion - 10);
       const l = cap.pop.A * 0.01; cap.pop.A -= l; u.cause(cap, 'population', '戰爭', -l, `遠征${t.name}失敗`);
-      WS.Events.log(w, ctx, { type: 'war', title: `${pol.name}遠征${t.name}失敗`, countries: [cap.id, t.id], level: 1, causes: [`兵力比 ${ratio.toFixed(2)} : 1`, `勝算約 ${(ratio * ratio / (1 + ratio * ratio) * 100).toFixed(0)}%`], effects: ['凝聚力 −10'] });
+      WS.Events.log(w, ctx, { type: 'war', title: `${pol.name}遠征${t.name}失敗`, countries: [cap.id, t.id], level: 1, polity: pol.id, causes: [`兵力比 ${ratio.toFixed(2)} : 1`, `勝算約 ${(ratio * ratio / (1 + ratio * ratio) * 100).toFixed(0)}%`], effects: ['凝聚力 −10'] });
       return;
     }
     for (const k of ['A', 'U']) { const l = t.pop[k] * 0.03; t.pop[k] -= l; u.cause(t, 'population', '戰爭', -l, `${pol.name}征服`); }
@@ -581,7 +622,7 @@
         effects: [loss > 0 ? `本期人口減少約 ${u.fmt(loss * 1000, 0)} 千人` : '出生減少、死亡增加'] });
     }
     // 瘟疫：城市與家畜帶來群聚傳染病
-    if (r.pop.U > 0.005 && ctx.rng.chance(1 - Math.pow(1 - 0.0015 * Math.min(1, r.pop.U / 0.05), dt)) && (r.cool.plague || -1e9) <= w.tick) {
+    if (r.pop.U > 0.005 && ctx.rng.chance(1 - Math.pow(1 - 0.0015 * Math.min(1, r.pop.U / 0.05), dt)) && (r.cool.plague || -1e9) <= w.tick && !A.blocked(w, ctx, 'plague', (o) => o.region === r.id)) {
       r.cool.plague = w.tick + 5;
       const lu = r.pop.U * 0.12, la = r.pop.A * 0.03;
       r.pop.U -= lu; r.pop.A -= la;

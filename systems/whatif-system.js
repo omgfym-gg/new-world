@@ -18,6 +18,7 @@
   // 回傳 [{ key, action, label, target }]，沒有可改寫的選項時回傳 []
   WhatIf.options = function (w, e) {
     if (!e) return [];
+    if (w.era === 'ancient') return WhatIf.ancientOptions(w, e);
     // 制度轉變若是由條件事件（例如革命）直接造成，改寫它的源頭事件
     if (e.type === 'regime' && e.parent) {
       const p = w.events.find((x) => x.id === e.parent);
@@ -82,10 +83,10 @@
     }
     if (best) {
       const src = WS.Save.migrate(best.json);
-      return { world: src, tick: best.tick, cmdStart: src.commandLog.length, from: `${src.year} 年 ${src.month} 月的快照` };
+      return { world: src, tick: best.tick, cmdStart: src.commandLog.length, from: src.era === 'ancient' ? `${WS.Ancient.yearLabel(src.year)}的快照` : `${src.year} 年 ${src.month} 月的快照` };
     }
     if (w.genesis) {
-      const src = WS.State.createWorld(w.genesis);
+      const src = w.era === 'ancient' ? WS.Ancient.createWorld(w.genesis) : WS.State.createWorld(w.genesis);
       return { world: src, tick: 0, cmdStart: 0, from: '世界建立時的設定（同一個種子）' };
     }
     return null;
@@ -182,6 +183,7 @@
   }
 
   WhatIf.compare = function (orig, alt, info) {
+    if (orig.era === 'ancient') return WhatIf.compareAncient(orig, alt, info);
     const u = U();
     const fromYear = info.y;
     const ids = [...new Set(Object.keys(orig.countries).concat(Object.keys(alt.countries)))].sort();
@@ -251,6 +253,92 @@
       years: Math.round((orig.tick - info.tick) / 12), now: { y: orig.year, m: orig.month },
       focus, rows, world, onlyOrig, onlyAlt, chain, reasons,
       failed: (info.failed || []).map((f) => ({ y: f.cmd.y, m: f.cmd.m, text: describeCmd(orig, f.cmd), reason: f.reason }))
+    };
+  };
+
+
+  // ---------- 遠古時代 ----------
+  // 遠古一期好幾年，事件用期數（e.tick）定位；可以改寫的事件：
+  // 自行發明（之後這個地區只能等鄰居傳入）、政體形成、出兵、政體瓦解或失去地區、瘟疫
+  WhatIf.ancientOptions = function (w, e) {
+    if (e.tick == null) return [];
+    const R = w.ancient.regions, P = w.ancient.polities;
+    const rn = (id) => (R[id] ? R[id].name : id);
+    const pn = (id) => (P[id] ? P[id].name : id);
+    const base = { eventId: e.id, tick: e.tick, y: e.y, m: 1 };
+    const out = [];
+    const add = (label, t) => out.push({ key: 'block', action: 'block', label, target: Object.assign({}, base, t) });
+    const rid = e.countries[0];
+    if (e.type === 'tech' && e.techId && (e.causes || [])[0] === '自行發明') {
+      add(`如果${rn(rid)}沒有自己發明「${WS.Data.ancientTechs[e.techId].name}」（只能等鄰近地區傳入）`, { kind: 'invent', region: rid, techId: e.techId });
+    } else if (e.type === 'polity' && e.polity && /新政體形成/.test(e.title)) {
+      add(`如果${rn(rid)}這時沒有形成「${pn(e.polity)}」`, { kind: 'polity', region: rid });
+    } else if (e.type === 'polity' && e.polity && /(瓦解|失去)/.test(e.title)) {
+      add(`如果${pn(e.polity)}這時沒有${/瓦解/.test(e.title) ? '瓦解' : '失去' + rn(e.countries[1])}`, { kind: 'collapse', polity: e.polity, countries: e.countries.slice() });
+    } else if (e.type === 'war' && e.polity && e.countries[1]) {
+      add(`如果${pn(e.polity)}沒有出兵${rn(e.countries[1])}`, { kind: 'war', a: e.polity, d: e.countries[1], countries: e.countries.slice() });
+    } else if (e.type === 'conditional' && e.defId === 'plague') {
+      add(`如果${rn(rid)}沒有發生這場瘟疫`, { kind: 'plague', region: rid });
+    }
+    return out;
+  };
+
+  WhatIf.compareAncient = function (orig, alt, info) {
+    const A = WS.Ancient;
+    const ids = A.ids(orig);
+    const row = (w, id) => {
+      const r = w.ancient.regions[id], p = r.polity ? w.ancient.polities[r.polity] : null;
+      return { pop: A.popOf(r), farm: A.farmShare(r), cities: r.cities.length, polity: p ? p.name : '—', era: r.era, techs: Object.keys(r.tech).filter((t) => r.tech[t].done).length };
+    };
+    const rows = ids.map((id) => {
+      const a = row(orig, id), b = row(alt, id);
+      const score = Math.abs(Math.log(Math.max(1e-6, b.pop) / Math.max(1e-6, a.pop))) + Math.abs(b.farm - a.farm) + Math.abs(b.cities - a.cities) / 4 + (a.polity !== b.polity ? 0.3 : 0) + Math.abs(b.techs - a.techs) / 10;
+      return { id, name: orig.ancient.regions[id].name, orig: a, alt: b, score };
+    }).sort((x, y) => y.score - x.score);
+    const sum = (w) => {
+      const s = A.summary(w);
+      return { pop: s.pop, polities: s.polities, states: s.states, cities: s.cities, writing: s.writing, farming: s.farming };
+    };
+    const world = { orig: sum(orig), alt: sum(alt) };
+    // 世界第一次：哪些發明的地點或年代不同
+    const firsts = [];
+    const keys = new Set(Object.keys(orig.ancient.firsts).concat(Object.keys(alt.ancient.firsts)));
+    for (const k of keys) {
+      const a = orig.ancient.firsts[k], b = alt.ancient.firsts[k];
+      if (a && b && a.region === b.region && a.year === b.year) continue;
+      if ((a && a.region == null) || (b && b.region == null)) continue;
+      firsts.push({ key: k, orig: a || null, alt: b || null });
+    }
+    const T = (e) => (e.tick != null ? e.tick : 0);
+    const after = (w) => w.events.filter((e) => T(e) >= info.tick && e.level >= 2 && e.type !== 'branch' && e.type !== 'system');
+    const unmatched = (list, other) => {
+      const pool = {};
+      for (const e of other) pool[e.title] = (pool[e.title] || 0) + 1;
+      return list.filter((e) => { if (pool[e.title]) { pool[e.title]--; return false; } return true; });
+    };
+    const oe = after(orig).filter((e) => e.id !== info.eventId);
+    const ae = after(alt).filter((e) => e.type !== 'whatif');
+    const onlyOrig = unmatched(oe, ae), onlyAlt = unmatched(ae, oe);
+    const chain = [{ y: info.y, m: 1, kind: 'start', title: info.label, why: [`從${info.from}用同一個種子重跑，只改寫這件事`] }];
+    const merged = onlyOrig.map((e) => ({ e, side: 'orig' })).concat(onlyAlt.map((e) => ({ e, side: 'alt' }))).sort((x, y) => T(x.e) - T(y.e) || (x.side === 'orig' ? -1 : 1));
+    for (const { e, side } of merged) {
+      if (chain.length >= 8) break;
+      if (e.level < 3 && e.type !== 'polity' && e.type !== 'war') continue;
+      chain.push({ y: e.y, m: 1, kind: side === 'orig' ? 'gone' : 'new', title: e.title, why: (e.causes || []).slice(0, 3), eventId: e.id, side });
+    }
+    const top = rows[0] ? rows[0].id : null;
+    const reasons = {};
+    if (top) {
+      reasons[top] = {};
+      const led = (w) => { const out = {}; const r = w.ancient.regions[top]; for (const y of r.causes.years) if (y.year >= info.y) for (const f in y.data.population || {}) out[f] = (out[f] || 0) + y.data.population[f].v; return out; };
+      const a = led(orig), b = led(alt);
+      reasons[top].population = [...new Set(Object.keys(a).concat(Object.keys(b)))].map((k) => ({ factor: k, orig: a[k] || 0, alt: b[k] || 0, diff: (b[k] || 0) - (a[k] || 0) }))
+        .filter((x) => Math.abs(x.diff) > 1e-9).sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff)).slice(0, 3);
+    }
+    return {
+      ancient: true, label: info.label, y: info.y, m: 1, tick: info.tick, applied: info.applied, from: info.from,
+      years: orig.year - info.y, now: { y: orig.year, m: 1 }, focus: top, rows, world, firsts, onlyOrig, onlyAlt, chain, reasons,
+      failed: (info.failed || []).map((f) => ({ y: f.cmd.y, m: 1, text: f.cmd.cmd === 'divine' && WS.Divine.ANCIENT_KINDS ? '神之手：' + ((WS.Divine.ANCIENT_KINDS[f.cmd.args[0]] || {}).name || f.cmd.args[0]) : f.cmd.cmd, reason: f.reason }))
     };
   };
 

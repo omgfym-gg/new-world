@@ -274,6 +274,21 @@
       knownAt: 0.5                    // 普及度超過此值，才算可以往下研究、傳給鄰居
     },
     exchange: { base: 10, settled: 15, urban: 150, urbanMax: 15, polity: 4, adjust: 0.05, aid: 0.25, seaNeedsSailing: 0.25, far: 0.005, farSail: 0.04 },
+    // 接到近代：演進到這一年以後可以「進入近代」，把政體轉成近代國家（換算係數，示意值）
+    bridge: {
+      year: 1800,
+      gdppcBase: 450, gdppcDev: 600, gdppcUrban: 1500,  // 人均 GDP（1990 年國際元）＝ 基礎 ＋ 進階科技比例 × … ＋ 城市比例 × …
+      eduBase: 3, urbanScale: 1.5, armyShare: 0.006,     // 教育起點、城市化換算、兵力占人口比例
+      coalPerIronArea: 1.5, oilPerArea: 0.3              // 礦藏（與 1911 劇本同單位，未經校準）
+    },
+    // 神之手（遠古）：只改變條件；神力每百年恢復（遠古一期好幾年）
+    divine: {
+      energyMax: 100, energyStart: 60,
+      energyRegenPerCentury: 25,      // 每 100 年恢復的神力
+      bountyCost: 20, bountyGain: 0.12, bountyYears: 30,      // 風調雨順：收成增加（乘上運氣）
+      droughtCost: 25, droughtSev: 0.15, droughtYears: 30,    // 長期乾旱：收成減少（乘上運氣）
+      inspireCost: 40, inspireShare: 0.03, inspireYears: 80   // 知識啟發：每年給研究成本的比例（交流越活躍吸收越快）
+    },
     polity: {
       chiefdomDensity: 0.1,           // 農民密度（百萬人／面積）超過此值才可能形成酋邦
       formChance: 0.002,              // 條件成立時每年形成的機率

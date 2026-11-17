@@ -94,6 +94,7 @@
       const ctx = { rng: new WS.RNG(w.rngState), major: [] };
       const before = w.year;
       WS.Ancient.step(w, ctx);
+      WS.Divine.ancientStep(w, ctx);
       w.rngState = ctx.rng.s;
       if (Math.floor((w.year - w.startYear) / 500) > Math.floor((before - w.startYear) / 500)) {
         this.snapshots.push({ year: w.year, month: 1, tick: w.tick, json: JSON.stringify(w) });
@@ -193,6 +194,23 @@
       o[parts[parts.length - 1]] = value;
       this.record('param', [path, value]);
       WS.Events.log(this.w, null, { type: 'rule', title: `模型參數調整：${path}`, countries: [], level: 1, causes: ['進階模式'], effects: [`${old} → ${value}`] });
+    }
+
+    // 從遠古接到近代：用遠古世界目前的狀態產生近代國家，建立新的近代世界（原本的遠古世界不會被改動）
+    toModern() {
+      const res = WS.EraBridge.build(this.w);
+      if (!res.ok) return res;
+      const prev = this.w;
+      this.create(res.setup);
+      const w = this.w;
+      w.origin = res.origin;
+      WS.Events.log(w, null, {
+        type: 'system', title: `承接遠古世界線「${prev.branch.name}」`, countries: [], level: 3,
+        text: `${res.origin.countries.length} 個國家來自遠古時代的政體與地區（種子「${prev.seed}」）。`,
+        causes: res.origin.countries.slice(0, 12).map((c) => `${c.name}：來自${c.from.join('、')}（${c.type}，人口 ${c.pop.toFixed(1)} 百萬，人均產出約 ${c.gdppc}）`),
+        effects: ['人口沿用遠古的模擬結果；其他近代數值依遠古狀態換算（示意值）', '近代科技從零開始，之後由近代引擎研究']
+      });
+      return { ok: true, world: w, ancient: prev };
     }
 
     // 「如果」平行世界：回傳 { ok, world, snapshots, report }，不改變目前的世界
