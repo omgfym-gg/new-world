@@ -170,9 +170,48 @@
     agents: {
       decisionInterval: 3,            // 每幾個月決策一次
       minScore: 0.15,
+      // 領導人性格（示意值）：性格只改變國家 AI 對政策的偏好分數，不直接改變任何核心數值。
+      // 每項性格 0–1，0.5 為中性；分數加成 = (性格 − 0.5) × 係數。
+      // reform（改革傾向）、aggr（冒險／侵略）沿用原本寫在程式裡的數值；care（重視民生）為新增，舊領導人沒有此值時視為中性。
+      leaderTraitBias: {
+        reform: { political_reform: 0.6, repression: -0.6 },
+        aggr: { military_build: 0.3 },
+        care: { welfare: 0.5, agri_invest: 0.3, food_import: 0.3, education: 0.2, raise_tax: -0.3 }
+      },
       cooldownMonths: 24,
       warPowerRatio: 1.3,
       warRelation: -40
+    },
+    // 神之手（玩家干預，示意值）：玩家用「神力」改變世界的條件，結果仍由引擎計算、不保證成功
+    divine: {
+      energyMax: 100,                 // 神力上限
+      energyStart: 60,                // 世界建立時的神力
+      energyRegenPerYear: 18,         // 每年恢復的神力（每月平均恢復）
+      // 公共衛生援助：在一段時間內提高「醫療水準目標」，實際醫療水準仍依引擎每月慢慢調整
+      healthCost: 25,
+      healthBoost: 0.08,              // 醫療水準目標最多提高多少（0–1 刻度）
+      healthYears: 8,                 // 援助持續年數（效果逐年遞減）
+      healthLeakBase: 0.15,           // 至少被行政耗損掉的比例；腐敗越高耗損越多
+      // 分享已知科技：開一條「知識管道」，每月給研究進度，速度取決於教育（吸收能力）
+      techCost: 35,
+      techMonthlyShare: 0.03,         // 每月相當於科技成本的比例（教育 50 時）
+      techMonths: 36,                 // 管道開放月數
+      // 局部旱災：選中的地區今年收成大減，全國影響依地區比重而定
+      droughtCost: 30,
+      droughtSeverityMin: 0.35,       // 該地區收成損失比例（隨機介於最小與最大之間）
+      droughtSeverityMax: 0.7,
+      droughtMonths: 12,
+      // 領導人候選者：只是「出現」在政壇，要等到政權自然更替時才可能上台
+      leaderCost: 40,
+      leaderYears: 10,                // 候選者在政壇活躍的年數，期間沒有更替就消失
+      leaderWinChance: 0.6,           // 政權更替時，候選者勝出的機率（每次更替判斷一次）
+      leaderTraitMin: 0.72,           // 候選者主要性格的下限（隨機介於下限與 0.95）
+      // 世界頭條：只在重大變化時出現
+      headlinesPerYear: 3,
+      headlineMinScore: 1,            // 低於此分數的變化不上頭條
+      headlinePopPct: 2,              // 人口單年變化超過此 %，列為頭條候選
+      headlineGdpPct: 8,              // GDP 單年變化超過此 %
+      headlineStabilityDrop: 12       // 穩定度單年下降超過此值
     },
     events: {
       revolutionBase: 0.015,

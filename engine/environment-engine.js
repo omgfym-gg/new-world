@@ -41,15 +41,18 @@
       }
 
       // 糧食
-      const produced = (c.econ.sec.agri.base || c.econ.sec.agri.Y) * r.harvest * r.foodCoef;
-      const ratio = produced / P;
+      const produced0 = (c.econ.sec.agri.base || c.econ.sec.agri.Y) * r.harvest * r.foodCoef;
+      const dMult = WS.Divine ? WS.Divine.harvestMult(c, w) : 1;
+      const ratio0 = produced0 / P;
+      const ratio = ratio0 * dMult;
       let eff = ratio;
       if (ratio < 1) eff = ratio + (1 - ratio) * Env.importCover(c, w);
       r.foodRatio = ratio;
       r.foodEff = eff;
       const delta = eff - 1;
       r.foodStock += delta;
-      U.cause(c, 'food', '國內糧食生產', ratio - 1, r.harvest < 0.97 ? '收成不佳' : r.harvest > 1.03 ? '收成良好' : '一般收成');
+      U.cause(c, 'food', '國內糧食生產', ratio0 - 1, r.harvest < 0.97 ? '收成不佳' : r.harvest > 1.03 ? '收成良好' : '一般收成');
+      if (dMult < 1) { U.cause(c, 'food', '神之手：局部旱災', ratio - ratio0, w.regions[c.divine.drought.region] ? w.regions[c.divine.drought.region].name : null); c.divine.drought.foodLoss += ratio0 - ratio; }
       if (eff > ratio) U.cause(c, 'food', '糧食進口', eff - ratio, c.flags.atWar ? '戰時進口受阻' : '對外貿易');
       if (r.foodStock < 0) {
         r.shortage = U.clamp((1 - eff) * 2, 0, 1);

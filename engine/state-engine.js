@@ -152,7 +152,9 @@
       pendingDecision: null,
       genesis: U.clone(setup),   // 世界建立時的設定：可用同一個種子重新生成（「如果」平行世界）
       commandLog: [],            // 會影響模擬的玩家指令（依 tick 重播）
-      overrides: []              // 「如果」設定：在指定月份改寫一件事
+      overrides: [],             // 「如果」設定：在指定月份改寫一件事
+      divine: { energy: WS.DEFAULT_PARAMS.divine.energyStart, log: [], counter: 0 },  // 神之手：神力與干預紀錄
+      headlines: []              // 世界頭條（只依實際紀錄產生）
     };
     for (const k in WS.Data.rules) w.rules[k] = WS.Data.rules[k].default;
     Object.assign(w.rules, setup.rules || {});

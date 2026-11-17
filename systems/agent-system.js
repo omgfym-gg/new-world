@@ -71,13 +71,40 @@
         score -= d.costs[k] * weight;
       }
       if (id === 'declare_war' && feas === true) score = d.opportunity(c, w);
-      if (id === 'political_reform') score += (c.leader.reform - 0.5) * 0.6;
-      if (id === 'repression') score -= (c.leader.reform - 0.5) * 0.6;
-      if (id === 'military_build') score += (c.leader.aggr - 0.5) * 0.3;
-      out.push({ id, name: d.name, score, feasible: feas });
+      // 領導人性格只改變「偏好」：加減這項政策的評分，政策能不能執行、效果如何仍由引擎檢查與計算
+      const lean = Agents.leaderLean(c, w, id);
+      score += lean;
+      out.push({ id, name: d.name, score, feasible: feas, lean });
     }
     out.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
     return { probs, list: out };
+  };
+
+  Agents.TRAIT_NAMES = { reform: '改革傾向', aggr: '冒險傾向', care: '重視民生' };
+
+  // 領導人性格對某項政策的評分加成；沒有這項性格（舊存檔、舊領導人）視為中性 0.5
+  Agents.leaderLean = function (c, w, policyId) {
+    const tb = (w.params.agents && w.params.agents.leaderTraitBias) || WS.DEFAULT_PARAMS.agents.leaderTraitBias;
+    if (!c.leader) return 0;
+    let s = 0;
+    for (const t in tb) {
+      const k = tb[t][policyId];
+      if (!k) continue;
+      const v = c.leader[t] == null ? 0.5 : c.leader[t];
+      s += (v - 0.5) * k;
+    }
+    return s;
+  };
+
+  // 介面用：領導人性格的白話標籤（只描述性格，不代表結果）
+  Agents.leaderTraits = function (leader) {
+    if (!leader) return [];
+    const out = [];
+    const r = leader.reform, a = leader.aggr, cr = leader.care;
+    if (r != null) out.push(r >= 0.65 ? '改革派' : r <= 0.35 ? '保守派' : null);
+    if (a != null) out.push(a >= 0.65 ? '愛冒險' : a <= 0.3 ? '謹慎' : null);
+    if (cr != null) out.push(cr >= 0.65 ? '重視民生' : cr <= 0.35 ? '輕忽民生' : null);
+    return out.filter(Boolean);
   };
 
   Agents.step = function (w, ids, ctx) {
@@ -101,11 +128,13 @@
       } else {
         const res = WS.Policies.execute(c, w, best.id, ctx, 'ai');
         rec.policy = best.id; rec.name = best.name; rec.score = +best.score.toFixed(2); rec.effects = res.effects;
+        if (Math.abs(best.lean) >= 0.01) rec.lean = +best.lean.toFixed(2);
         if (['declare_war', 'political_reform', 'sue_peace', 'seek_alliance'].includes(best.id) || (id === w.focus && w.mode === 'country')) {
           WS.Events.log(w, ctx, {
             type: 'decision', title: `${c.name}決定：${best.name}`, countries: [id], level: best.id === 'declare_war' ? 0 : 1,
             text: (res.effects || []).join('；'),
-            causes: rec.problems.map(([n, v]) => `${n}（嚴重度 ${v}）`).concat([`國家目標：${WS.Data.goals[c.goal]}`]),
+            causes: rec.problems.map(([n, v]) => `${n}（嚴重度 ${v}）`).concat([`國家目標：${WS.Data.goals[c.goal]}`])
+              .concat(rec.lean ? [`領導人${c.leader.name}的性格讓這項政策評分 ${rec.lean > 0 ? '+' : ''}${rec.lean}`] : []),
             decision: rec
           });
         }

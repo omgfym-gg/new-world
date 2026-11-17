@@ -21,9 +21,12 @@
     return m;
   };
 
+  // 實際收成 = 年度氣候 × 神之手旱災（沒有干預時為 1）
+  Econ.harvest = (c, w) => c.res.harvest * (WS.Divine ? WS.Divine.harvestMult(c, w) : 1);
+
   Econ.resMult = function (c, w, s) {
     const e = w.params.economy;
-    if (s === 'agri') return c.res.harvest;
+    if (s === 'agri') return Econ.harvest(c, w);
     if (s === 'ind') return 1 - e.energyIndWeight + e.energyIndWeight * c.res.energyRatio;
     return 1 - e.energyServWeight + e.energyServWeight * c.res.energyRatio;
   };
@@ -196,7 +199,7 @@
           '勞動力': sp.alpha * Math.log(o.L / sec.L),
           [sec.K < (sec.Kprev || sec.K) && c.flags.warDamage ? '戰爭破壞' : '資本投資']: sp.beta * Math.log(sec.K / (sec.Kprev || sec.K)),
           '技術進步': Math.log(o.T / sec.T),
-          [s === 'agri' ? '收成與氣候' : '能源供應']: Math.log(o.R / sec.R),
+          [s === 'agri' ? (WS.Divine && WS.Divine.harvestMult(c, w) < 1 ? '收成與氣候（含神之手旱災）' : '收成與氣候') : '能源供應']: Math.log(o.R / sec.R),
           '政治穩定與制度': Math.log(o.I / sec.I)
         };
         const gA = Math.log(sec.A / (sec.Aprev || sec.A)), gTot = tfp.know + tfp.catch;
@@ -206,7 +209,7 @@
         if (Math.abs(tot) > 1e-12 && Math.abs(dY) > 1e-12)
           for (const k in terms) if (terms[k]) U.cause(c, 'gdp', sp.label + '產出', dY * terms[k] / tot, k);
         Object.assign(sec, o);
-        if (s === 'agri') sec.base = o.Y / Math.max(1e-6, c.res.harvest);
+        if (s === 'agri') sec.base = o.Y / Math.max(1e-6, Econ.harvest(c, w));
         sec.Kprev = sec.K;
         gdp += o.Y;
       }

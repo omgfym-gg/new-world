@@ -7,7 +7,7 @@
 
   const Population = (WS.Population = {});
 
-  Population.healthTarget = function (c, w) {
+  Population.healthTarget = function (c, w, withDivine) {
     const p = w.params.population;
     let t = c.demo.healthBias || 0;
     for (const id in WS.Data.techs) {
@@ -18,6 +18,8 @@
     t += p.healthWelfareGain * ((c.fiscal.amounts.welfare || 0) / gdp);
     t += Population.devHealth(c, w) + Population.medDiffusion(c, w);
     t -= w.params.environment.pollutionHealthPenalty * (c.res.pollution / 100);
+    // 神之手的公共衛生援助：只提高「目標」，實際醫療水準仍逐月調整
+    if (withDivine && WS.Divine) t += WS.Divine.healthBoost(c, w);
     return U().clamp(t, 0.05, 0.95);
   };
 
@@ -103,11 +105,14 @@
       u.cause(c, 'education', '人口更替與知識流失', -lEdu * dt);
 
       // 醫療水準
-      const ht = Population.healthTarget(c, w);
+      const htBase = Population.healthTarget(c, w);
+      const ht = Population.healthTarget(c, w, true);
       const dh = (ht - d.health) * p.healthAdjustRate * dt;
+      const dhDivine = (ht - htBase) * p.healthAdjustRate * dt;
       d.health += dh;
-      const why = ht <= d.health ? '醫療投入不足或污染' : Population.medDiffusion(c, w) > 0.05 ? '引進他國醫療科技（疫苗、抗生素等）' : Population.devHealth(c, w) > 0.1 ? '生活水準提高（營養、住居、醫療可及性）' : '醫療科技與公共衛生';
-      u.cause(c, 'health', why, dh);
+      const why = htBase <= d.health ? '醫療投入不足或污染' : Population.medDiffusion(c, w) > 0.05 ? '引進他國醫療科技（疫苗、抗生素等）' : Population.devHealth(c, w) > 0.1 ? '生活水準提高（營養、住居、醫療可及性）' : '醫療科技與公共衛生';
+      u.cause(c, 'health', why, dh - dhDivine);
+      if (dhDivine) { u.cause(c, 'health', '神之手：公共衛生援助', dhDivine); c.divine.health.gain += dhDivine; }
     }
 
     // 遷移：總量守恆，從推力國家流向拉力國家

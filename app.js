@@ -422,7 +422,7 @@
     return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
   }
   function typeLabel(t) {
-    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果' }[t] || t;
+    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果', divine: '神之手' }[t] || t;
   }
 
   // ---------- 地圖 ----------
@@ -539,6 +539,7 @@
     const evs = w.events.filter((e) => e.level >= 2 && (w.mode === 'global' || e.level >= 3 || e.countries.includes(w.focus))).slice(-12).reverse();
     const chron = w.chronicle.slice(-3).reverse();
     return observatory() + head + `
+      <div class="grid g2">${headlinesCard()}${divineCard()}</div>
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
         <div class="card"><h3>歷史紀錄</h3>${chron.length ? chron.map((c) => `<p class="chron"><b>${c.year} 年</b>\n${esc(c.text)}</p>`).join('') : '<p class="dim">每推進一年，模擬器會根據實際模擬數據寫下一段歷史摘要。</p>'}</div>
@@ -716,7 +717,7 @@
 
   function whyModal(cid, metric, scope) {
     const w = W();
-    const sc = scope === undefined || scope === 'undefined' ? 'last' : scope === 'current' || scope === 'last' ? scope : Number(scope);
+    const sc = scope === undefined || scope === 'undefined' ? 'last' : scope === 'current' || scope === 'last' || /^y\d+$/.test(scope) ? scope : Number(scope);
     const r = WS.Explain.metric(w, cid, metric, sc);
     const max = Math.max(1e-9, ...r.factors.map((f) => Math.abs(f.v)));
     const dec = ['population', 'food', 'research', 'energy'].includes(metric) ? 2 : 1;
@@ -874,6 +875,92 @@
   }
 
   // ======================= 系統 =======================
+  // ======================= 世界頭條 =======================
+  // 頭條只由引擎紀錄產生（systems/headline-system.js），這裡只負責顯示，並連回事件或因果帳
+  const clean = (s) => String(s).replace(/^[✔✘]\s*/, '');
+  function headlineItem(h) {
+    const act = h.eventId ? `data-act="event" data-id="${h.eventId}"` : `data-act="why" data-c="${h.cid}" data-m="${h.metric}" data-s="y${h.year}"`;
+    return `<article class="headline">
+      <div class="hl-k"><span class="tag ${h.kicker === '戰爭' || h.kicker === '動盪' ? 'red' : h.kicker === '神之手' ? 'violet' : 'gold'}">${esc(h.kicker)}</span><span class="dim">${h.year} 年</span></div>
+      <div class="hl-t">${esc(h.title)}</div>
+      ${h.lead ? `<p class="hl-l">${esc(h.lead)}</p>` : ''}
+      ${h.why && h.why.length ? `<p class="hl-w">紀錄中的原因：${h.why.map((x) => esc(clean(x))).join('；')}</p>` : ''}
+      <button class="link" ${act}>追查原因 ›</button></article>`;
+  }
+  function headlinesCard() {
+    const w = W();
+    const L = WS.Headlines.latest(w);
+    return `<div class="card"><h3>世界頭條${L.year ? `・${L.year} 年` : ''} ${(w.headlines || []).length > L.items.length ? '<button class="link" data-act="headlines-all">往年頭條</button>' : ''}</h3>
+      ${L.items.length ? `<div class="headlines">${L.items.map(headlineItem).join('')}</div>` : '<p class="dim">世界出現重大變化時（戰爭、政權更替、人口或經濟劇變……），這裡會刊出當年最多 3 則頭條，每一則都能點開追查原因。</p>'}</div>`;
+  }
+  function headlinesModal() {
+    const w = W();
+    const years = [...new Set((w.headlines || []).map((h) => h.year))].sort((a, b) => b - a);
+    openModal(`<h2>往年頭條</h2><p class="dim">只有世界出現重大變化的年份才有頭條。內容全部來自模擬紀錄。</p>
+      ${years.map((y) => `<h3 class="hl-year">${y} 年</h3><div class="headlines">${w.headlines.filter((h) => h.year === y).map(headlineItem).join('')}</div>`).join('')}`);
+  }
+
+  // ======================= 神之手 =======================
+  // 玩家改變世界的「條件」，結果由引擎計算；所有檢查與執行都在 systems/divine-system.js
+  function divineCard() {
+    const w = W();
+    const D = w.divine || { energy: 0, log: [] };
+    const max = w.params.divine.energyMax;
+    const recent = (D.log || []).slice(-3).reverse();
+    return `<div class="card divine"><h3>神之手 ${(D.log || []).length ? '<button class="link" data-act="divine-log">全部紀錄</button>' : ''}</h3>
+      <div class="energy"><span>神力</span><div class="bar"><i style="width:${(D.energy / max) * 100}%"></i></div><span class="num">${Math.floor(D.energy)}／${max}</span></div>
+      <p class="dim" style="margin:6px 0 10px">每年恢復 ${w.params.divine.energyRegenPerYear}。你只能改變條件，世界會怎麼反應由引擎決定，結果不保證。</p>
+      <div class="divine-btns">${Object.entries(WS.Divine.KINDS).map(([k, d]) => {
+        const cost = WS.Divine.cost(w, k);
+        return `<button class="btn small" data-act="divine-open" data-v="${k}" ${D.energy < cost ? 'disabled' : ''}><b>${d.icon}</b> ${esc(d.name)}<small class="num">${cost}</small></button>`;
+      }).join('')}</div>
+      ${recent.length ? `<ul class="events" style="margin-top:10px">${recent.map((g) => `<li data-act="event" data-id="${g.eventId}" class="${g.done ? '' : 'l3'}"><div class="when">${g.y}.${String(g.m).padStart(2, '0')}・${g.done ? '已結束' : '進行中'}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${esc(g.status)}</div></li>`).join('')}</ul>` : ''}</div>`;
+  }
+  function divineModal() {
+    const w = W();
+    const st = S.divine;
+    const ids = U.ids(w);
+    if (!w.countries[st.cid] || !w.countries[st.cid].alive) st.cid = ids[0];
+    const c = w.countries[st.cid];
+    let optHtml = '';
+    if (st.kind === 'tech') {
+      const list = WS.Divine.techOptions(w, c);
+      if (!st.opt || !list.includes(st.opt)) st.opt = list[0] || null;
+      optHtml = list.length ? `<div class="field"><label>要分享的科技（別國已掌握、${esc(c.name)}具備前置條件）</label><select data-act="divine-opt-select">${list.map((t) => `<option value="${t}" ${t === st.opt ? 'selected' : ''}>${esc(WS.Data.techs[t].name)}</option>`).join('')}</select></div>` : '';
+    }
+    if (st.kind === 'leader') {
+      if (!st.opt) st.opt = 'reform';
+      optHtml = `<div class="field"><label>候選者的性格</label><div class="seg">${Object.entries(WS.Divine.LEANINGS).map(([k, L]) => `<button data-act="divine-opt" data-v="${k}" class="${st.opt === k ? 'on' : ''}">${esc(L.name)}</button>`).join('')}</div></div>`;
+    }
+    const pv = engine.divinePreview(st.kind, st.cid, st.opt || undefined);
+    const traits = WS.Agents.leaderTraits(c.leader);
+    openModal(`<h2>神之手</h2>
+      <div class="seg" style="flex-wrap:wrap;margin-bottom:10px">${Object.entries(WS.Divine.KINDS).map(([k, d]) => `<button data-act="divine-kind" data-v="${k}" class="${st.kind === k ? 'on' : ''}">${d.icon} ${esc(d.name)}</button>`).join('')}</div>
+      <p class="dim">${esc(WS.Divine.KINDS[st.kind].short)}。耗費神力 <b class="gold">${pv.cost}</b>（目前 ${Math.floor(pv.energy)}）。</p>
+      <div class="field"><label>對象國家</label><select data-act="divine-target">${ids.map((id) => `<option value="${id}" ${id === st.cid ? 'selected' : ''}>${esc(w.countries[id].name)}</option>`).join('')}</select></div>
+      ${st.kind === 'leader' ? `<p class="dim">目前領導人：${esc(c.leader.name)}${traits.length ? '（' + traits.map(esc).join('、') + '）' : ''}</p>` : ''}
+      ${optHtml}
+      <h3 class="dv-h">條件</h3><ul class="list-plain">${pv.checks.map(([ok, t]) => `<li class="${ok ? 'good' : 'bad'}">${ok ? '✔' : '✘'} ${esc(t)}</li>`).join('')}</ul>
+      ${pv.info && pv.info.length ? `<h3 class="dv-h">會改變什麼</h3><ul class="list-plain">${pv.info.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      ${pv.risk && pv.risk.length ? `<h3 class="dv-h">為什麼結果不保證</h3><ul class="list-plain">${pv.risk.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      <div class="row" style="margin-top:12px"><button class="btn gold" data-act="divine-cast" ${pv.ok ? '' : 'disabled'}>施展（神力 −${pv.cost}）</button><button class="btn" data-act="close-modal">取消</button></div>
+      <p class="dim" style="margin-top:8px">施展會記錄在指令紀錄裡；「如果？」平行世界重跑時，也會在同一個月份重播這次干預。</p>`);
+  }
+  function divineCast() {
+    const st = S.divine;
+    const r = engine.divine(st.kind, st.cid, st.opt || undefined);
+    if (!r.ok) { toast('無法施展：' + r.reason); divineModal(); return; }
+    WS.Save.autosave(W());
+    closeModal(); render();
+    toast('已施展：' + r.effects[0]);
+  }
+  function divineLogModal() {
+    const w = W();
+    const log = ((w.divine && w.divine.log) || []).slice().reverse();
+    openModal(`<h2>神之手紀錄</h2><p class="dim">每一次干預與它目前的結果。點一下可以看完整的原因與後續事件。</p>
+      <ul class="events">${log.map((g) => `<li data-act="event" data-id="${g.eventId}"><div class="when">${g.y}.${String(g.m).padStart(2, '0')}・${esc(WS.Divine.KINDS[g.kind].name)}・神力 ${g.cost}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${g.done ? '結果：' : '狀態：'}${esc(g.status)}</div></li>`).join('')}</ul>`);
+  }
+
   function systemTab() {
     const w = W();
     const saves = WS.Save.list();
@@ -1003,6 +1090,12 @@
       case 'stay-paused': S.resumeAuto = false; closeModal(); break;
       case 'whatif-run': whatifRun(t.dataset.id, t.dataset.k); break;
       case 'whatif-show': if (S.whatif) whatifReport(); break;
+      case 'headlines-all': headlinesModal(); break;
+      case 'divine-open': S.divine = { kind: v || 'health', cid: (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
+      case 'divine-kind': S.divine.kind = v; S.divine.opt = null; divineModal(); break;
+      case 'divine-opt': S.divine.opt = v; divineModal(); break;
+      case 'divine-cast': divineCast(); break;
+      case 'divine-log': divineLogModal(); break;
       case 'wi-metric': S.wiMetric = v; whatifReport(); break;
       case 'whatif-chart': {
         if (!whatifValid()) break;
@@ -1097,6 +1190,8 @@
     if (t.dataset.act === 'set-select') { S.setup[t.dataset.k] = t.value; renderSetup(); }
     if (t.dataset.act === 'focus') { engine.setFocus(t.value); S.view = null; render(); }
     if (t.dataset.act === 'chart-metric') { S.chartMetric = t.value; render(); }
+    if (t.dataset.act === 'divine-target') { S.divine.cid = t.value; S.divine.opt = null; divineModal(); }
+    if (t.dataset.act === 'divine-opt-select') { S.divine.opt = t.value; divineModal(); }
     if (t.dataset.param) { const v = parseFloat(t.value); if (isFinite(v)) { engine.setParam(t.dataset.param, v); toast('參數已更新'); } }
     if (t.id === 'import' && t.files[0]) {
       const fr = new FileReader();

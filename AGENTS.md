@@ -49,7 +49,13 @@
 - 第一版可玩原型已完成：1911 年起點、8 個國家、19 項政策、科技樹、外交、戰爭、事件、存檔、分支。
 - 「如果？」平行世界已完成（`systems/whatif-system.js`）。
   目前可改寫：固定歷史事件（阻止／強制發生）、條件事件（阻止；革命可翻轉成敗）、宣戰（阻止）。
-- 自動測試 56 項：`node tests/run-tests.js`。
+- **神之手**（`systems/divine-system.js`）：玩家用會慢慢恢復的「神力」改變世界的條件，大動作耗較多。
+  目前 4 種：援助公共衛生（提高醫療水準目標）、分享已知科技（知識管道加速研究）、引發局部旱災（某地區收成減少）、
+  讓領導人候選者出現（只在自然更替時參與競爭）。全部經 `WorldEngine.divine()` 寫入 commandLog，
+  變化以「神之手：…」寫入因果帳；吸收能力、腐敗、運氣讓結果不保證。
+- **世界頭條**（`systems/headline-system.js`）：每年一月從事件紀錄與因果帳挑出重大變化，只在重大時出現、每年最多 3 則，每則可點開追查原因。
+- **領導人性格**：改革傾向、冒險傾向、重視民生（新）只影響國家 AI 的政策評分，係數在 `params.agents.leaderTraitBias`。
+- 自動測試 64 項：`node tests/run-tests.js`。
 - 歷史回測工具：`node tools/backtest.js`，產生 `reports/backtest-1911.md`。分兩種模式：
   - **AI 自主決策**：各國 AI 自己決定，用來檢查世界能不能合理地自我演化。
   - **史實政策重播**：AI 決策＋在史實時間點執行重大政策（`data/history-policies-1911.js`，經引擎指令寫入 commandLog），用來校準係數。
@@ -93,7 +99,7 @@ engine/params.js                   ★ 所有模型係數（待校準）
 engine/world-engine.js             主流程（每月固定 15 步）與所有引擎指令
 engine/*-engine.js                 人口、環境、經濟、政治、科技、外交、軍事
 engine/state-engine.js             世界狀態、因果紀錄 U.cause、動態建立國家／組織
-systems/                           政策、國家 AI、事件、規則、歷史、解釋、存檔、「如果？」
+systems/                           政策、國家 AI、事件、規則、歷史、解釋、存檔、「如果？」、神之手、世界頭條
 data/scenario-1911.js              1911 年起點資料
 data/definitions.js                科技樹、制度、世界規則
 tests/run-tests.js                 自動測試

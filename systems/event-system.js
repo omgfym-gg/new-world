@@ -24,15 +24,22 @@
   Events.changeLeader = function (w, c, reason, ctx, parent, preferred) {
     const old = c.leader ? c.leader.name : '—';
     let nl = null;
-    if (preferred) nl = preferred;
+    // 神之手安排的候選者：只在自然更替時參與競爭，結果由機率決定
+    const contest = WS.Divine ? WS.Divine.contest(w, c, ctx) : null;
+    if (contest && contest.won) nl = contest.leader;
+    else if (preferred) nl = preferred;
     else if (c.leaderPool.length) nl = c.leaderPool.shift();
     else nl = { name: `${c.name}第${(c.flags.leaderCount = (c.flags.leaderCount || 1) + 1)}任領導人`, comp: 0.35 + ctx.rng.next() * 0.4, aggr: 0.2 + ctx.rng.next() * 0.6, reform: 0.2 + ctx.rng.next() * 0.6 };
     c.leader = Object.assign({ since: w.tick }, nl);
-    return Events.log(w, ctx, {
-      type: 'leader', title: `${c.name}領導人更替：${old} → ${c.leader.name}`, countries: [c.id], level: 2, parent,
+    const ev = Events.log(w, ctx, {
+      type: 'leader', title: `${c.name}領導人更替：${old} → ${c.leader.name}`, countries: [c.id], level: contest && contest.won ? 3 : 2, parent,
       major: c.id === w.focus,
-      causes: [reason], effects: [`新領導人能力 ${(c.leader.comp * 100).toFixed(0)}、改革傾向 ${(c.leader.reform * 100).toFixed(0)}、侵略傾向 ${(c.leader.aggr * 100).toFixed(0)}`]
+      causes: [reason].concat(contest ? [contest.note] : []),
+      effects: [`新領導人能力 ${(c.leader.comp * 100).toFixed(0)}、改革傾向 ${(c.leader.reform * 100).toFixed(0)}、侵略傾向 ${(c.leader.aggr * 100).toFixed(0)}` + (c.leader.care != null ? `、重視民生 ${(c.leader.care * 100).toFixed(0)}` : '')]
     });
+    // 讓神之手的施展紀錄也連到這次上台（追蹤後續）
+    if (contest && contest.won && contest.parent) { const g = w.events.find((x) => x.id === contest.parent); if (g && !g.followups.includes(ev.id)) g.followups.push(ev.id); }
+    return ev;
   };
 
   Events.changeRegime = function (w, c, to, title, causes, ctx, parent, extra) {

@@ -51,6 +51,7 @@
     }
     History.record(w);
     History.narrate(w);
+    if (WS.Headlines) WS.Headlines.build(w);
   };
 
   History.narrate = function (w) {

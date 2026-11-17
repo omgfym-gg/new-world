@@ -32,6 +32,12 @@
     if (!c) return null;
     let data, label;
     if (scope === 'current') { data = agg([c.causes.cur[metric] || {}]); label = `${w.year} 年至今`; }
+    else if (typeof scope === 'string' && /^y\d+$/.test(scope)) {   // 指定某一年（世界頭條用）
+      const yr = +scope.slice(1);
+      const ys = c.causes.years.find((x) => x.year === yr);
+      data = agg(ys ? [ys.data[metric] || {}] : yr === w.year ? [c.causes.cur[metric] || {}] : []);
+      label = `${yr} 年`;
+    }
     else {
       const n = scope === 'last' ? 1 : scope;
       const ys = c.causes.years.slice(-n);

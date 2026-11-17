@@ -43,6 +43,8 @@
       w.month++;
       if (w.month > 12) { w.month = 1; w.year++; }
       w.tick++;
+      // 神之手：恢復神力、結束到期的干預（不使用亂數）
+      WS.Divine.step(w, ids, ctx);
       // 3–10. 各系統，順序固定
       WS.Population.step(w, ids, ctx);
       WS.Environment.step(w, ids, ctx);
@@ -105,6 +107,7 @@
         case 'intervention': this.setIntervention(a); return { ok: true };
         case 'focus': this.setFocus(a); return { ok: true };
         case 'mode': this.setMode(a); return { ok: true };
+        case 'divine': return this.divine(a, b, c.args[2]);
       }
       return { ok: false, reason: '未知指令' };
     }
@@ -125,6 +128,16 @@
       }
       return res;
     }
+
+    // 神之手：玩家改變世界的條件（不直接指定結果），經引擎檢查後執行並記入指令紀錄
+    divine(kind, cid, opt) {
+      const ctx = { rng: new WS.RNG(this.w.rngState), major: [] };
+      const res = WS.Divine.act(this.w, ctx, kind, cid, opt == null ? undefined : opt);
+      this.w.rngState = ctx.rng.s;
+      if (res.ok) this.record('divine', [kind, cid, opt == null ? null : opt]);
+      return res;
+    }
+    divinePreview(kind, cid, opt) { return WS.Divine.preview(this.w, kind, cid, opt); }
 
     changeRule(key, value) {
       const ctx = { rng: new WS.RNG(this.w.rngState), major: [] };

@@ -308,6 +308,23 @@ body::after {
 }
 
 
+/* ===== 世界頭條 ===== */
+.headlines { display: grid; gap: 8px; }
+.headline { background: var(--bg2); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 10px; padding: 10px 12px; }
+.headline .hl-k { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 4px; }
+.headline .hl-t { font-weight: 700; font-size: 15px; line-height: 1.4; }
+.headline .hl-l { margin: 4px 0 0; font-size: 13px; color: var(--text); }
+.headline .hl-w { margin: 4px 0 2px; font-size: 12px; color: var(--muted); }
+.hl-year { font-size: 14px; color: var(--blue); margin: 14px 0 6px; }
+
+/* ===== 神之手 ===== */
+.divine .energy { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.divine .energy .bar { height: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.divine .energy .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--violet), var(--gold)); box-shadow: 0 0 10px rgba(167, 139, 250, .6); }
+.divine-btns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.divine-btns .btn { display: flex; align-items: center; gap: 6px; justify-content: flex-start; text-align: left; }
+.divine-btns .btn small { margin-left: auto; color: var(--gold); }
+.dv-h { color: var(--blue); font-size: 14px; margin-top: 12px; }
 /* 即時標記 */
 .hud-tag .live { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: 10.5px; color: #fca5a5; letter-spacing: .1em; margin-bottom: 2px; }
 .hud-tag .live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #f87171; box-shadow: 0 0 8px #f87171; animation: blink 1.2s ease-in-out infinite; }
