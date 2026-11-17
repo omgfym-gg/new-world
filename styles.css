@@ -307,14 +307,6 @@ body::after {
   .topbar::after, .sys-id i { animation: none; }
 }
 
-/* 自動播放時的重大事件通知（不擋畫面） */
-.alert { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 15; width: min(92vw, 440px);
-  background: linear-gradient(180deg, rgba(40, 28, 6, .96), rgba(14, 12, 24, .96)); border: 1px solid var(--gold); border-radius: 14px;
-  padding: 10px 12px; box-shadow: 0 0 24px rgba(251, 191, 36, .25); display: grid; gap: 6px; animation: alert-in .25s ease-out; }
-.alert[hidden] { display: none; }
-.alert-k { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--gold); }
-.alert-t { font-size: 14px; }
-@keyframes alert-in { from { opacity: 0; transform: translate(-50%, 10px); } }
 
 /* ===== 世界頭條 ===== */
 .headlines { display: grid; gap: 8px; }
@@ -345,3 +337,8 @@ body::after {
 .wc-side, .wc-score { display: grid; gap: 2px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 .wc-side span, .wc-score span { color: var(--muted); }
 .wc-score .bar > i { background: linear-gradient(90deg, #f87171, #fbbf24); }
+
+/* 事件畫面 */
+.ev-media { margin: 6px 0 2px; }
+.ev-media .wc-canvas { height: min(48vw, 260px); }
+.ev-media-note { margin: 2px 0 10px; font-size: 12px; }
