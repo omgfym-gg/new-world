@@ -55,7 +55,7 @@
   變化以「神之手：…」寫入因果帳；吸收能力、腐敗、運氣讓結果不保證。
 - **世界頭條**（`systems/headline-system.js`）：每年一月從事件紀錄與因果帳挑出重大變化，只在重大時出現、每年最多 3 則，每則可點開追查原因。
 - **領導人性格**：改革傾向、冒險傾向、重視民生（新）只影響國家 AI 的政策評分，係數在 `params.agents.leaderTraitBias`。
-- 自動測試 64 項：`node tests/run-tests.js`。
+- 自動測試 66 項：`node tests/run-tests.js`。
 - 歷史回測工具：`node tools/backtest.js`，產生 `reports/backtest-1911.md`。分兩種模式：
   - **AI 自主決策**：各國 AI 自己決定，用來檢查世界能不能合理地自我演化。
   - **史實政策重播**：AI 決策＋在史實時間點執行重大政策（`data/history-policies-1911.js`，經引擎指令寫入 commandLog），用來校準係數。
@@ -93,7 +93,7 @@
 index.html / styles.css / app.js   介面（只讀取狀態、呼叫引擎指令，不自己算數值）
 ui/globe.js、ui/earth-dots.js        會轉的全息地球（只畫圖；陸地點陣來自 Natural Earth 公有領域資料）
 ui/territory.js                    地球上國土顏色的示意範圍（介面用，引擎不讀）
-ui/warcam.js                       戰場即時畫面（依戰爭數據畫的動畫，不是真實影像）
+ui/warcam.js                       戰場即時畫面（依戰爭數據畫的動畫，不是真實影像；從開戰回放 war.track 戰況紀錄）
 ui/scenecam.js                     其他事件畫面：饑荒、革命、新國家、新科技、國際組織、停戰（只畫圖）
 engine/params.js                   ★ 所有模型係數（待校準）
 engine/world-engine.js             主流程（每月固定 15 步）與所有引擎指令

@@ -549,6 +549,27 @@ test('健康檢查：報表列出每一項檢查與各世界線總量', () => {
   assert.ok(h.runs[0].popX > 0 && h.runs[0].gdpX > 0);
 });
 
+test('戰況紀錄：每場戰爭每月記下分數、兵力與傷亡，供戰場畫面回放', () => {
+  const e = make({ mode: 'global', seed: 'unit' }); e.advance(120);
+  const wars = e.world.wars;
+  assert.ok(wars.length > 0, '十年內應該有戰爭');
+  for (const war of wars) {
+    assert.ok(Array.isArray(war.track) && war.track.length >= 1);
+    assert.ok(war.track.length <= 241);
+    const last = war.track[war.track.length - 1];
+    for (const k of ['y', 'm', 's', 'pa', 'pd', 'ca', 'cd']) assert.ok(typeof last[k] === 'number', k);
+    for (let i = 1; i < war.track.length; i++) assert.ok(war.track[i].ca >= war.track[i - 1].ca - 1e-9, '累計傷亡不會變少');
+  }
+});
+test('戰況紀錄不影響模擬結果（拿掉紀錄後世界相同）', () => {
+  const a = make({ mode: 'global', seed: 'trk' }); a.advance(240);
+  WS = load();
+  WS.Military.track = function () {};
+  const b = make({ mode: 'global', seed: 'trk' }); b.advance(240);
+  const strip = (w) => { const c = JSON.parse(JSON.stringify(w)); for (const x of c.wars) delete x.track; return JSON.stringify(c); };
+  assert.strictEqual(strip(a.world), strip(b.world));
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

@@ -134,7 +134,7 @@
     return {
       id: war.id, name: war.name, att, def, score: war.score, months: war.months, ended: war.ended, outcomeLabel: label,
       intensity: U.clamp((cas / months) / 0.05, 0.15, 1), year: w.year, month: w.month, eventId: war.eventId,
-      start: war.start
+      start: war.start, track: war.track || []
     };
   }
   // ---------- 事件畫面（依事件紀錄畫的動畫） ----------
