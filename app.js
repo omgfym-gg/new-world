@@ -12,24 +12,157 @@
     screen: 'start', tab: 'overview', view: null, histFilter: 'major', chartMetric: 'gdp', auto: null,
     setup: null, compare: null, nl: '', nlResult: null, speed: 'decade', whatif: null, wiMetric: 'gdp', mapView: 'globe'
   };
-  // 會轉的地球（只畫圖）：點國家＝打開該國資料
+  // 會轉的地球（只畫圖）：點國家＝打開該國資料；點標籤＝看事件原因或戰場畫面
   const globe = window.WSGlobe ? WSGlobe.get() : null;
-  if (globe) globe.onPick = (id) => { S.view = id; S.tab = 'country'; render(); window.scrollTo(0, 0); };
+  if (globe) {
+    globe.onPick = (id) => { S.view = id; S.tab = 'country'; render(); window.scrollTo(0, 0); };
+    globe.onEvent = (tag) => { if (tag.war) warCamModal(tag.war); else if (tag.event) eventModal(tag.event); };
+  }
+  // 地球上的視覺效果全部由引擎狀態「讀出來」，不寫入任何數值
+  const MIL_ERA = ['machinegun', 'armor', 'aviation', 'jet', 'rocketry'];
+  function hasTech(c, t) { return !!(c.tech[t] && WS.Data.techs[t] && c.tech[t].progress >= WS.Data.techs[t].cost); }
+  function eraOf(c) { let e = 0; MIL_ERA.forEach((t, i) => { if (hasTech(c, t)) e = i; }); return e; }
+  function eventKind(e) {
+    if (e.type === 'war') return /^戰爭爆發/.test(e.title) ? 'war-start' : 'war-end';
+    if (e.type === 'regime' || e.type === 'newregime') return 'upheaval';
+    if (e.type === 'newcountry') return 'newcountry';
+    if (e.type === 'divine') return 'divine';
+    if (e.type === 'tech') return /率先/.test(e.title) ? 'tech-first' : 'tech';
+    if (e.type === 'organization' && /成立/.test(e.title)) return 'org';
+    if (e.type === 'conditional' || e.type === 'historical') {
+      if (e.defId === 'famine' || /旱災|饑荒/.test(e.title)) return 'famine';
+      if (['revolution', 'coup', 'democratization', 'warlordism', 'secession', 'reunification'].includes(e.defId) || e.defId === 'wuchang') return 'upheaval';
+    }
+    return null;
+  }
+  let worldObj = null, worldKey = 0;
   function globeData() {
-    if (S.screen !== 'game' || !engine.world) return { markers: [], links: [], focus: null };
+    if (S.screen !== 'game' || !engine.world) return { markers: [], links: [], focus: null, worldKey: 'start' };
     const w = W();
-    const markers = U.ids(w).map((id) => {
+    if (w !== worldObj) { worldObj = w; worldKey++; }
+    const T = window.WS_TERRITORY || {};
+    const nowM = w.year * 12 + w.month;
+    const ageM = (e) => nowM - (e.y * 12 + e.m);
+    const ids = U.ids(w);
+    // 最近的饑荒、旱災：國土慢慢從黃褐色恢復
+    const famineAge = {};
+    for (let i = w.events.length - 1; i >= 0 && ageM(w.events[i]) <= 24; i--) {
+      const e = w.events[i];
+      if (eventKind(e) === 'famine') for (const c of e.countries) if (famineAge[c] == null) famineAge[c] = ageM(e);
+    }
+    const markers = ids.map((id) => {
       const c = w.countries[id];
-      return { id, name: c.name, lat: c.lat, lon: c.lon, color: c.color, size: Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5), war: !!c.flags.atWar };
+      const gdppc = Math.max(1, c.econ.gdppc || 1);
+      const rich = U.clamp(Math.log(gdppc / 300) / Math.log(100), 0, 1);
+      const fam = Math.max(U.clamp((c.res.shortage || 0) * 3, 0, 1), famineAge[id] != null ? 0.8 * (1 - famineAge[id] / 24) : 0);
+      return {
+        id, name: c.name, lat: c.lat, lon: c.lon, color: c.color, size: Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5), war: !!c.flags.atWar,
+        anchors: T[id] && !c.parent ? T[id] : [[c.lat, c.lon, U.clamp(3 + Math.sqrt(U.popTotal(c)) * 0.35, 3, 9)]],
+        light: U.clamp(c.demo.urban, 0, 1) * (0.15 + 0.85 * rich) * 0.9,
+        famine: fam
+      };
     });
     const links = [];
+    const trade = [];
     for (const k of Object.keys(w.relations)) {
       const r = w.relations[k];
-      if (!w.countries[r.a].alive || !w.countries[r.b].alive) continue;
+      if (!w.countries[r.a] || !w.countries[r.b] || !w.countries[r.a].alive || !w.countries[r.b].alive) continue;
       if (r.war) links.push({ a: r.a, b: r.b, type: 'war' });
       else if (r.alliance) links.push({ a: r.a, b: r.b, type: 'alliance' });
+      else if (r.trade > 0.35) trade.push({ a: r.a, b: r.b, type: 'trade', k: U.clamp((r.trade - 0.35) / 0.4, 0, 1) });
     }
-    return { markers, links, focus: w.mode === 'country' ? w.focus : null };
+    trade.sort((x, y) => y.k - x.k);
+    links.unshift(...trade.slice(0, 8));
+    const alive = (x) => w.countries[x] && w.countries[x].alive;
+    const live = w.wars.filter((x) => !x.ended);
+    const fronts = live.map((x) => ({ a: x.attackers.filter(alive), d: x.defenders.filter(alive) }));
+    // 戰後焦土：傷亡越重越明顯，60 個月內淡掉
+    const scorch = w.wars.filter((x) => x.ended && x.end && nowM - (x.end.y * 12 + x.end.m) < 60).map((x) => {
+      const cas = Object.values(x.casualties).reduce((a, b) => a + b, 0);
+      const age = nowM - (x.end.y * 12 + x.end.m);
+      return { a: x.attackers.filter(alive), d: x.defenders.filter(alive), k: U.clamp(0.35 + cas / 1.5, 0.35, 1) * (1 - age / 60) };
+    }).filter((x) => x.k > 0.02);
+    const events = [];
+    for (let i = w.events.length - 1; i >= 0 && events.length < 40; i--) {
+      const e = w.events[i];
+      if (ageM(e) > 24) break;
+      const kind = eventKind(e);
+      if (kind) events.unshift({ id: e.id, kind, title: e.title, countries: e.countries.filter((c) => w.countries[c]), major: e.level >= 3 });
+    }
+    // 可點的標籤：進行中的戰爭（開戰場畫面）＋最近一年的大事（看原因）
+    const tags = [];
+    for (const x of live) {
+      const a = x.attackers.find(alive), d = x.defenders.find(alive);
+      const at = d || a;
+      if (at) tags.push({ country: at, kind: 'war-start', label: '戰區・看畫面', war: x.id });
+    }
+    const LBL = { famine: '饑荒', upheaval: '政局劇變', newcountry: '新國家', 'tech-first': '新科技', divine: '神之手' };
+    const tagged = new Set();
+    for (let i = events.length - 1; i >= 0 && tags.length < 10; i--) {
+      const e = events[i];
+      const we = w.events.find((x) => x.id === e.id);
+      if (!LBL[e.kind] || ageM(we) > 12 || !e.countries[0]) continue;
+      const key = e.countries[0] + e.kind;
+      if (tagged.has(key)) continue;
+      tagged.add(key);
+      tags.push({ country: e.countries[0], kind: e.kind, label: LBL[e.kind], event: e.id });
+    }
+    return { markers, links, focus: w.mode === 'country' ? w.focus : null, fronts, scorch, events, tags, worldKey };
+  }
+  // ---------- 戰場即時畫面 ----------
+  let cam = null;
+  function warCamData(warId) {
+    const w = W();
+    const war = w.wars.find((x) => x.id === warId);
+    if (!war) return null;
+    const side = (list) => {
+      const cs = list.map((x) => w.countries[x]).filter(Boolean);
+      const lead = cs[0] || { name: '—', color: '#888' };
+      return {
+        name: cs.map((c) => c.name).join('、'), color: lead.color,
+        personnel: cs.reduce((s, c) => s + (c.alive ? c.mil.personnel : 0), 0),
+        casualties: list.reduce((s, x) => s + (war.casualties[x] || 0), 0),
+        era: Math.max(0, ...cs.map(eraOf))
+      };
+    };
+    const att = side(war.attackers), def = side(war.defenders);
+    const tot = Math.max(1e-6, att.personnel + def.personnel);
+    att.share = att.personnel / tot; def.share = def.personnel / tot;
+    const cas = att.casualties + def.casualties;
+    const months = Math.max(1, war.months);
+    const label = { attackers: '進攻方勝利', defenders: '防守方勝利', white: '停戰（無勝負）', negotiated: '談判停戰', collapse: '一方瓦解', rule: '世界規則禁止戰爭，強制停火' }[war.outcome] || '';
+    return {
+      id: war.id, name: war.name, att, def, score: war.score, months: war.months, ended: war.ended, outcomeLabel: label,
+      intensity: U.clamp((cas / months) / 0.05, 0.15, 1), year: w.year, month: w.month, eventId: war.eventId,
+      start: war.start
+    };
+  }
+  const ERA_NAME = ['步兵、機槍與火炮', '裝甲部隊（坦克）', '軍用飛機', '噴射機', '飛彈'];
+  function warCamPanel(d) {
+    const bar = (v) => `<div class="bar"><i style="width:${U.clamp(50 + v / 2, 0, 100)}%"></i></div>`;
+    return `<div class="wc-stats">
+      <div class="wc-side"><b style="color:${esc(d.att.color)}">進攻方：${esc(d.att.name)}</b><span>兵力 ${d.att.personnel.toFixed(2)} 百萬・傷亡 ${d.att.casualties.toFixed(2)} 百萬</span><span>裝備：${ERA_NAME[d.att.era]}</span></div>
+      <div class="wc-side"><b style="color:${esc(d.def.color)}">防守方：${esc(d.def.name)}</b><span>兵力 ${d.def.personnel.toFixed(2)} 百萬・傷亡 ${d.def.casualties.toFixed(2)} 百萬</span><span>裝備：${ERA_NAME[d.def.era]}</span></div>
+      <div class="wc-score"><span>戰況（右＝進攻方占優）</span>${bar(U.clamp(d.score, -100, 100))}<span class="num">分數 ${d.score.toFixed(0)}・已打 ${d.months} 個月</span></div>
+    </div>`;
+  }
+  function warCamModal(warId) {
+    const d = warCamData(warId);
+    if (!d) return toast('找不到這場戰爭');
+    openModal(`<h2>戰場畫面：${esc(d.name)}</h2>
+      <p class="dim" style="margin:0 0 8px">依模擬數據即時畫出的動畫，不是真實影像。兵力、傷亡、前線位置、裝備年代都跟著引擎的實際數字變。</p>
+      <div class="wc-wrap"><canvas class="wc-canvas" id="wc-canvas" aria-label="${esc(d.name)}的戰場動畫"></canvas></div>
+      <div class="row" style="margin:8px 0"><div class="seg mini"><button class="on" data-act="wc-mode" data-v="color">一般</button><button data-act="wc-mode" data-v="thermal">熱成像</button></div>
+        ${d.eventId ? `<button class="btn small" data-act="event" data-id="${esc(d.eventId)}">為什麼開戰？</button>` : ''}</div>
+      <div id="wc-panel">${warCamPanel(d)}</div>`);
+    if (cam) cam.stop();
+    cam = new WSWarCam(document.getElementById('wc-canvas'), () => warCamData(warId));
+    clearInterval(warCamModal.t);
+    warCamModal.t = setInterval(() => {
+      const p = document.getElementById('wc-panel');
+      if (!p || modal.hidden) { clearInterval(warCamModal.t); return; }
+      const dd = warCamData(warId); if (dd) p.innerHTML = warCamPanel(dd);
+    }, 500);
   }
   function mountGlobe() {
     if (!globe) return;
@@ -61,7 +194,7 @@
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600);
   }
   function openModal(html) { modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0; }
-  function closeModal() { modal.hidden = true; }
+  function closeModal() { modal.hidden = true; if (cam) { cam.stop(); cam = null; } }
 
   // ======================= 開始畫面 =======================
   function renderStart() {
@@ -282,12 +415,12 @@
     const allies = Object.values(w.relations).filter((r) => r.alliance && !r.war).length;
     return `<div class="card observatory"><h3>行星觀測窗 ${toggle}</h3>
       <div class="globe-slot" id="globe-slot">
-        <div class="hud-tag tl"><b>${w.year}</b>.${String(w.month).padStart(2, '0')}<span>世界線：${esc(w.branch.name)}</span></div>
+        <div class="hud-tag tl"><i class="live">即時</i><b>${w.year}</b>.${String(w.month).padStart(2, '0')}<span>世界線：${esc(w.branch.name)}</span></div>
         <div class="hud-tag tr">人口<b class="num">${fPop(pop)}</b></div>
         <div class="hud-tag bl">戰爭<b class="num ${wars ? 'bad' : ''}">${wars}</b>同盟<b class="num">${allies}</b></div>
         <div class="hud-tag br">GDP<b class="num">${fGdp(gdp)}</b></div>
       </div>
-      <div class="legend"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>光點大小＝人口・拖曳可轉動・點國家看詳情</span></div></div>`;
+      <div class="legend"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span><i style="background:#34d399"></i>貿易</span><span><i style="background:#ffd68c"></i>夜晚城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div><p class="dim" style="margin:4px 0 0">拖曳可轉動・點國家看詳情・點地球上的標籤看原因，戰區標籤可開戰場畫面</p></div>`;
   }
 
   // ---------- 圖表 ----------
@@ -817,6 +950,7 @@
       case 'view': S.view = v; render(); break;
       case 'alert-close': hideAlert(); break;
       case 'alert-intervene': { const evs = S.alertEvents || []; hideAlert(); stopAuto(); render(); if (evs.length) decisionModal(evs); break; }
+      case 'wc-mode': if (cam) { cam.mode = v; t.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === t)); } break;
       case 'map-view': S.mapView = v; render(); break;
       case 'open-country': S.view = t.dataset.id; S.tab = 'country'; render(); window.scrollTo(0, 0); break;
       case 'why': whyModal(t.dataset.c, t.dataset.m, t.dataset.s); break;
