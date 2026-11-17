@@ -792,6 +792,11 @@ test('遠古接到近代：1800 年以後把政體轉成近代國家，人口沿
   assert.ok(Math.abs(popM - popA) / popA < 0.02, `人口 ${popA} → ${popM}`);
   assert.ok(w.origin && w.origin.fromAncient);
   assert.strictEqual(JSON.stringify(anc.ancient), ancJson, '遠古世界不被改動');
+  // 國家數與經濟量級：政體只帶走實際治理的人口，其餘成為各地小國；人均 GDP 接近 1820 年的量級（約 400–1,500）
+  assert.ok(ids.length >= 20 && ids.length <= 80, '國家數 ' + ids.length);
+  const gdpM = ids.reduce((s, id) => s + w.countries[id].econ.gdp, 0);
+  assert.ok(gdpM / popM * 1000 > 450 && gdpM / popM * 1000 < 1200, '世界人均 GDP ' + gdpM / popM * 1000);
+  assert.strictEqual(JSON.stringify(WS.EraBridge.build(anc).setup.scenarioData), JSON.stringify(WS.EraBridge.build(anc).setup.scenarioData), '同一條世界線接到近代結果相同');
   e.setIntervention('none'); e.advance(120);
   for (const id of WS.util.ids(e.world)) { const c = e.world.countries[id]; assert.ok(isFinite(c.econ.gdp) && c.econ.gdp > 0 && WS.util.popTotal(c) > 0, id); }
   // 近代世界存檔載入後繼續推進，結果相同（起點資料存在 genesis 裡）

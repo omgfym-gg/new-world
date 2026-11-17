@@ -111,7 +111,11 @@
     paper: T('paper', '造紙', 'org', 30000, { req: ['writing', 'administration'], ref: '中國約西元 105 年（蔡倫改良；可信度 B）', effects: { admin: 0.3, research: 0.2, exchange: 2 } }),
     compass: T('compass', '羅盤與遠洋航海', 'org', 45000, { req: ['sailing', 'iron', 'currency'], cond: (r) => r.coast >= 0.3, ref: '中國約西元 11 世紀用於航海（可信度 B）', effects: { exchange: 6 } }),
     printing: T('printing', '印刷術', 'org', 45000, { req: ['paper'], ref: '雕版印刷約西元 8 世紀；活字約 1040 年（中國）、1450 年（歐洲）（可信度 B）', effects: { research: 0.3, cohesion: 0.3 } }),
-    gunpowder: T('gunpowder', '火藥', 'material', 45000, { req: ['iron', 'administration'], ref: '中國約西元 9 世紀（可信度 B）', effects: { military: 1.0 } })
+    gunpowder: T('gunpowder', '火藥', 'material', 45000, { req: ['iron', 'administration'], ref: '中國約西元 9 世紀（可信度 B）', effects: { military: 1.0 } }),
+    // 近代前夕（約西元 1000–1700 年）：讓人口與經濟在接到近代前繼續成長
+    new_crops: T('new_crops', '高產作物與作物交流', 'food', 90000, { req: ['crop_rotation', 'compass'], ref: '占城稻約 11 世紀傳入中國；玉米、馬鈴薯、番薯 16 世紀起傳遍各大洲（可信度 B）', effects: { land: 2.0, farmY: 0.1, health: 0.001 } }),
+    medicine: T('medicine', '醫學與防疫（檢疫、人痘）', 'org', 60000, { req: ['printing', 'currency'], ref: '威尼斯檢疫約 1377 年；人痘接種中國約 16 世紀（可信度 B）', effects: { health: 0.003 } }),
+    banking: T('banking', '銀行與信用', 'org', 60000, { req: ['printing', 'currency'], cond: (r) => r.exchange >= 50, adoptOnly: (r) => r.exchange >= 40, ref: '義大利銀行約 14 世紀；中國交子約 1024 年（可信度 B）', effects: { exchange: 4, urbanMax: 0.02, land: 0.3 } })
   };
   WS.Data.ancientFields = { material: '材料與生存', food: '食物生產', org: '組織與知識' };
 

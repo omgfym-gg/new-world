@@ -550,7 +550,7 @@
       const wars = w.wars.filter((x) => !x.ended).length;
       const orgs = Object.values(w.organizations).filter((o) => o.active).length;
       const sw = w.series.world, n = sw.pop.length;
-      head = (w.origin && w.origin.fromAncient ? `<div class="card"><h3>承接遠古</h3><p class="dim">這個世界從西元前 10,000 年的遠古世界線（種子「${esc(w.origin.ancientSeed)}」）演進而來，${w.origin.year} 年轉入近代引擎。國家來自當時的政體：${w.origin.countries.map((c) => esc(c.name)).join('、')}。</p></div>` : '') + `<div class="card"><h3>全球文明狀態</h3><div class="kpis">
+      head = (w.origin && w.origin.fromAncient ? `<div class="card"><h3>承接遠古</h3><p class="dim">這個世界從西元前 10,000 年的遠古世界線（種子「${esc(w.origin.ancientSeed)}」）演進而來，${w.origin.year} 年轉入近代引擎。當時的 ${w.origin.countries.length} 個政治實體成為近代國家，最大的是${w.origin.countries.slice().sort((a, b) => b.pop - a.pop).slice(0, 5).map((c) => esc(c.name)).join('、')}。</p></div>` : '') + `<div class="card"><h3>全球文明狀態</h3><div class="kpis">
         ${kpi('世界人口（模擬範圍）', fPop(pop), n > 1 ? sg(((sw.pop[n - 1] - sw.pop[n - 2]) / sw.pop[n - 2]) * 100) + '%／年' : null)}
         ${kpi('世界 GDP' + (w.rules.currency === false ? '（替代估值）' : ''), fGdp(gdp), n > 1 ? sg(((sw.gdp[n - 1] - sw.gdp[n - 2]) / sw.gdp[n - 2]) * 100) + '%／年' : null)}
         ${kpi('政治實體', ids.length + ' 個', null)}
@@ -1333,7 +1333,7 @@
     const w = W(), av = WS.EraBridge.available(w);
     if (!av.ok) return `<div class="card"><h3>接到近代</h3><p class="dim">${esc(av.reason)}。到時候可以把這條世界線的政體轉成近代國家，改用近代引擎（每月計算人口、經濟、政治、科技、外交、戰爭）繼續演進。</p></div>`;
     const n = WS.EraBridge.groups(w).length;
-    return `<div class="card divine"><h3>進入近代</h3><p>這條世界線已經走到${esc(yl(w.year))}。可以把目前的 ${n} 個政體與地區轉成近代國家，改用近代引擎繼續演進。</p>
+    return `<div class="card divine"><h3>進入近代</h3><p>這條世界線已經走到${esc(yl(w.year))}。可以轉成 ${n} 個近代國家（大政體只帶走實際治理得到的人口，其餘地方成為以當地城市命名的小國或部族），改用近代引擎繼續演進。</p>
       <p class="dim">國家、國界、人口都來自這條世界線，不照真實歷史；GDP、教育等近代數值依遠古的實際狀態換算（示意值）。近代科技從零開始。遠古世界會先存檔，不會被改動。</p>
       <button class="btn gold" data-act="to-modern">進入近代（${w.year} 年起）</button></div>`;
   }

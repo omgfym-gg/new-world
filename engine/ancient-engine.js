@@ -260,10 +260,11 @@
     const fam = Math.min(pp.famineDeath * Math.max(0, 1 - fs), -Math.log(Math.max(0.05, Math.min(1, fs))) / dt);
     const dens = u.clamp(r.pop.A / Math.max(1e-9, r.cap.farm || 1), 0, 1.5);
     const crowd = pp.crowdDisease * dens * (A.invented(r, 'animal_domestication') ? 1.3 : 1);
+    const health = Math.min(pp.healthMax, A.eff(r, 'health'));   // 醫學、防疫、高產作物降低一般死亡率
     const rates = {
       F: [pp.birthForager * bm, pp.deathForager, 0],
-      A: [pp.birthFarmer * bm, pp.deathFarmer, crowd],
-      U: [pp.birthUrban * bm, pp.deathUrban, crowd]
+      A: [pp.birthFarmer * bm, pp.deathFarmer - health, crowd],
+      U: [pp.birthUrban * bm, pp.deathUrban - health, crowd]
     };
     const lbl = { F: '狩獵採集', A: '農民', U: '城市' };
     for (const k of KEYS) {

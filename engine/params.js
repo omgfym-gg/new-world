@@ -252,6 +252,7 @@
     pop: {
       birthForager: 0.034, birthFarmer: 0.044, birthUrban: 0.036,
       deathForager: 0.0322, deathFarmer: 0.0405, deathUrban: 0.047,
+      healthMax: 0.006,               // 醫學與防疫最多降低的年死亡率（示意值）
       crowdDisease: 0.0025,           // 農業人口密度高時的額外死亡（家畜與群聚疾病）
       famineDeath: 0.35,              // 糧食安全每低於 1 的 1%，死亡率增加 0.35%
       famineBirth: 2.0,               // 糧食不足時出生率依此次方下降
@@ -277,9 +278,20 @@
     // 接到近代：演進到這一年以後可以「進入近代」，把政體轉成近代國家（換算係數，示意值）
     bridge: {
       year: 1800,
-      gdppcBase: 450, gdppcDev: 600, gdppcUrban: 1500,  // 人均 GDP（1990 年國際元）＝ 基礎 ＋ 進階科技比例 × … ＋ 城市比例 × …
-      eduBase: 3, urbanScale: 1.5, armyShare: 0.006,     // 教育起點、城市化換算、兵力占人口比例
-      coalPerIronArea: 1.5, oilPerArea: 0.3              // 礦藏（與 1911 劇本同單位，未經校準）
+      // 人均 GDP（1990 年國際元）＝ 基礎 ＋ 進階科技比例 × … ＋ 城市比例 × …
+      // 對照：Maddison 1820 年世界平均約 670、西歐約 1,200、中國約 600、非洲約 420（示意值，量級對齊用）
+      gdppcBase: 350, gdppcDev: 330, gdppcUrban: 900,
+      // 教育指數：基礎＋文字＋紙＋印刷＋城市比例 × …（1800 年識字率多在 5–40%，示意值）
+      eduBase: 2, eduWriting: 3, eduPaper: 3, eduPrinting: 7, eduUrban: 25, eduMax: 35,
+      urbanScale: 1.0, urbanMax: 0.2, armyShare: 0.006,  // 城市化換算與上限、兵力占人口比例
+      coalPerIronArea: 1.5, oilPerArea: 0.3,             // 礦藏（與 1911 劇本同單位，未經校準）
+      // 政體能有效治理的人口比例（其餘地方自成小國或部族）：首都所在地區／其他地區，依政體型態（示意值）
+      controlCapital: { chiefdom: 0.45, citystate: 0.35, kingdom: 0.75, empire: 0.85 },
+      controlOther: { chiefdom: 0.3, citystate: 0.25, kingdom: 0.5, empire: 0.65 },
+      controlCohesion: 0.3,        // 凝聚力的影響：控制比例 ×（1 − 此值 ＋ 此值 × 凝聚力/100）
+      splitPop: 4,                 // 政體控制以外的人口，約每 400 萬人分成一個獨立國家（百萬人）
+      minStatePop: 0.4,            // 低於這個人口不另成國家，併入該地區最大的國家（百萬人）
+      maxSplit: 6                  // 每個地區最多分出幾個獨立國家
     },
     // 神之手（遠古）：只改變條件；神力每百年恢復（遠古一期好幾年）
     divine: {
