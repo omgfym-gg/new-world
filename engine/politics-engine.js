@@ -13,6 +13,7 @@
       case 'authoritarian': return [-0.02 * edu + 30 * c.econ.growth, '威權政體依賴經濟表現'];
       case 'warlord': return [-2, '國家分裂、中央失去權威'];
       case 'socialist': return [0.5 + 0.03 * (pol.support - 50), '意識形態動員'];
+      case 'colonial': return [-(0.5 + 0.04 * edu), '外族統治：教育越普及，民族意識越強'];
       case 'commune': return [0.04 * (pol.support - 50), '地區共治依賴居民認同'];
       default: return [0, '新制度'];
     }

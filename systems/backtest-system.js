@@ -252,13 +252,14 @@
     stagnant: 1.0           // 2008 年人均 GDP 低於 1913 年 → 百年停滯
   };
 
-  Backtest.healthOne = function (seed, endYear) {
+  Backtest.healthOne = function (seed, endYear, scenario = '1911') {
     const U = WS.util;
     const e = new WS.WorldEngine();
-    e.create({ mode: 'global', focus: 'CHN', seed });
+    e.create(scenario === '1911' ? { mode: 'global', focus: 'CHN', seed } : { mode: 'global', focus: 'CHN', seed, scenario });
     const w = e.w;
     const R = Backtest.HEALTH_RULES;
-    const ids = Object.keys(WS.Data.reference['1911'].countries);
+    // 1911 劇本檢查 8 國；其他劇本檢查起點時的全部國家
+    const ids = scenario === '1911' ? Object.keys(WS.Data.reference['1911'].countries) : WS.Data.scenarios[scenario].countries.map((c) => c.id);
     const out = { seed, flags: [], base: null, end: null };
     const stuck = {}, startPc = {};
     // 該年或前一年有重大事件（戰爭、革命、政變、饑荒、分裂、割地等，等級 ≥ 3）→ 劇烈波動屬合理，不列入
@@ -311,7 +312,8 @@
 
   Backtest.health = function (opts = {}) {
     const seeds = opts.seeds || Array.from({ length: opts.n || 8 }, (_, i) => 'hc-' + (i + 1));
-    const runs = seeds.map((s) => Backtest.healthOne(s, opts.endYear || 2008));
+    const scenario = opts.scenario || '1911';
+    const runs = seeds.map((s) => Backtest.healthOne(s, opts.endYear || 2008, scenario));
     const checks = {};
     for (const k in Backtest.HEALTH_NAMES) checks[k] = { seeds: 0, countries: {} };
     for (const r of runs) {
@@ -321,12 +323,13 @@
         if (!seen.has(f.kind)) { seen.add(f.kind); checks[f.kind].seeds++; }
       }
     }
-    return { seeds, runs, checks };
+    return { seeds, runs, checks, scenario };
   };
 
   Backtest.healthMarkdown = function (h) {
-    const name = (id) => (WS.Data.scenarios['1911'].countries.find((c) => c.id === id) || {}).name || id;
-    const L = ['# 合理範圍健康檢查（1911 起點）', '', '> 由 `node tools/health-check.js` 產生。目標不是重現史實，而是確認每一條世界線都「演得合理」。',
+    const sc = WS.Data.scenarios[h.scenario || '1911'];
+    const name = (id) => (sc.countries.find((c) => c.id === id) || {}).name || id;
+    const L = [sc.id === '1911' ? '# 合理範圍健康檢查（1911 起點）' : `# 合理範圍健康檢查（${sc.name}，${sc.countries.length} 國）`, '', '> 由 `node tools/health-check.js` 產生。目標不是重現史實，而是確認每一條世界線都「演得合理」。',
       `> 共跑 ${h.seeds.length} 個種子（${h.seeds[0]}…），AI 自主決策，1911 → 2008。`, '',
       '| 檢查項目 | 出問題的世界線 | 主要發生在 |', '|---|---|---|'];
     for (const k in h.checks) {
@@ -336,7 +339,7 @@
     }
     L.push('', '括號內是出問題的年數或次數（所有種子加總）。', '', '## 各世界線總量', '', '| 種子 | 人口倍數 | GDP 倍數 |', '|---|---|---|');
     for (const r of h.runs) L.push(`| ${r.seed} | ${r.popX.toFixed(2)} | ${r.gdpX.toFixed(1)} |`);
-    L.push('', '史實參考：8 國人口約 2.8 倍、GDP 約 19.5 倍。');
+    L.push('', sc.id === '1911' ? '史實參考：8 國人口約 2.8 倍、GDP 約 19.5 倍。' : '史實參考：1913→2008 世界人口約 3.7 倍、GDP 約 19 倍（Maddison）。');
     return L.join('\n');
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -15,7 +15,7 @@
     historical: [2.8, '歷史'], 'historical-missed': [1.6, '歷史分歧'], organization: [2.2, '國際'],
     divine: [2, '神之手'], tech: [1.4, '科技'], leader: [1.1, '人物']
   };
-  const CONDITIONAL = { revolution: 3, coup: 2.8, secession: 3, warlordism: 2.6, reunification: 2.6, democratization: 2.6, famine: 2.2, debt_crisis: 2, protest: 1.2 };
+  const CONDITIONAL = { revolution: 3, coup: 2.8, secession: 3, independence: 3, warlordism: 2.6, reunification: 2.6, democratization: 2.6, famine: 2.2, debt_crisis: 2, protest: 1.2 };
 
   const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
   const sg = (v, d = 1) => (v >= 0 ? '+' : '') + v.toFixed(d);

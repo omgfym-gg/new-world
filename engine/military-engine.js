@@ -136,6 +136,16 @@
       if (rd.alliance && ra.rel < 30 && !ra.alliance) { war.defenders.push(x); joined.push(`${w.countries[x].name}依同盟加入${D.name}一方`); }
       else if (ra.alliance && rd.rel < -20 && !rd.alliance) { war.attackers.push(x); joined.push(`${w.countries[x].name}依同盟加入${A.name}一方`); }
     }
+    // 殖民地與自治領：宗主國開戰時一起參戰；殖民地被攻擊時宗主國出兵保護
+    const isIn = (x) => war.attackers.includes(x) || war.defenders.includes(x);
+    const dOv = D.overlord && w.countries[D.overlord] && w.countries[D.overlord].alive ? D.overlord : null;
+    if (dOv && !isIn(dOv)) { war.defenders.push(dOv); joined.push(`${w.countries[dOv].name}出兵保護${D.name}`); }
+    for (const x of U.ids(w)) {
+      const X = w.countries[x];
+      if (!X.overlord || isIn(x)) continue;
+      if (war.attackers.includes(X.overlord)) { war.attackers.push(x); joined.push(`${X.name}隨宗主國${w.countries[X.overlord].name}參戰`); }
+      else if (war.defenders.includes(X.overlord)) { war.defenders.push(x); joined.push(`${X.name}隨宗主國${w.countries[X.overlord].name}參戰`); }
+    }
     for (const a of war.attackers) for (const d of war.defenders) {
       const r = U.relation(w, a, d);
       r.war = war.id; r.alliance = false;

@@ -4,7 +4,7 @@ const path = require('path');
 const vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 const FILES = [
-  'engine/rng.js', 'engine/params.js', 'data/scenario-1911.js', 'data/definitions.js',
+  'engine/rng.js', 'engine/params.js', 'data/scenario-1911.js', 'data/scenario-1911-world.js', 'data/definitions.js',
   'engine/state-engine.js', 'engine/population-engine.js', 'engine/environment-engine.js', 'engine/economy-engine.js',
   'engine/politics-engine.js', 'engine/technology-engine.js', 'engine/diplomacy-engine.js', 'engine/military-engine.js',
   'systems/policy-system.js', 'systems/agent-system.js', 'systems/event-system.js', 'systems/rule-system.js',

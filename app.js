@@ -233,6 +233,21 @@
   const SPEEDS = { month: [1, '一個月'], year: [12, '一年'], decade: [120, '十年'], century: [1200, '百年'] };
   const W = () => engine.world;
 
+  // 國家選擇：國家少時用按鈕，多時（全世界劇本）改用下拉選單，依 GDP 排序
+  function countryPicker(w, ids, id) {
+    if (ids.length <= 12) return `<div class="seg">${ids.map((x) => `<button data-act="view" data-v="${x}" class="${x === id ? 'on' : ''}">${esc(w.countries[x].name)}</button>`).join('')}</div>`;
+    const sorted = ids.slice().sort((a, b) => w.countries[b].econ.gdp - w.countries[a].econ.gdp);
+    return `<div class="field"><select data-act="view-select" aria-label="選擇國家">${sorted.map((x) => `<option value="${x}" ${x === id ? 'selected' : ''}>${esc(w.countries[x].name)}${w.countries[x].overlord ? '（' + esc(w.countries[w.countries[x].overlord].name) + '屬地）' : ''}</option>`).join('')}</select></div>`;
+  }
+  // 圖表：國家多時只畫 GDP 前 10 大與觀察國，避免線條擠成一團
+  const CHART_MAX = 10;
+  function chartIds(w, ids) {
+    if (ids.length <= 12) return ids;
+    const alive = ids.filter((id) => w.countries[id].alive).sort((a, b) => w.countries[b].econ.gdp - w.countries[a].econ.gdp).slice(0, CHART_MAX);
+    if (w.mode === 'country' && !alive.includes(w.focus) && ids.includes(w.focus)) alive.push(w.focus);
+    return alive.sort();
+  }
+
   function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.hidden = false;
@@ -305,8 +320,8 @@
           ${country ? `<div class="field"><label>國家</label>
             <select data-act="set-select" data-k="focus">${sc.countries.map((c) => `<option value="${c.id}" ${c.id === s.focus ? 'selected' : ''}>${esc(c.name)}（${esc(c.regimeLabel)}）</option>`).join('')}</select></div>` : ''}
           <div class="field"><label>起始年份</label>
-            <select data-act="set-select" data-k="scenario">${Object.values(WS.Data.scenarios).map((x) => `<option value="${x.id}">${x.startYear} 年</option>`).join('')}</select>
-            <span class="dim">第一版資料集只有 1911 年起點；其他年份需要先建立歷史資料（人口、GDP、制度、國界）。</span></div>
+            <select data-act="set-select" data-k="scenario">${Object.values(WS.Data.scenarios).map((x) => `<option value="${x.id}" ${x.id === s.scenario ? 'selected' : ''}>${x.startYear} 年・${x.countries.length} 國${x.id === '1911' ? '（列強，推薦新手）' : '（全世界，含殖民地）'}</option>`).join('')}</select>
+            <span class="dim">目前只有 1911 年起點，分成「8 個列強」與「全世界 ${(WS.Data.scenarios['1911w'] || { countries: [] }).countries.length} 國」兩種。其他年份需要先建立歷史資料。</span></div>
           ${country
             ? `<div class="field"><label>世界起點</label>${seg('origin', s.origin, [['history', '真實歷史'], ['custom', '自訂世界']])}</div>
                <div class="field"><label>發展方向</label>${seg('direction', s.direction, [['natural', '自然發展'], ['prosper', '繁榮'], ['tech', '科技優先'], ['military', '軍事擴張']])}</div>
@@ -450,7 +465,9 @@
         ${c.flags.atWar ? `<circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r + 1.5}" fill="none" stroke="#f87171" stroke-width=".4"/>` : ''}
         <text x="${X(c.lon)}" y="${Y(c.lat) + r + 4.5}" font-size="5" fill="#e6ecff" text-anchor="middle">${esc(c.name)}</text></g>`;
     }).join('');
-    return `<svg class="map" viewBox="40 10 300 80" role="img" aria-label="世界示意地圖">${grid}${lines}${nodes}</svg>
+    // 全世界劇本有南半球與太平洋的國家：改成全球視野
+    const wide = ids.some((id) => w.countries[id].lat < 0 || w.countries[id].lon > 160 || w.countries[id].lon < -140);
+    return `<svg class="map" viewBox="${wide ? '0 15 360 135' : '40 10 300 80'}" role="img" aria-label="世界示意地圖">${grid}${lines}${nodes}</svg>
       <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位</span></div>`;
   }
 
@@ -561,8 +578,9 @@
     const ev = canAct ? engine.evaluate(id) : null;
     const debtR = c.fiscal.debt / Math.max(1e-6, c.econ.gdp);
     return `
-      <div class="seg">${ids.map((x) => `<button data-act="view" data-v="${x}" class="${x === id ? 'on' : ''}">${esc(w.countries[x].name)}</button>`).join('')}</div>
-      <div class="card"><h3><span>${esc(c.name)}・${esc(U.regime(w, c.regime).name)}</span><span class="tag">成立 ${c.founded}${c.parent ? '・分裂自' + esc(w.countries[c.parent].name) : ''}</span></h3>
+      ${countryPicker(w, ids, id)}
+      <div class="card"><h3><span>${esc(c.name)}・${esc(U.regime(w, c.regime).name)}</span><span class="tag">成立 ${c.founded}${c.parent ? '・分裂自' + esc(w.countries[c.parent].name) : ''}${c.independence ? '・' + c.independence + ' 年脫離' + esc(w.countries[c.formerOverlord].name) + '獨立' : ''}</span></h3>
+        ${c.overlord ? `<p class="dim">${{ dominion: '自治領', protectorate: '保護國', colony: '殖民地' }[c.subjectType] || '屬地'}：外交與宣戰由宗主國「${esc(w.countries[c.overlord].name)}」決定，宗主國開戰時一起參戰。條件成熟時可能獨立。</p>` : ''}
         <div class="row"><span class="tag">領導人 ${esc(c.leader.name)}</span><span class="tag blue">目標：${esc(WS.Data.goals[c.goal])}</span><span class="tag">地區：${c.regions.map((r) => esc(w.regions[r].name)).join('、')}</span></div></div>
       <div class="grid g2">
         <div class="card"><h3>政治</h3>
@@ -655,7 +673,8 @@
   // ======================= 歷史 =======================
   function historyTab() {
     const w = W();
-    const ids = Object.keys(w.series.c).sort();
+    const allIds = Object.keys(w.series.c).sort();
+    const ids = chartIds(w, allIds);
     const metric = S.chartMetric;
     const series = ids.filter((id) => w.series.c[id][metric].some((v) => v != null)).map((id) => ({
       name: w.countries[id].name, color: w.countries[id].color, data: w.series.c[id][metric], bold: w.mode === 'country' && id === w.focus
@@ -705,7 +724,7 @@
     const id = S.view && w.countries[S.view] && w.countries[S.view].alive ? S.view : w.countries[w.focus] && w.countries[w.focus].alive ? w.focus : ids[0];
     const qs = WS.Explain.questions(w, id);
     return `
-      <div class="seg">${ids.map((x) => `<button data-act="view" data-v="${x}" class="${x === id ? 'on' : ''}">${esc(w.countries[x].name)}</button>`).join('')}</div>
+      ${countryPicker(w, ids, id)}
       <div class="card"><h3>世界解釋系統</h3>
         <p class="dim">答案全部取自實際模擬紀錄（因果帳、事件、決策紀錄），不是事先寫好的劇情。</p>
         ${qs.map((q, i) => `<details class="qa" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
@@ -1204,6 +1223,7 @@
     const t = ev.target;
     if (t.dataset.act === 'set-select') { S.setup[t.dataset.k] = t.value; renderSetup(); }
     if (t.dataset.act === 'focus') { engine.setFocus(t.value); S.view = null; render(); }
+    if (t.dataset.act === 'view-select') { S.view = t.value; render(); }
     if (t.dataset.act === 'chart-metric') { S.chartMetric = t.value; render(); }
     if (t.dataset.act === 'divine-target') { S.divine.cid = t.value; S.divine.opt = null; divineModal(); }
     if (t.dataset.act === 'divine-opt-select') { S.divine.opt = t.value; divineModal(); }

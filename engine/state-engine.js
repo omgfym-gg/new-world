@@ -56,6 +56,9 @@
     const c = State.newCountryShell(def.id, def.name);
     Object.assign(c, { color: def.color, lat: def.lat, lon: def.lon, regime: def.regime, regimeLabel: def.regimeLabel || '' });
     c.leader = Object.assign({ since: w.tick }, def.leader);
+    // 殖民地／自治領／保護國：記下宗主國（只在有設定時才加欄位）
+    if (def.overlord) { c.overlord = def.overlord; c.subjectType = def.subjectType || 'colony'; }
+    if (def.independentName) c.independentName = def.independentName;
     c.leaderPool = U.clone(def.leaderPool || []);
     const P = def.pop;
     c.pop = { c0: P * def.ages[0], c1: P * def.ages[1], c2: P * def.ages[2], c3: P * def.ages[3] };

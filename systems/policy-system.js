@@ -140,11 +140,11 @@
         const rs = rivals(c, w);
         const enemy = rs[0];
         if (!enemy || enemy.r.rel > -30) return null;
-        const cand = rs.filter((x) => x.id !== enemy.id && !x.r.alliance && !x.r.war && x.r.rel > 15 && U().relation(w, x.id, enemy.id).rel < 0)
+        const cand = rs.filter((x) => x.id !== enemy.id && !w.countries[x.id].overlord && !x.r.alliance && !x.r.war && x.r.rel > 15 && U().relation(w, x.id, enemy.id).rel < 0)
           .sort((a, b) => b.r.rel - a.r.rel || (a.id < b.id ? -1 : 1));
         return cand[0] ? cand[0].id : null;
       },
-      feasible(c, w) { return this.target(c, w) ? true : '沒有合適的結盟對象'; },
+      feasible(c, w) { if (c.overlord) return '外交由宗主國決定'; return this.target(c, w) ? true : '沒有合適的結盟對象'; },
       apply(c, w) { const t = this.target(c, w); const r = U().relation(w, c.id, t); r.alliance = true; WS.Diplomacy.remember(w, c.id, t, 15, '締結同盟'); return [`與${w.countries[t].name}締結同盟`]; }
     },
     improve_relations: {
@@ -160,11 +160,14 @@
       target(c, w) {
         const mp = w.params.agents;
         const my = c.mil.power;
-        const rs = rivals(c, w).filter((x) => x.r.rel < mp.warRelation && !x.r.war && !x.r.alliance && (x.r.truceUntil || 0) <= w.tick);
+        // 不會對自己的殖民地／自治領宣戰
+        const rs = rivals(c, w).filter((x) => x.r.rel < mp.warRelation && !x.r.war && !x.r.alliance && (x.r.truceUntil || 0) <= w.tick && w.countries[x.id].overlord !== c.id);
         for (const x of rs) {
           const o = w.countries[x.id];
           let theirs = o.mil.power;
           for (const y of U().ids(w)) if (y !== x.id && y !== c.id && U().relation(w, y, x.id).alliance) theirs += w.countries[y].mil.power * 0.7;
+          // 目標若是殖民地，宗主國會出兵保護
+          if (o.overlord && o.overlord !== c.id && w.countries[o.overlord] && w.countries[o.overlord].alive) theirs += w.countries[o.overlord].mil.power * 0.7;
           const need = mp.warPowerRatio - (c.leader.aggr - 0.5) * 0.4;
           if (my / Math.max(1e-6, theirs) > need) return { id: x.id, ratio: my / theirs, rel: x.r.rel };
         }
@@ -172,6 +175,7 @@
       },
       feasible(c, w) {
         if (w.rules.war === false || w.rules.states === false) return '世界規則禁止戰爭';
+        if (c.overlord) return '外交與宣戰由宗主國決定';
         if (c.flags.atWar) return '已在戰爭中';
         if (c.pol.stability < 35) return '國內不穩，無力發動戰爭';
         return this.target(c, w) ? true : '沒有具優勢的目標';
