@@ -88,6 +88,7 @@
       };
       casualties(att, 1.5 - ratio);
       casualties(def, 0.5 + ratio);
+      Mil.track(w, war);
       // 防守方本土受破壞
       const d0 = w.countries[def[0]];
       for (const s in d0.econ.sec) d0.econ.sec[s].K *= 1 - mp.capitalDamage * ratio;
@@ -141,6 +142,7 @@
     }
     WS.Diplomacy.remember(w, attackerId, defenderId, -40, `${A.name}對${D.name}宣戰`);
     w.wars.push(war);
+    Mil.track(w, war);
     Mil.refreshFlags(w, U.ids(w));
     const ev = WS.Events.log(w, ctx, {
       type: 'war', title: `戰爭爆發：${war.name}`, countries: war.attackers.concat(war.defenders), level: 3, warPair: [attackerId, defenderId],
@@ -150,6 +152,20 @@
     });
     war.eventId = ev && ev.id;
     return war;
+  };
+
+  // 戰況紀錄：每月記下戰局分數、雙方兵力與累計傷亡，只供「戰場畫面」回放用。
+  // 純紀錄，不用亂數，也不會被任何計算讀回去，所以不影響模擬結果。
+  Mil.track = function (w, war) {
+    const sum = (list, f) => list.reduce((s, x) => s + (w.countries[x] ? f(w.countries[x], x) : 0), 0);
+    const r1 = (v) => Math.round(v * 1000) / 1000;
+    if (!war.track) war.track = [];
+    war.track.push({
+      y: w.year, m: w.month, s: Math.round(war.score * 10) / 10,
+      pa: r1(sum(war.attackers, (c) => (c.alive ? c.mil.personnel : 0))), pd: r1(sum(war.defenders, (c) => (c.alive ? c.mil.personnel : 0))),
+      ca: r1(sum(war.attackers, (c, x) => war.casualties[x] || 0)), cd: r1(sum(war.defenders, (c, x) => war.casualties[x] || 0))
+    });
+    if (war.track.length > 240) war.track.splice(1, 1);
   };
 
   Mil.endWar = function (w, war, outcome, ctx) {
