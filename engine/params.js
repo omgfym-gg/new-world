@@ -182,6 +182,58 @@
       warPowerRatio: 1.3,
       warRelation: -40
     },
+    // 未來時代（示意值，2026-11 新增，全部尚未校準）：未來科技、全球風險與世界結局
+    // 這些都是遊戲用的假設，不是預測。每項風險都依世界當時的狀態計算機率，用獨立的種子亂數判定。
+    future: {
+      // 氣候：暖化 = 起點暖化 + 係數 × 累積化石燃料使用量（近似「累積排放決定暖化」）
+      warmingPerFossil: 0.0000013,    // 每單位累積化石能源使用造成的升溫（°C；1911 全世界劇本 2020 年約 1.2–1.3°C；8 國劇本範圍較小，約 0.8°C）
+      warmingStartPerYear: 0.004,     // 起點年份在 1850 年以後時，起點已有的暖化（每年 °C）
+      harvestLossFrom: 1.5,           // 暖化超過此溫度後收成開始下降
+      harvestLoss: 0.06,              // 收成損失 = 係數 ×（暖化 − 門檻）^1.4
+      harvestLossExp: 1.4,
+      tropicsMult: 1.3,               // 低緯度（|緯度| < 25）受影響較大
+      polarMult: 0.6,                 // 高緯度（|緯度| > 50）受影響較小
+      climateDeathFrom: 2,            // 暖化超過此溫度後，熱浪、洪水、風災開始造成死亡
+      climateDeath: 0.0012,           // 年死亡比例 = 係數 ×（暖化 − 門檻）²× 脆弱度
+      tippingFrom: 3,                 // 超過此溫度後可能觸發氣候臨界點（永凍土、雨林崩潰）
+      tippingChance: 0.025,           // 每年機率
+      tippingMin: 0.4, tippingMax: 1.0, // 臨界點額外升溫（°C）
+      captureRate: 0.015,             // 碳捕集完全普及時每年移除的累積排放比例
+      // 核武：同時掌握核能與火箭（普及 ≥ 門檻）的國家視為擁核國
+      nukeAdoption: 0.5,
+      nukeWarChance: 0.02,            // 兩個擁核國交戰時，每年動用核武的基礎機率
+      nukeOneSided: 0.01,             // 只有一方擁核、且擁核方戰況危急時
+      nukeCrisisChance: 0.0008,       // 沒有開戰但互相敵視（關係 < 0）的擁核國之間，每年誤判或危機升級的機率（關係 −50 時）
+      nukeCrisisPairs: 3,             // 只計算最敵對的幾對擁核國
+      nukeClimateStress: 0.5,         // 暖化每超過 2°C 一度，危機機率增加的比例（糧食與難民壓力）
+      nukeDeathMin: 0.1, nukeDeathMax: 0.35, // 交戰擁核國的直接死亡比例
+      winterBase: 0.3, winterPerPower: 0.15, winterMax: 0.85, // 核子寒冬：全球收成減少比例
+      winterYears: 7,
+      winterDeath: 0.1,               // 核子寒冬期間每年的額外死亡比例（嚴重度 1 時）
+      nukeAllyJoin: 0.5,              // 交戰一方的擁核盟國被捲入核子交火的機率
+      // 人工智慧：能力（aiCap）與安全（align）的差距越大越危險
+      aiRiskBase: 0.01,               // 通用 AI 出現後，每年事故機率 = 係數 × 差距²
+      aiRaceMult: 2,                  // 領先國家在打仗或以擴張、安全為目標時（AI 軍備競賽）
+      aiLesson: 0.4,                  // 每次 AI 事故後，全世界的安全意識增加
+      alignMatureRate: 0.04,          // 可解釋 AI 普及後，每年安全程度持續累積
+      alignMatureMax: 4,              // 持續累積的上限
+      aiIncidentDeath: 0.004,
+      aiEndGapFrom: 0.5,              // 超級智慧出現後，事故變成「失控」的機率 =（差距 − 此值）/ 2
+      // 生物科技：人造瘟疫
+      bioRiskBase: 0.004,
+      bioDeathMax: 0.9,               // 嚴重度上限（實際死亡比例再依醫療水準降低，最多 95%）
+      bioTail: 5,                     // 嚴重度 = 0.02 + 上限 × 亂數^此值：大多數不嚴重，極少數非常致命
+      // 小行星：每年機率（遊戲化，真實機率小得多）；行星防禦普及後可以偏轉
+      asteroidChance: 0.00025,
+      asteroidDeathMin: 0.3, asteroidDeathMax: 0.95,
+      // 火星殖民
+      marsStart: 0.001,               // 第一批殖民者（百萬人）
+      marsGrowth: 0.25,               // 每年成長率（受容量限制）
+      marsCap: 2,                     // 基本容量（百萬人），核融合與超級智慧可提高
+      marsSelfSustain: 1,             // 達到這個人口（百萬）視為可自給自足
+      voyageYears: 150,               // 星際移民船抵達鄰近恆星需要的年數
+      endFrac: 0.35                   // 世界結局：人口跌到高峰的這個比例以下，視為文明崩潰
+    },
     // 神之手（玩家干預，示意值）：玩家用「神力」改變世界的條件，結果仍由引擎計算、不保證成功
     divine: {
       energyMax: 100,                 // 神力上限
@@ -206,6 +258,16 @@
       leaderYears: 10,                // 候選者在政壇活躍的年數，期間沒有更替就消失
       leaderWinChance: 0.6,           // 政權更替時，候選者勝出的機率（每次更替判斷一次）
       leaderTraitMin: 0.72,           // 候選者主要性格的下限（隨機介於下限與 0.95）
+      // 未來時代的神之手（示意值）
+      aisafetyCost: 35,               // 啟發 AI 安全研究：全世界的 AI 安全程度增加（依教育吸收，會慢慢淡化）
+      aisafetyBoost: 0.8,
+      aisafetyDecay: 0.02,            // 每年淡化比例
+      calmCost: 40,                   // 化解核危機：一個擁核國動用核武的機率降低一段時間
+      calmYears: 15,
+      calmMult: 0.3,                  // 機率乘數（運氣決定實際在 0.3–0.6 倍之間）
+      greenCost: 30,                  // 推動綠色轉型：一個國家潔淨能源比例提高一段時間
+      greenYears: 20,
+      greenBoost: 0.3,
       // 世界頭條：只在重大變化時出現
       headlinesPerYear: 3,
       headlineMinScore: 1,            // 低於此分數的變化不上頭條

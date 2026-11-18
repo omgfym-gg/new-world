@@ -41,6 +41,9 @@
       const w = this.w;
       const U = WS.util;
       const ctx = { rng: new WS.RNG(w.rngState), major: [] };
+      // 世界已經走到結局：不再推進
+      const F = WS.Future.ensure(w);
+      if (F.ended) { ctx.ended = true; return ctx; }
       // 1. 讀取世界狀態
       const ids = U.ids(w);
       const prevPop = {};
@@ -63,6 +66,8 @@
       WS.Military.step(w, ids, ctx);
       // 11. 事件檢查
       WS.Events.step(w, ids, ctx);
+      // 11b. 未來時代：氣候、核武、AI、生物科技、小行星、火星殖民與世界結局（每年一月，獨立亂數）
+      WS.Future.step(w, U.ids(w), ctx);
       // 12. 更新世界狀態（衍生值）
       const ids2 = U.ids(w);
       for (const id of ids2) {
@@ -108,6 +113,7 @@
       const stopOnMajor = opts.stopOnMajor !== false && this.w.intervention === 'occasional';
       for (let i = 0; i < months; i++) {
         const ctx = this.step();
+        if (ctx.ended) return { advanced: i + 1, stopped: true, ended: true, events: [] };
         if (stopOnMajor && ctx.major.length) {
           this.w.pendingDecision = { events: ctx.major.map((e) => e.id), y: this.w.year, m: this.w.month };
           return { advanced: i + 1, stopped: true, events: ctx.major };
@@ -119,7 +125,7 @@
       if (!WS.Ancient.isAncient(this.w)) return this.advance(12 * n, opts);
       const target = this.w.year + n;
       let steps = 0;
-      while (this.w.year < target) { this.step(); steps++; }
+      while (this.w.year < target) { if (this.step().ended) return { advanced: steps, stopped: true, ended: true, events: [] }; steps++; }
       return { advanced: steps, stopped: false };
     }
 

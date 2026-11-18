@@ -31,7 +31,23 @@
     armor: { name: '裝甲部隊', field: 'military', cost: 25, req: ['ice', 'machinegun'], effects: { mil: 0.4 } },
     jet: { name: '噴射機', field: 'military', cost: 60, req: ['aviation', 'armor'], effects: { mil: 0.5 } },
     rocketry: { name: '火箭技術', field: 'space', cost: 80, req: ['jet', 'petrochem'], effects: { mil: 0.2 } },
-    satellite: { name: '人造衛星', field: 'space', cost: 150, req: ['rocketry', 'computing'], effects: { serv: 0.05, admin: 3 } }
+    satellite: { name: '人造衛星', field: 'space', cost: 150, req: ['rocketry', 'computing'], effects: { serv: 0.05, admin: 3 } },
+    // ===== 未來科技（示意值）：什麼時候出現由研究進度決定，不寫死年份 =====
+    // renew：潔淨能源比例；aiCap：AI 能力；align：AI 安全；bio：生物科技風險；defense：行星防禦；capture：碳捕集
+    renewables: { name: '再生能源', field: 'energy', cost: 600, req: ['nuclear', 'computing'], future: true, effects: { renew: 0.35 } },
+    genetics: { name: '基因工程', field: 'medicine', cost: 300, req: ['antibiotics', 'computing'], future: true, effects: { health: 0.06, agri: 0.1, bio: 0.4 } },
+    ai: { name: '人工智慧', field: 'info', cost: 400, req: ['internet'], future: true, effects: { serv: 0.15, ind: 0.1, admin: 2, aiCap: 1 } },
+    reusable: { name: '可回收火箭', field: 'space', cost: 500, req: ['satellite'], future: true, effects: { serv: 0.02 } },
+    alignment: { name: 'AI 安全研究', field: 'info', cost: 700, req: ['ai'], future: true, effects: { align: 1.5 } },
+    agi: { name: '通用人工智慧', field: 'info', cost: 1500, req: ['ai'], future: true, effects: { serv: 0.3, ind: 0.3, admin: 4, aiCap: 2 } },
+    synbio: { name: '合成生物學', field: 'medicine', cost: 1200, req: ['genetics', 'ai'], future: true, effects: { health: 0.06, agri: 0.2, bio: 1 } },
+    pdefense: { name: '行星防禦', field: 'space', cost: 1200, req: ['reusable'], future: true, effects: { defense: 1 } },
+    capture: { name: '碳捕集與氣候工程', field: 'energy', cost: 1500, req: ['renewables', 'synbio'], future: true, effects: { capture: 1 } },
+    fusion: { name: '核融合', field: 'energy', cost: 2500, req: ['renewables', 'agi'], future: true, effects: { renew: 1, ind: 0.1 } },
+    mars: { name: '火星殖民', field: 'space', cost: 2000, req: ['reusable', 'ai'], future: true, effects: { space: 1 } },
+    interp: { name: '可解釋 AI', field: 'info', cost: 2500, req: ['alignment', 'agi'], future: true, effects: { align: 3 } },
+    asi: { name: '超級智慧', field: 'info', cost: 5000, req: ['agi'], future: true, effects: { serv: 0.5, ind: 0.5, admin: 6, aiCap: 4 } },
+    interstellar: { name: '星際航行', field: 'space', cost: 400000, req: ['mars', 'fusion', 'asi'], future: true, effects: { stars: 1 } }
   };
   WS.Data.techStages = ['理論研究', '技術突破', '原型製作', '實際應用', '大規模普及'];
 

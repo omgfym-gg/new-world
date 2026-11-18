@@ -805,6 +805,96 @@ test('遠古接到近代：1800 年以後把政體轉成近代國家，人口沿
   for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
 });
 
+// ---------- 未來時代與世界結局 ----------
+const makeG = (seed, sc) => { const e = new WS.WorldEngine(); e.create({ mode: 'global', focus: 'CHN', seed, scenario: sc || '1911' }); return e; };
+const runTo = (e, y) => { while (e.world.year < y) if (e.step().ended) break; return e; };
+test('未來：沒有未來科技、暖化未過門檻時，收成與能源掛鉤都是中性（世界與舊版相同）', () => {
+  const e = runTo(makeG('fu1'), 1960);
+  const w = e.world;
+  assert.ok(!Object.keys(w.invented).some((k) => WS.Data.techs[k].future), '1960 年還沒有未來科技');
+  for (const id of WS.util.ids(w)) {
+    assert.strictEqual(WS.Future.harvestMult(w.countries[id], w), 1);
+    assert.strictEqual(WS.Future.renewShare(w.countries[id], w), 0);
+  }
+  assert.ok(w.future.warming > 0.2 && w.future.warming < 1, '暖化 ' + w.future.warming);
+});
+test('未來：暖化量級合理（8 國劇本 2020 年 0.5–1.3°C），未來科技依研究出現、不寫死年份', () => {
+  const a = runTo(makeG('fu2'), 2020), b = runTo(makeG('fu3'), 2020);
+  for (const e of [a, b]) assert.ok(e.world.future.warming > 0.5 && e.world.future.warming < 1.3, '暖化 ' + e.world.future.warming);
+  const ya = a.world.invented.ai, yb = b.world.invented.ai;
+  assert.ok(ya && yb, '2020 年前已有人工智慧');
+  assert.ok(ya.year !== yb.year || ya.by !== yb.by || a.world.invented.genetics.year !== b.world.invented.genetics.year, '不同種子，出現的年份或國家不同');
+});
+test('未來：相同種子 → 同樣的結局與年份；結局後世界停止推進', () => {
+  const a = runTo(makeG('f'), 2400), b = runTo(makeG('f'), 2400);
+  const A = a.world.future.ended, B = b.world.future.ended;
+  assert.ok(A, '2400 年前走到結局');
+  assert.deepStrictEqual(A, B);
+  const y = a.world.year, tick = a.world.tick;
+  const r = a.advance(24);
+  assert.ok(r.ended && a.world.year === y && a.world.tick === tick, '結局後不再推進');
+  const ev = a.world.events.find((e) => e.id === A.eventId);
+  assert.ok(ev && ev.type === 'ending' && ev.causes.length, '結局寫成事件並附原因');
+});
+test('未來：災難的死亡寫進因果帳；「如果？」可以阻止災難，原世界不變', () => {
+  const e = runTo(makeG('h'), 2012);
+  const w = e.world;
+  const cat = w.events.find((x) => x.type === 'catastrophe');
+  assert.ok(cat, '2012 年前發生一場災難（核危機）');
+  const id = cat.countries[0];
+  const C = w.countries[id].causes;
+  const hit = C.years.map((y) => y.data).concat([C.cur]).some((d) => d.population && d.population['死亡'] && d.population['死亡'].sub['核子攻擊'] < 0);
+  assert.ok(hit, '核子攻擊的死亡寫在因果帳');
+  const before = e.serialize();
+  const opt = WS.WhatIf.options(w, cat)[0];
+  assert.ok(opt && opt.target.kind === 'future');
+  const r = e.whatIf(cat.id, opt.key);
+  assert.ok(r.ok, r.reason);
+  assert.strictEqual(e.serialize(), before, '原世界不變');
+  assert.ok(!r.world.events.some((x) => x.type === 'catastrophe' && x.title === cat.title && x.y === cat.y), '平行世界沒有這場災難');
+  assert.ok(r.world.events.some((x) => x.type === 'whatif'), '分岔點寫入事件');
+});
+test('未來神之手：要有相關科技才能施展；施展寫入指令紀錄並改變條件', () => {
+  const e = runTo(makeG('fu4'), 1950);
+  e.world.divine.energy = 100;
+  assert.strictEqual(e.divinePreview('aisafety', 'USA').ok, false, '還沒有 AI');
+  assert.strictEqual(e.divinePreview('green', 'USA').ok, false, '還沒有再生能源');
+  runTo(e, 2030);
+  const w = e.world;
+  w.divine.energy = 100;
+  const who = WS.util.ids(w).find((id) => WS.util.adopt(w.countries[id], 'ai') >= 0.3);
+  assert.ok(who, '2030 年有國家普及 AI');
+  const b0 = w.future.ai.bonus;
+  const r = e.divine('aisafety', who);
+  assert.ok(r.ok, r.reason);
+  assert.ok(w.future.ai.bonus > b0, 'AI 安全程度提高');
+  assert.strictEqual(w.commandLog[w.commandLog.length - 1].cmd, 'divine');
+  if (w.invented.renewables) {
+    const r2 = e.divine('green', who);
+    assert.ok(r2.ok, r2.reason);
+    assert.ok(WS.Future.renewShare(w.countries[who], w) > 0);
+  }
+});
+test('世界結局報告：列出轉折點與玩家介入；「沒有你的世界」不重播介入、不改原世界', () => {
+  const e = makeG('f');
+  runTo(e, 1921);
+  e.world.divine.energy = 100;
+  assert.ok(e.divine('health', 'CHN').ok);
+  runTo(e, 2600);
+  const w = e.world;
+  assert.ok(w.future.ended);
+  const R = WS.Future.report(w);
+  assert.ok(R.turning.length > 3 && R.player.length === 1 && /神之手/.test(R.player[0].text));
+  const before = e.serialize();
+  const cf = WS.Future.counterfactual(w, 200);
+  while (!cf.done()) cf.run(50);
+  assert.strictEqual(e.serialize(), before, '原世界不變');
+  assert.ok(!cf.sim.world.commandLog.some((c) => c.cmd === 'divine'), '沒有重播神之手');
+  // 沒有介入的世界 = 從同一個種子直接跑的世界
+  const plain = runTo(makeG('f'), 2600);
+  assert.deepStrictEqual(cf.sim.world.future.ended, plain.world.future.ended);
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
