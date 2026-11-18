@@ -1404,7 +1404,8 @@
       <div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + w.year)}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
-        <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
+        <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
+        <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year}.${s.month}・${s.mode === 'country' ? '國家模式' : '全球模式'}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。每次推進後會自動存到「繼續遊戲」。</p>'}</div>
       </div>
@@ -1414,11 +1415,12 @@
           <div class="field"><label>玩家介入</label>${seg2('intervention-live', w.intervention, [['none', '不介入'], ['occasional', '偶爾決策'], ['full', '完全控制']])}</div>
           ${pauseSetting(false)}
           ${themeSetting()}
-          <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
         </div>
-        <div class="card"><h3>數值驗證</h3><p class="dim">已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個問題（自動修正並記錄）。</p>
-          <ul class="list-plain">${w.validation.issues.slice(-8).reverse().map((i) => `<li>${i.y}.${i.m}　${esc(i.text)}</li>`).join('') || '<li class="good">沒有異常</li>'}</ul></div>
-        <div class="card"><h3>每期固定計算順序</h3><ol class="list-plain">${WS.STEP_ORDER.map((s) => `<li>${esc(s.replace(/^\d+ /, ''))}</li>`).join('')}</ol></div>
+        <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary>
+          <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
+          <h4>數值驗證</h4><p class="dim">已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個問題（自動修正並記錄）。</p>
+          <ul class="list-plain">${w.validation.issues.slice(-8).reverse().map((i) => `<li>${i.y}.${i.m}　${esc(i.text)}</li>`).join('') || '<li class="good">沒有異常</li>'}</ul>
+          <h4>每期固定計算順序</h4><ol class="list-plain">${WS.STEP_ORDER.map((s) => `<li>${esc(s.replace(/^\d+ /, ''))}</li>`).join('')}</ol></details>
         ${adv ? `<div class="card"><h3>模型參數（進階）</h3><p class="dim">所有係數皆為待校準的示意值。修改後會記錄在事件中，只影響這條世界線。</p>${paramsEditor(w.params)}</div>` : ''}
       </div>`;
   }
@@ -1769,13 +1771,14 @@
     return `<div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + yShort(w.year))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
-        <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
+        <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
+        <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
       <div class="card"><h3>介面</h3>${themeSetting()}</div>
-      <div class="card"><h3>這個世界</h3><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
-</div>`;
+      <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
+</details>`;
   }
 
   function ancientWhatifReport() {
@@ -1989,19 +1992,19 @@
   function exportWorld() {
     const name = `world-${W().branch.name}-${W().year}.json`.replace(/[\\/:*?"<>|\s]+/g, '_');
     let json;
-    try { json = engine.serialize(); } catch (e) { openModal(`<h2>匯出失敗</h2><p>無法產生存檔資料：${esc(e.message)}</p>`); return; }
+    try { json = engine.serialize(); } catch (e) { openModal(`<h2>備份失敗</h2><p>無法產生存檔資料：${esc(e.message)}</p>`); return; }
     try {
       if (S.exportUrl) URL.revokeObjectURL(S.exportUrl);
       S.exportUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
       const el = document.createElement('a');
       el.href = S.exportUrl; el.download = name; document.body.appendChild(el); el.click(); el.remove();
     } catch (e) {
-      openModal(`<h2>匯出失敗</h2><p>瀏覽器不允許下載檔案（${esc(e.message)}）。可以換一個瀏覽器（例如 Chrome、Safari）再試一次。</p>`);
+      openModal(`<h2>備份失敗</h2><p>瀏覽器不允許下載檔案（${esc(e.message)}）。可以換一個瀏覽器（例如 Chrome、Safari）再試一次。</p>`);
       return;
     }
-    openModal(`<h2>匯出完成</h2>
+    openModal(`<h2>備份完成</h2>
       <p>已產生檔案 <b>${esc(name)}</b>（${WS.Save.mb(json.length)}），瀏覽器應該已經開始下載。</p>
-      <p class="dim">電腦通常在「下載」資料夾；手機可能在「檔案」App 的下載項目。之後到「系統 → 匯入 JSON」選這個檔案，就能回到這個世界（包含分支、「如果？」與完整紀錄）。</p>
+      <p class="dim">電腦通常在「下載」資料夾；手機可能在「檔案」App 的下載項目。之後到「系統 → 讀取備份」選這個檔案，就能回到這個世界（包含分支、「如果？」與完整紀錄）。</p>
       <div class="row"><a class="btn primary" href="${S.exportUrl}" download="${esc(name)}">沒看到下載？再下載一次</a><button class="btn" data-act="close-modal">關閉</button></div>`);
   }
   // 系統頁：存檔空間使用量（非同步填入）
@@ -2017,7 +2020,7 @@
       const la = WS.Save.lastAuto;
       el2.innerHTML = `<p class="dim" style="margin:0 0 4px">目前這個世界約 <b class="num">${mb(cur)}</b>。已存：手動存檔 ${u.count - u.autoCount} 個（${mb(u.saves)}）、自動保存 ${u.autoCount} 個（${mb(u.autoSaves)}，最多保留 ${WS.Save.keepAuto} 個，越舊的越先清掉）、「繼續遊戲」${mb(u.autosave)}。</p>
         ${u.quota ? `<div class="meter"><span>儲存空間</span><div class="bar"><i style="width:${Math.min(100, (u.used / u.quota) * 100).toFixed(1)}%"></i></div><span class="num">${mb(u.used || 0)}／${mb(u.quota)}</span></div>` : ''}
-        ${u.backend === 'local' ? '<p class="gold" style="margin:4px 0 0">這個瀏覽器只能用較小的儲存空間（約 5 MB），玩到後期的大世界可能存不下；建議定期「匯出 JSON」保存到裝置。</p>' : ''}
+        ${u.backend === 'local' ? '<p class="gold" style="margin:4px 0 0">這個瀏覽器只能用較小的儲存空間（約 5 MB），玩到後期的大世界可能存不下；建議定期按「備份存檔」保存到裝置。</p>' : ''}
         ${la && la.ok === false ? `<p class="bad" style="margin:4px 0 0">最近一次自動存檔失敗：${esc(la.reason)}</p>` : la && la.compact ? '<p class="dim" style="margin:4px 0 0">最近一次自動存檔空間不足，改存精簡版（只留最近 5 年的詳細原因，模擬結果不變）。</p>' : ''}
         ${u.autoCount ? `<button class="btn small" data-act="clear-auto" style="margin-top:6px">清除全部自動保存（${u.autoCount} 個）</button>` : ''}`;
     }).catch(() => { el.textContent = ''; });
@@ -2069,7 +2072,7 @@
       case 'advance': S.speed = v; doAdvance(SPEEDS[v][0]); break;
       case 'auto': toggleAuto(); break;
       case 'to-modern': toModern(); break;
-      case 'ancient': startAncient('遠古-' + Date.now().toString(36)); toast('《人類的黎明》：每條世界線都不一樣（種子已記錄在「系統」頁）'); break;
+      case 'ancient': startAncient('遠古-' + Date.now().toString(36)); toast('《人類的黎明》：每條世界線都不一樣（種子已記錄在「系統」頁的開發者資訊）'); break;
       case 'a-advance': {
         S.aSpeed = v;
         // 第一次走到近代門檻時停在門檻上，讓玩家決定要不要進入近代
@@ -2175,7 +2178,7 @@
         toast('儲存中…');
         WS.Save.write(W(), document.getElementById('save-name').value).then((r) => {
           if (r.ok) toast(`已儲存（${WS.Save.mb(r.bytes)}${r.compact ? '，空間不足改存精簡版：只留最近 5 年的詳細原因' : ''}）${r.pruned && r.pruned.length ? `；清掉了 ${r.pruned.length} 個最舊的自動保存` : ''}`, 4500);
-          else openModal(`<h2>存檔失敗</h2><p>${esc(r.reason)}</p><div class="row"><button class="btn primary" data-act="export">匯出 JSON 到裝置</button><button class="btn" data-act="close-modal">關閉</button></div>`);
+          else openModal(`<h2>存檔失敗</h2><p>${esc(r.reason)}</p><div class="row"><button class="btn primary" data-act="export">備份存檔到裝置</button><button class="btn" data-act="close-modal">關閉</button></div>`);
           render();
         });
         break;
@@ -2202,7 +2205,7 @@
     if (t.dataset.param) { const v = parseFloat(t.value); if (isFinite(v)) { engine.setParam(t.dataset.param, v); toast('參數已更新'); } }
     if (t.id === 'import' && t.files[0]) {
       const fr = new FileReader();
-      fr.onload = () => { try { switchWorld(WS.Save.migrate(fr.result), '已匯入'); } catch (e) { toast('匯入失敗：' + e.message); } };
+      fr.onload = () => { try { switchWorld(WS.Save.migrate(fr.result), '已讀取備份'); } catch (e) { toast('讀取備份失敗：' + e.message); } };
       fr.readAsText(t.files[0]);
     }
   });

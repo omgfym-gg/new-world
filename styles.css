@@ -705,3 +705,10 @@ body[data-ui="stone"] .card h3, body[data-ui="scroll"] .card h3 { position: rela
 body[data-ui="stone"] .card h3::before, body[data-ui="scroll"] .card h3::before { position: absolute; left: 0; top: 0; margin: 0; }
 /* 手機上卡片不要被裡面的長字撐寬（遠古觀測窗曾超出畫面） */
 .content > *, .grid > * { min-width: 0; }
+
+/* 系統頁：開發者資訊預設收合 */
+.dev-info > summary::-webkit-details-marker { display: none; }
+.dev-info > summary { cursor: pointer; font-weight: 600; color: var(--dim, #9aa); list-style: none; }
+.dev-info > summary::before { content: '▸ '; }
+.dev-info[open] > summary::before { content: '▾ '; }
+.dev-info h4 { margin: 12px 0 4px; font-size: 14px; }
