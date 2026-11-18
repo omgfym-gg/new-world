@@ -22,7 +22,7 @@
   };
 
   // 實際收成 = 年度氣候 × 神之手旱災（沒有干預時為 1）
-  Econ.harvest = (c, w) => c.res.harvest * (WS.Divine ? WS.Divine.harvestMult(c, w) : 1);
+  Econ.harvest = (c, w) => c.res.harvest * (WS.Divine ? WS.Divine.harvestMult(c, w) : 1) * (WS.Future ? WS.Future.harvestMult(c, w) : 1);
 
   Econ.resMult = function (c, w, s) {
     const e = w.params.economy;

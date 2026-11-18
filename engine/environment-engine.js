@@ -43,8 +43,10 @@
       // 糧食
       const produced0 = (c.econ.sec.agri.base || c.econ.sec.agri.Y) * r.harvest * r.foodCoef;
       const dMult = WS.Divine ? WS.Divine.harvestMult(c, w) : 1;
+      const fh = WS.Future ? WS.Future.harvestParts(c, w) : null;   // 暖化、核子寒冬（沒有時為 null）
       const ratio0 = produced0 / P;
-      const ratio = ratio0 * dMult;
+      const ratioD = ratio0 * dMult;
+      const ratio = fh ? ratioD * fh.climate * fh.winter : ratioD;
       let eff = ratio;
       if (ratio < 1) eff = ratio + (1 - ratio) * Env.importCover(c, w);
       r.foodRatio = ratio;
@@ -52,7 +54,11 @@
       const delta = eff - 1;
       r.foodStock += delta;
       U.cause(c, 'food', '國內糧食生產', ratio0 - 1, r.harvest < 0.97 ? '收成不佳' : r.harvest > 1.03 ? '收成良好' : '一般收成');
-      if (dMult < 1) { U.cause(c, 'food', '神之手：局部旱災', ratio - ratio0, w.regions[c.divine.drought.region] ? w.regions[c.divine.drought.region].name : null); c.divine.drought.foodLoss += ratio0 - ratio; }
+      if (dMult < 1) { U.cause(c, 'food', '神之手：局部旱災', ratioD - ratio0, w.regions[c.divine.drought.region] ? w.regions[c.divine.drought.region].name : null); c.divine.drought.foodLoss += ratio0 - ratioD; }
+      if (fh) {
+        if (fh.climate < 1) U.cause(c, 'food', '氣候變遷', ratioD * (fh.climate - 1), '全球暖化 ' + w.future.warming.toFixed(1) + '°C');
+        if (fh.winter < 1) U.cause(c, 'food', '核子寒冬／撞擊塵埃', ratioD * fh.climate * (fh.winter - 1), '日照不足');
+      }
       if (eff > ratio) U.cause(c, 'food', '糧食進口', eff - ratio, c.flags.atWar ? '戰時進口受阻' : '對外貿易');
       if (r.foodStock < 0) {
         r.shortage = U.clamp((1 - eff) * 2, 0, 1);
@@ -64,9 +70,15 @@
       const demand = Env.energyDemand(c, w);
       const oilUsable = U.adopt(c, 'ice');
       const reserves = r.coal + r.oil * oilUsable;
-      let cap = r.energyCap * (1 + U.adopt(c, 'nuclear') * 0.3);
+      // 潔淨能源（再生能源、核融合）：不受化石燃料儲量限制，也不排放；沒有這些科技時 rs = 0，計算與舊版相同
+      const rs = WS.Future ? WS.Future.renewShare(c, w) : 0;
+      const capAll = r.energyCap * (1 + U.adopt(c, 'nuclear') * 0.3);
+      let cap = capAll * (1 - rs);
       cap *= Math.min(1, reserves / Math.max(1e-6, r.energyCap * p.reserveDepletionYears));
+      const fossilCap = cap;
+      if (rs > 0) cap += capAll * rs;
       const domestic = Math.min(cap, demand);
+      r.cleanShare = rs > 0 ? (cap - fossilCap) / Math.max(1e-9, cap) : 0;
       const eb = w.params.economy.energyImportBase;
       let cover = (eb + (1 - eb) * c.econ.openness) * (c.flags.atWar ? 0.6 : 1) * (w.rules.currency === false ? 0.6 : 1);
       if (w.rules.resourceSharing) cover = Math.max(cover, 0.8);
@@ -75,7 +87,9 @@
       r.energyRatio = demand > 0 ? Math.min(1, supplied / demand) : 1;
       if (Math.abs(r.energyRatio - prevRatio) > 1e-9)
         U.cause(c, 'energy', domestic < demand ? '國內能源不足，依賴進口' : '國內能源充足', r.energyRatio - prevRatio, reserves < r.energyCap * p.reserveDepletionYears ? '儲量下降' : null);
-      const extraction = domestic * dt;
+      const extraction = (rs > 0 ? domestic * fossilCap / Math.max(1e-9, cap) : domestic) * dt;
+      // 排放：國內化石能源＋進口能源（進口能源來自模擬範圍外，視為化石能源）
+      if (WS.Future) WS.Future.addFossil(w, extraction + (supplied - domestic) * dt);
       const oilShare = r.oil > 0 ? p.oilShareMax * oilUsable : 0;
       r.oil = Math.max(0, r.oil - extraction * oilShare);
       r.coal = Math.max(0, r.coal - extraction * (1 - oilShare));
