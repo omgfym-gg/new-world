@@ -15,11 +15,48 @@
     }
     w.events.push(ev);
     if (w.events.length > 3000) w.events.splice(0, w.events.length - 3000);
-    if (ctx && w.intervention === 'occasional') {
-      if (w.mode === 'country' && ev.major && ev.countries.includes(w.focus)) ctx.major.push(ev);
-      else if (w.mode === 'global' && ev.level >= 3 && ['war', 'regime', 'newcountry', 'organization', 'newregime'].includes(ev.type)) ctx.major.push(ev);
-    }
+    // 這一期記下的事件（只給介面決定要不要暫停，不影響模擬）
+    if (ctx) (ctx.logged || (ctx.logged = [])).push(ev);
     return ev;
+  };
+
+  // ---------- 事件節奏：哪些事件要暫停自動播放 ----------
+  // 只決定「要不要停下來問玩家」，不改變世界；事件本身照樣由引擎依條件產生。
+  //   critical：只暫停重大危機（戰爭爆發、革命、全球災難、世界結局；國家模式另含觀察國的政變與分裂）
+  //   all：所有重要事件都詢問（舊版行為：政權更替、新國家、國際組織……）
+  //   none：全部交由系統處理，不暫停（世界結局仍會顯示）
+  Events.PAUSE_MODES = {
+    critical: { name: '只暫停重大危機', desc: '戰爭爆發、革命、全球災難、文明毀滅時才停下來；其他事件收進年度摘要' },
+    all: { name: '所有事件都詢問', desc: '政權更替、制度改革、新國家等重要事件都停下來讓你決定' },
+    none: { name: '全部交由系統', desc: '不暫停，世界一路運轉；事件都收進年度摘要，結局時才停' }
+  };
+  const PACE = (w) => (w.params && w.params.pacing) || WS.DEFAULT_PARAMS.pacing;
+  // 事件當事國占世界人口的比例（太小的部落或城邦的動盪，不打斷全球觀察）
+  Events.share = function (w, ev) {
+    const ids = U().ids(w);
+    let tot = 0, mine = 0;
+    for (const id of ids) { const p = U().popTotal(w.countries[id]); tot += p; if (ev.countries.includes(id)) mine += p; }
+    return tot ? mine / tot : 0;
+  };
+  Events.isCritical = function (w, ev) {
+    if (ev.type === 'ending' || ev.type === 'catastrophe' || ev.crisis) return true;
+    const war = ev.type === 'war' && !!ev.warPair;                      // 戰爭爆發（結束不算）
+    const revo = ev.type === 'conditional' && ev.defId === 'revolution';
+    if (w.mode === 'country') {
+      if (!ev.countries.includes(w.focus)) return false;
+      return war || revo || (ev.type === 'conditional' && ['coup', 'secession'].includes(ev.defId));
+    }
+    if (!war && !revo) return false;
+    return Events.share(w, ev) >= PACE(w).criticalMinShare;
+  };
+  Events.isNotable = function (w, ev) {
+    if (w.mode === 'country') return !!ev.major && ev.countries.includes(w.focus);
+    return ev.level >= 3 && ['war', 'regime', 'newcountry', 'organization', 'newregime', 'conditional'].includes(ev.type);
+  };
+  Events.shouldPause = function (w, ev, mode) {
+    if (mode === 'none') return false;
+    if (Events.isCritical(w, ev)) return true;
+    return mode === 'all' && Events.isNotable(w, ev);
   };
 
   Events.changeLeader = function (w, c, reason, ctx, parent, preferred) {

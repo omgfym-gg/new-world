@@ -895,6 +895,69 @@ test('世界結局報告：列出轉折點與玩家介入；「沒有你的世�
   assert.deepStrictEqual(cf.sim.world.future.ended, plain.world.future.ended);
 });
 
+// ---------- 事件節奏與年度摘要 ----------
+const runStops = (e, years) => {
+  const stops = [], y1 = e.world.year + years;
+  while (e.world.year < y1) { const r = e.advance(1); if (r.stopped && !r.ended) stops.push(r.events); }
+  return stops;
+};
+test('事件節奏：只暫停重大危機比所有事件都詢問停得少，暫停的都是戰爭爆發、革命或災難', () => {
+  const a = makeW({ intervention: 'occasional' }); a.pauseMode = 'critical';
+  const b = makeW({ intervention: 'occasional' }); b.pauseMode = 'all';
+  const sa = runStops(a, 30), sb = runStops(b, 30);
+  assert.ok(sa.length > 0 && sa.length < sb.length, `critical ${sa.length}、all ${sb.length}`);
+  assert.ok(sa.length <= 15, '30 年最多停 15 次：' + sa.length);
+  for (const evs of sa) for (const e of evs) {
+    assert.ok(WS.Events.isCritical(a.world, e), e.title);
+    assert.ok((e.type === 'war' && e.warPair) || e.defId === 'revolution' || ['catastrophe', 'ending'].includes(e.type) || e.crisis, e.title);
+  }
+  // 領導人更替與一般制度改革不會暫停
+  assert.ok(!sa.flat().some((e) => e.type === 'leader' || e.type === 'regime'));
+});
+test('事件節奏：全部交由系統、不介入模式不暫停；暫停方式不影響世界怎麼演變', () => {
+  const a = makeW({ intervention: 'occasional' }); a.pauseMode = 'none';
+  const b = makeW({ intervention: 'none' }); b.pauseMode = 'all';
+  const c = makeW({ intervention: 'occasional' }); c.pauseMode = 'all';
+  assert.strictEqual(runStops(a, 15).length, 0);
+  assert.strictEqual(runStops(b, 15).length, 0);
+  assert.ok(runStops(c, 15).length > 0);
+  // 同樣的種子：停很多次和完全不停，最後的世界一樣（intervention 指令記錄不同，所以只比國家與事件）
+  const strip = (w) => JSON.stringify({ c: w.countries, e: w.events.map((x) => x.title), r: w.rngState });
+  assert.strictEqual(strip(a.world), strip(c.world));
+});
+test('事件節奏：國家模式只為觀察國的危機暫停', () => {
+  const e = make({ intervention: 'occasional' }); e.pauseMode = 'critical';
+  for (const evs of runStops(e, 30)) for (const x of evs) assert.ok(['catastrophe', 'ending'].includes(x.type) || x.crisis || x.countries.includes('CHN'), x.title);
+});
+test('年度摘要：頭條以外的事件依類別收好，不重複頭條；頭條同一類每年最多 2 則', () => {
+  const e = makeW(); e.advance(12 * 20); const w = e.world;
+  const max = w.params.pacing.headlineMaxPerKind;
+  const by = {};
+  for (const h of w.headlines) { const k = h.year + h.kicker; by[k] = (by[k] || 0) + 1; }
+  assert.ok(Object.values(by).every((n) => n <= max));
+  let any = false;
+  for (let y = w.startYear; y < w.year; y++) {
+    const Y = WS.Headlines.summary(w, y);
+    const ids = Y.groups.flatMap((g) => g.items.map((x) => x.id));
+    assert.strictEqual(ids.length, Y.total);
+    assert.strictEqual(new Set(ids).size, ids.length, '同一件事只出現在一個類別');
+    for (const h of Y.headlines) if (h.eventId) assert.ok(!ids.includes(h.eventId), '頭條不重複出現在摘要');
+    for (const g of Y.groups) for (const x of g.items) assert.strictEqual(x.y, y);
+    if (Y.groups.some((g) => g.k === 'leader')) any = true;
+  }
+  assert.ok(any, '領導人更替收進年度摘要');
+});
+test('頭條聚焦：小國的事件分數打折，大國的戰爭與革命優先', () => {
+  const e = makeW(); e.advance(12 * 15); const w = e.world;
+  const share = (h) => WS.Events.share(w, { countries: h.countries });
+  const ev = w.headlines.filter((h) => h.eventId && h.countries.length);
+  assert.ok(ev.length > 0);
+  // 平均而言，上頭條的事件當事國比全部事件的當事國大
+  const all = w.events.filter((x) => x.level >= 3 && x.countries.length && x.y < w.year);
+  const avg = (a, f) => a.reduce((s, x) => s + f(x), 0) / a.length;
+  assert.ok(avg(ev, share) > avg(all, (x) => WS.Events.share(w, x)), '頭條偏向影響較大的事件');
+});
+
 // ---------- 輸出 ----------
 let fail = 0;
 for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }

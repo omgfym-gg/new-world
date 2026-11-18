@@ -108,15 +108,22 @@
       return ctx;
     }
 
-    // 推進 n 個月；偶爾決策模式下遇到重大事件會暫停，讓玩家決定是否介入
+    // 推進 n 個月；遇到值得停下來的事件會暫停，讓玩家決定是否介入
+    // 暫停方式（this.pauseMode，玩家在介面設定）：critical 只暫停重大危機／all 所有事件都詢問／none 全部交由系統
+    // 「不介入」模式一律不暫停。暫停只是停下來問玩家，不影響世界怎麼演變。
+    pauseModeNow(opts = {}) {
+      if (opts.stopOnMajor === false || this.w.intervention === 'none') return 'none';
+      return opts.pauseMode || this.pauseMode || 'critical';
+    }
     advance(months, opts = {}) {
-      const stopOnMajor = opts.stopOnMajor !== false && this.w.intervention === 'occasional';
+      const mode = this.pauseModeNow(opts);
       for (let i = 0; i < months; i++) {
         const ctx = this.step();
         if (ctx.ended) return { advanced: i + 1, stopped: true, ended: true, events: [] };
-        if (stopOnMajor && ctx.major.length) {
-          this.w.pendingDecision = { events: ctx.major.map((e) => e.id), y: this.w.year, m: this.w.month };
-          return { advanced: i + 1, stopped: true, events: ctx.major };
+        const hits = mode === 'none' ? [] : (ctx.logged || []).filter((e) => WS.Events.shouldPause(this.w, e, mode));
+        if (hits.length) {
+          this.w.pendingDecision = { events: hits.map((e) => e.id), y: this.w.year, m: this.w.month };
+          return { advanced: i + 1, stopped: true, events: hits };
         }
       }
       return { advanced: months, stopped: false };
