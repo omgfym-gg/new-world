@@ -16,7 +16,11 @@
     health: { name: '援助公共衛生', icon: '✚', short: '提高醫療水準的目標，幾年內逐漸見效' },
     tech: { name: '分享一項已知科技', icon: '✦', short: '把世界上已有的技術知識送進一個國家' },
     drought: { name: '引發局部旱災', icon: '☀', short: '讓某個地區今年收成大減' },
-    leader: { name: '讓領導人候選者出現', icon: '♛', short: '讓一位有特定性格的人物進入政壇' }
+    leader: { name: '讓領導人候選者出現', icon: '♛', short: '讓一位有特定性格的人物進入政壇' },
+    // 未來時代（世界上出現相關科技後才能施展）
+    aisafety: { name: '啟發 AI 安全研究', icon: '◈', short: '讓全世界的 AI 安全程度提高，降低人工智慧失控的機率', future: true },
+    calm: { name: '化解核危機', icon: '☮', short: '讓一個擁核國在一段時間內較不願意動用核武', future: true },
+    green: { name: '推動綠色轉型', icon: '❀', short: '讓一個國家的潔淨能源比例提高一段時間，減少排放', future: true }
   };
   Divine.LEANINGS = {
     reform: { name: '改革派', trait: 'reform' },
@@ -96,9 +100,35 @@
         risk.push(`${c.name}目前領導人：${c.leader ? c.leader.name : '—'}（${(WS.util.regime(w, c.regime) || {}).elections ? '有選舉，較常更替' : '沒有定期選舉，更替較少'}）`);
       }
     }
+    if (kind === 'aisafety' && c) {
+      checks.push([u0().adopt(c, 'ai') >= 0.3, `${c.name}已普及人工智慧（目前 ${(u0().adopt(c, 'ai') * 100).toFixed(0)}%）`]);
+      const F = w.future || { ai: { cap: 0, align: 0, gap: 0 } };
+      info.push(`全世界的 AI 安全程度最多提高約 ${p.aisafetyBoost}（之後每年淡化 ${(p.aisafetyDecay * 100).toFixed(0)}%）`);
+      info.push(`目前 AI 能力 ${F.ai.cap.toFixed(1)}、安全程度 ${F.ai.align.toFixed(1)}；差距越小，事故與失控的機率越低`);
+      risk.push(`${c.name}教育 ${c.demo.edu.toFixed(0)} 決定能吸收多少`);
+      risk.push('之後 AI 能力仍可能繼續成長，拉開差距；實際成效有運氣成分（世界種子）');
+    }
+    if (kind === 'calm' && c) {
+      checks.push([!!WS.Future && WS.Future.isNuke(c, w), `${c.name}是擁核國`]);
+      checks.push([!(st.calm && st.calm.until > w.tick), '這個國家沒有正在進行的核危機化解']);
+      info.push(`${p.calmYears} 年內，${c.name}捲入的核危機或戰爭中，動用核武的機率降到原本的 ${(p.calmMult * 100).toFixed(0)}–${(p.calmMult * 200).toFixed(0)}%`);
+      info.push('戰爭本身還是可能發生，由引擎決定');
+      risk.push('只影響這個國家；其他擁核國仍可能動用核武');
+      risk.push('實際效果有運氣成分（世界種子）');
+    }
+    if (kind === 'green' && c) {
+      checks.push([!!w.invented.renewables, '世界上已經有人掌握「再生能源」']);
+      checks.push([!(st.green && st.green.until > w.tick), '這個國家沒有正在進行的綠色轉型']);
+      const absorb = 0.4 + 0.6 * c.pol.admin / 100;
+      info.push(`${p.greenYears} 年內，潔淨能源比例最多提高約 ${(p.greenBoost * 100).toFixed(0)}%，化石燃料使用與排放跟著減少`);
+      info.push('能源供應、經濟與暖化的變化由引擎計算');
+      risk.push(`行政效率 ${c.pol.admin.toFixed(0)}：約可落實 ${(absorb * 100).toFixed(0)}%`);
+      risk.push('其他國家仍可能大量排放；實際效果有運氣成分（世界種子）');
+    }
     const fail = checks.find((x) => !x[0]);
     return { ok: !fail, reason: fail ? fail[1] : null, cost, energy: D.energy, checks, info, risk, name: K.name };
   };
+  const u0 = () => WS.util;
 
   // ---------- 施展（由 WorldEngine.divine 呼叫） ----------
   Divine.act = function (w, ctx, kind, cid, opt) {
@@ -167,10 +197,35 @@
       causes.push(`候選者性格：${WS.Agents.TRAIT_NAMES[L.trait]} ${(main * 100).toFixed(0)}、能力 ${(lead.comp * 100).toFixed(0)}（世界種子決定）`);
       effects = [`要等政權自然更替，每次約 ${(p.leaderWinChance * 100).toFixed(0)}% 機會勝出`, `${p.leaderYears} 年內沒有機會就會淡出政壇`];
       entry.label = `${c.name}的${L.name}候選者`;
+    } else if (kind === 'aisafety') {
+      const F = WS.Future.ensure(w);
+      const talent = Math.min(1.5, Math.pow(Math.max(1, c.demo.edu) / 60, 0.8));
+      const add = p.aisafetyBoost * talent * luck;
+      F.ai.bonus += add;
+      title = `神之手：在${c.name}啟發 AI 安全研究`;
+      causes.push(`${c.name}教育 ${c.demo.edu.toFixed(0)} → 吸收倍率 ${talent.toFixed(2)}`, `運氣（世界種子）× ${luck.toFixed(2)}`);
+      effects = [`全世界 AI 安全程度 +${add.toFixed(2)}（之後每年淡化 ${(p.aisafetyDecay * 100).toFixed(0)}%）`];
+      entry.label = `在${c.name}啟發 AI 安全研究`;
+      entry.done = true; entry.status = effects[0];
+    } else if (kind === 'calm') {
+      const mult = Math.min(1, p.calmMult * (2.3 - luck * 1.5));
+      st.calm = { mult, start: w.tick, until: w.tick + p.calmYears * 12, logId: entry.id };
+      title = `神之手：化解${c.name}的核危機`;
+      causes.push(`運氣（世界種子）× ${luck.toFixed(2)}`);
+      effects = [`${p.calmYears} 年內動用核武的機率 ×${mult.toFixed(2)}`];
+      entry.label = `化解${c.name}的核危機`;
+    } else if (kind === 'green') {
+      const absorb = 0.4 + 0.6 * c.pol.admin / 100;
+      const boost = p.greenBoost * absorb * luck;
+      st.green = { boost, start: w.tick, until: w.tick + p.greenYears * 12, logId: entry.id };
+      title = `神之手：推動${c.name}綠色轉型`;
+      causes.push(`行政效率 ${c.pol.admin.toFixed(0)} → 落實 ${(absorb * 100).toFixed(0)}%`, `運氣（世界種子）× ${luck.toFixed(2)}`);
+      effects = [`潔淨能源比例 +${(boost * 100).toFixed(0)}%，持續 ${p.greenYears} 年`, '能源、經濟與暖化的變化由引擎計算'];
+      entry.label = `推動${c.name}綠色轉型`;
     }
     const ev = WS.Events.log(w, ctx, { type: 'divine', divineKind: kind, title, countries: [cid], level: 3, causes, effects, trigger: '玩家的神之手指令' });
     entry.eventId = ev.id;
-    for (const k of ['health', 'tech', 'drought', 'candidate']) if (st[k] && st[k].logId === entry.id) st[k].eventId = ev.id;
+    for (const k of ['health', 'tech', 'drought', 'candidate', 'calm', 'green']) if (st[k] && st[k].logId === entry.id) st[k].eventId = ev.id;
     D.log.push(entry);
     if (D.log.length > 200) D.log.shift();
     return { ok: true, effects, eventId: ev.id, entry };
@@ -233,6 +288,8 @@
         end('tech', `通往${c.name}的「${def.name}」知識管道關閉`, [done ? `已完成研究「${def.name}」` : `管道關閉時尚未完成研究（進度 ${(Math.min(1, (c.tech[st.tech.id] || { progress: 0 }).progress / def.cost) * 100).toFixed(0)}%），之後依一般研究繼續`]);
       }
       if (st.drought && st.drought.until <= w.tick) end('drought', `${c.name}的旱災結束`, [`旱災期間少收約 ${st.drought.foodLoss.toFixed(1)} 個月的糧食`]);
+      if (st.calm && st.calm.until <= w.tick) end('calm', `${c.name}的核危機化解期結束`, ['動用核武的機率回到原本的水準']);
+      if (st.green && st.green.until <= w.tick) end('green', `${c.name}的綠色轉型期結束`, ['潔淨能源比例回到依科技普及的水準']);
       if (st.candidate && st.candidate.until <= w.tick) end('candidate', `${c.name}的${Divine.LEANINGS[st.candidate.lean].name}人物淡出政壇`, [st.candidate.tries ? `經歷 ${st.candidate.tries} 次政權更替都沒有勝出` : '期間沒有發生政權更替']);
     }
   };

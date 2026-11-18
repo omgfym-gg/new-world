@@ -27,12 +27,23 @@
     if (e.type === 'regime' || e.type === 'newregime') return 'upheaval';
     if (e.type === 'newcountry') return 'newcountry';
     if (e.type === 'divine') return 'divine';
+    if (e.type === 'catastrophe' || e.type === 'ending' || (e.type === 'future' && futureVariant(e))) return 'future';
     if (e.type === 'tech') return /率先/.test(e.title) ? 'tech-first' : 'tech';
     if (e.type === 'organization' && /成立/.test(e.title)) return 'org';
     if (e.type === 'conditional' || e.type === 'historical') {
       if (e.defId === 'famine' || /旱災|饑荒/.test(e.title)) return 'famine';
       if (['revolution', 'coup', 'democratization', 'warlordism', 'secession', 'reunification'].includes(e.defId) || e.defId === 'wuchang') return 'upheaval';
     }
+    return null;
+  }
+  // 未來時代事件 → 動畫種類
+  function futureVariant(e) {
+    if (e.fk) return e.fk;
+    if (/火星/.test(e.title)) return 'mars';
+    if (/星際/.test(e.title)) return 'stars';
+    if (/小行星/.test(e.title)) return 'asteroid';
+    if (/暖化/.test(e.title)) return 'climate';
+    if (/擁核/.test(e.title)) return 'nuclear';
     return null;
   }
   let worldObj = null, worldKey = 0;
@@ -158,6 +169,7 @@
       return Object.assign(base, { scene: 'tech', variant: def ? def.field : 'industry' });
     }
     if (kind === 'divine') return Object.assign(base, { scene: 'upheaval', variant: 'newregime' });
+    if (kind === 'future') return Object.assign(base, { scene: 'future', variant: futureVariant(e), place: place || '全球', intensity: 0.8 });
     if (kind === 'upheaval' || e.defId === 'protest') {
       const v = e.defId === 'coup' ? 'coup' : e.defId === 'protest' ? 'protest' : e.defId === 'democratization' ? 'democratization'
         : (e.defId === 'revolution' || e.defId === 'wuchang' || /革命/.test(e.title)) ? 'revolution' : 'newregime';
@@ -420,8 +432,8 @@
           ${w.mode === 'country' ? `<select data-act="focus" aria-label="觀察國家" style="width:auto;min-height:40px">${ids.map((id) => `<option value="${id}" ${id === w.focus ? 'selected' : ''}>${esc(w.countries[id].name)}</option>`).join('')}</select>` : ''}
         </div>
         <div class="controls">
-          ${Object.entries(SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.speed === k ? 'on' : ''}" data-act="advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}
-          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>
+          ${ended() ? `<button class="btn small gold" data-act="ending">世界已終結・看結局報告</button>` : `${Object.entries(SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.speed === k ? 'on' : ''}" data-act="advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}
+          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>`}
         </div>
       </div>
       <div class="content">${tabContent()}</div>
@@ -465,7 +477,7 @@
     return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
   }
   function typeLabel(t) {
-    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果', divine: '神之手', city: '城市', migration: '遷徙', polity: '政體', era: '時代' }[t] || t;
+    return { war: '戰爭', regime: '政權', leader: '人物', tech: '科技', decision: '決策', historical: '歷史事件', 'historical-missed': '歷史分歧', conditional: '條件事件', organization: '國際組織', newcountry: '新國家', newregime: '新制度', diplomacy: '外交', rule: '世界規則', branch: '分支', system: '系統', whatif: '如果', divine: '神之手', future: '未來', catastrophe: '災難', ending: '結局', city: '城市', migration: '遷徙', polity: '政體', era: '時代' }[t] || t;
   }
 
   // ---------- 地圖 ----------
@@ -584,7 +596,9 @@
     const evs = w.events.filter((e) => e.level >= 2 && (w.mode === 'global' || e.level >= 3 || e.countries.includes(w.focus))).slice(-12).reverse();
     const chron = w.chronicle.slice(-3).reverse();
     return observatory() + head + `
+      ${endingBanner()}
       <div class="grid g2">${headlinesCard()}${divineCard()}</div>
+      ${futureCard()}
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
         <div class="card"><h3>歷史紀錄</h3>${chron.length ? chron.map((c) => `<p class="chron"><b>${c.year} 年</b>\n${esc(c.text)}</p>`).join('') : '<p class="dim">每推進一年，模擬器會根據實際模擬數據寫下一段歷史摘要。</p>'}</div>
@@ -975,9 +989,9 @@
     return `<div class="card divine"><h3>神之手 ${(D.log || []).length ? '<button class="link" data-act="divine-log">全部紀錄</button>' : ''}</h3>
       <div class="energy"><span>神力</span><div class="bar"><i style="width:${(D.energy / max) * 100}%"></i></div><span class="num">${Math.floor(D.energy)}／${max}</span></div>
       <p class="dim" style="margin:6px 0 10px">每年恢復 ${w.params.divine.energyRegenPerYear}。你只能改變條件，世界會怎麼反應由引擎決定，結果不保證。</p>
-      <div class="divine-btns">${Object.entries(WS.Divine.KINDS).map(([k, d]) => {
+      <div class="divine-btns">${divineKinds(w).map(([k, d]) => {
         const cost = WS.Divine.cost(w, k);
-        return `<button class="btn small" data-act="divine-open" data-v="${k}" ${D.energy < cost ? 'disabled' : ''}><b>${d.icon}</b> ${esc(d.name)}<small class="num">${cost}</small></button>`;
+        return `<button class="btn small ${d.future ? 'future' : ''}" data-act="divine-open" data-v="${k}" ${D.energy < cost ? 'disabled' : ''}><b>${d.icon}</b> ${esc(d.name)}<small class="num">${cost}</small></button>`;
       }).join('')}</div>
       ${recent.length ? `<ul class="events" style="margin-top:10px">${recent.map((g) => `<li data-act="event" data-id="${g.eventId}" class="${g.done ? '' : 'l3'}"><div class="when">${g.y}.${String(g.m).padStart(2, '0')}・${g.done ? '已結束' : '進行中'}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${esc(g.status)}</div></li>`).join('')}</ul>` : ''}</div>`;
   }
@@ -985,8 +999,11 @@
     if (isAnc()) return ancientDivineModal();
     const w = W();
     const st = S.divine;
-    const ids = U.ids(w);
-    if (!w.countries[st.cid] || !w.countries[st.cid].alive) st.cid = ids[0];
+    // 未來時代的神之手只列出符合條件的國家（擁核國、已普及 AI 的國家）
+    const elig = { calm: (c) => WS.Future.isNuke(c, w), aisafety: (c) => U.adopt(c, 'ai') >= 0.3 }[st.kind];
+    const all = U.ids(w), fit = elig ? all.filter((id) => elig(w.countries[id])) : all;
+    const ids = fit.length ? fit : all;
+    if (!w.countries[st.cid] || !w.countries[st.cid].alive || !ids.includes(st.cid)) st.cid = ids[0];
     const c = w.countries[st.cid];
     let optHtml = '';
     if (st.kind === 'tech') {
@@ -1001,7 +1018,7 @@
     const pv = engine.divinePreview(st.kind, st.cid, st.opt || undefined);
     const traits = WS.Agents.leaderTraits(c.leader);
     openModal(`<h2>神之手</h2>
-      <div class="seg" style="flex-wrap:wrap;margin-bottom:10px">${Object.entries(WS.Divine.KINDS).map(([k, d]) => `<button data-act="divine-kind" data-v="${k}" class="${st.kind === k ? 'on' : ''}">${d.icon} ${esc(d.name)}</button>`).join('')}</div>
+      <div class="seg" style="flex-wrap:wrap;margin-bottom:10px">${divineKinds(w).map(([k, d]) => `<button data-act="divine-kind" data-v="${k}" class="${st.kind === k ? 'on' : ''}">${d.icon} ${esc(d.name)}</button>`).join('')}</div>
       <p class="dim">${esc(WS.Divine.KINDS[st.kind].short)}。耗費神力 <b class="gold">${pv.cost}</b>（目前 ${Math.floor(pv.energy)}）。</p>
       <div class="field"><label>對象國家</label><select data-act="divine-target">${ids.map((id) => `<option value="${id}" ${id === st.cid ? 'selected' : ''}>${esc(w.countries[id].name)}</option>`).join('')}</select></div>
       ${st.kind === 'leader' ? `<p class="dim">目前領導人：${esc(c.leader.name)}${traits.length ? '（' + traits.map(esc).join('、') + '）' : ''}</p>` : ''}
@@ -1011,6 +1028,12 @@
       ${pv.risk && pv.risk.length ? `<h3 class="dv-h">為什麼結果不保證</h3><ul class="list-plain">${pv.risk.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       <div class="row" style="margin-top:12px"><button class="btn gold" data-act="divine-cast" ${pv.ok ? '' : 'disabled'}>施展（神力 −${pv.cost}）</button><button class="btn" data-act="close-modal">取消</button></div>
       <p class="dim" style="margin-top:8px">施展會記錄在指令紀錄裡；「如果？」平行世界重跑時，也會在同一個月份重播這次干預。</p>`);
+  }
+  // 未來時代的神之手：世界上出現相關科技（AI、核武、再生能源）之後才顯示
+  function divineKinds(w) {
+    const F = w.future;
+    const on = { aisafety: !!w.invented.ai, calm: !!(F && F.nukes && F.nukes.length), green: !!w.invented.renewables };
+    return Object.entries(WS.Divine.KINDS).filter(([k, d]) => !d.future || on[k]);
   }
   function divineCast() {
     const st = S.divine;
@@ -1025,6 +1048,168 @@
     const log = ((w.divine && w.divine.log) || []).slice().reverse();
     openModal(`<h2>神之手紀錄</h2><p class="dim">每一次干預與它目前的結果。點一下可以看完整的原因與後續事件。</p>
       <ul class="events">${log.map((g) => `<li data-act="event" data-id="${g.eventId}"><div class="when">${isAnc() ? esc(yl(g.y)) : `${g.y}.${String(g.m).padStart(2, '0')}`}・${esc(WS.Divine.kinds(w)[g.kind].name)}・神力 ${g.cost}</div>${esc(g.label)}<div class="dim" style="font-size:12px">${g.done ? '結果：' : '狀態：'}${esc(g.status)}</div></li>`).join('')}</ul>`);
+  }
+
+
+  // ======================= 未來時代與世界結局 =======================
+  // 數值全部由 engine/future-engine.js 計算；這裡只顯示，並連回事件紀錄
+  const FUT = () => WS.Future;
+  function ended() { const w = engine.world; return !!(w && w.future && w.future.ended); }
+  const fPeople2 = (m) => FUT().fmtPeople(m);
+  const pctR = (p) => (p >= 0.1 ? (p * 100).toFixed(0) : p >= 0.001 ? (p * 100).toFixed(1) : (p * 100).toFixed(2)) + '%';
+  function doomClock(min) {
+    const a = (-min / 60) * Math.PI * 2 - Math.PI / 2;  // 分針：離 12 點幾分鐘
+    const R = 34, cx = 40, cy = 40;
+    const ticks = Array.from({ length: 12 }, (_, i) => { const t = (i / 12) * Math.PI * 2; return `<line x1="${cx + Math.cos(t) * (R - 4)}" y1="${cy + Math.sin(t) * (R - 4)}" x2="${cx + Math.cos(t) * R}" y2="${cy + Math.sin(t) * R}" stroke="#8fa3cc" stroke-width="${i === 9 ? 2.4 : 1}"/>`; }).join('');
+    const danger = min <= 3 ? '#f87171' : min <= 7 ? '#fbbf24' : '#38bdf8';
+    return `<svg class="doom" viewBox="0 0 80 80" role="img" aria-label="末日鐘：離午夜 ${min} 分鐘">
+      <path d="M${cx} ${cy} L${cx} ${cy - R} A${R} ${R} 0 0 0 ${cx + Math.cos(a) * R} ${cy + Math.sin(a) * R} Z" fill="${danger}" opacity=".22"/>
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#1e3463" stroke-width="2"/>${ticks}
+      <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - R + 8}" stroke="#e2e8f0" stroke-width="2.4"/>
+      <line x1="${cx}" y1="${cy}" x2="${cx + Math.cos(a) * (R - 5)}" y2="${cy + Math.sin(a) * (R - 5)}" stroke="${danger}" stroke-width="2"/>
+      <circle cx="${cx}" cy="${cy}" r="2.6" fill="#e2e8f0"/></svg>`;
+  }
+  function riskBar(label, p, note) {
+    const v = U.clamp(Math.sqrt(p) * 200, 0, 100);  // 小機率也看得到：用平方根放大
+    return `<div class="meter risk"><span>${label}</span><div class="bar"><i style="width:${v}%"></i></div><span class="num">${pctR(p)}</span><span class="dim">${note || ''}</span></div>`;
+  }
+  function futureCard() {
+    const w = W();
+    const F = w.future;
+    if (!F || (w.year < 1945 && !F.nukes.length && F.warming < 1)) return '';
+    const r = F.risk || {};
+    const inv = Object.keys(w.invented).filter((k) => WS.Data.techs[k] && WS.Data.techs[k].future);
+    const tot = Object.values(WS.Data.techs).filter((t) => t.future).length;
+    const min = FUT().clock(w);
+    const nukes = F.nukes.filter((x) => w.countries[x] && w.countries[x].alive);
+    const lead = F.ai.leader && w.countries[F.ai.leader] ? w.countries[F.ai.leader].name : '—';
+    return `<div class="card future-card"><h3>人類的未來 <button class="link" data-act="future-info">這些數字怎麼算？</button></h3>
+      <div class="fut-top">${doomClock(min)}<div><div class="k dim">末日鐘（示意）</div><div class="v num">${F.ended ? '午夜' : `離午夜 ${min} 分鐘`}</div>
+        <div class="dim" style="font-size:12px">今年發生全球性災難的機率約 <b class="num">${pctR(r.total || 0)}</b></div></div></div>
+      <div class="kpis">
+        ${kpi('全球暖化', '+' + F.warming.toFixed(2) + '°C', F.warming > 1.5 ? '收成受影響' : null)}
+        ${kpi('擁核國', nukes.length + ' 個', null)}
+        ${kpi('AI 能力／安全', F.ai.cap.toFixed(1) + '／' + F.ai.align.toFixed(1), F.ai.cap ? '領先：' + lead : null)}
+        ${kpi('火星人口', F.mars ? fPeople2(F.mars.pop) : '—', F.mars ? (F.mars.selfSustain ? '可自給自足' : F.mars.founded + ' 年建立') : null)}
+      </div>
+      <div style="margin-top:10px">
+        ${riskBar('核子戰爭', r.nuclear || 0, nukes.length ? '' : '尚無擁核國')}
+        ${riskBar('AI 失控', r.ai || 0, w.invented.agi ? '' : '通用 AI 出現後才有')}
+        ${riskBar('人造瘟疫', r.bio || 0, '')}
+        ${riskBar('氣候臨界點', r.climate || 0, F.warming > w.params.future.tippingFrom ? '' : `暖化超過 ${w.params.future.tippingFrom}°C 後`)}
+        ${riskBar('小行星', r.asteroid || 0, '')}
+      </div>
+      <p class="dim" style="margin:8px 0 0">未來科技 ${inv.length}／${tot}${inv.length ? '：' + inv.map((k) => esc(WS.Data.techs[k].name)).join('、') : '（要等各國研究出來，不照年份）'}</p></div>`;
+  }
+  function futureModal() {
+    const w = W(), p = w.params.future;
+    openModal(`<h2>未來時代怎麼計算</h2>
+      <p class="dim">全部是遊戲用的假設（示意值，尚未校準），不是預測。每年一月依世界當時的狀態算出各種風險的機率，再用這個世界的種子亂數判定。</p>
+      <ul class="list-plain">
+        <li><b>氣候</b>：暖化＝起點暖化＋累積化石燃料使用量 × 係數。再生能源、核融合越普及，排放越少；碳捕集會慢慢移除累積排放。超過 ${p.harvestLossFrom}°C 收成下降（低緯度最嚴重），超過 ${p.climateDeathFrom}°C 開始有氣候災害死亡，超過 ${p.tippingFrom}°C 每年有 ${(p.tippingChance * 100).toFixed(1)}% 機率觸發無法逆轉的臨界點。</li>
+        <li><b>核武</b>：同時普及核能與火箭的國家是擁核國。擁核國互相開戰、戰況危急，或互相敵視時，可能動用核武；盟國可能被捲入。核子寒冬讓全球收成大減好幾年。</li>
+        <li><b>人工智慧</b>：AI 能力（人工智慧、通用 AI、超級智慧）和安全程度（AI 安全研究、可解釋 AI、事故後的教訓）差距越大越危險。打仗或擴張中的國家領先時，風險加倍（AI 軍備競賽）。超級智慧出現後，事故可能變成失控。</li>
+        <li><b>人造瘟疫</b>：基因工程與合成生物學越普及、醫療越差、世界在打仗時，機率越高。大多數不嚴重，極少數非常致命。</li>
+        <li><b>小行星</b>：每年很小的自然機率；行星防禦普及後可以偏轉。</li>
+        <li><b>火星</b>：完成「火星殖民」後建立殖民地，人口成長受容量限制；達到 100 萬人可以自給自足，地球毀滅時人類仍能延續。</li>
+        <li><b>結局</b>：地球人口跌到高峰的 ${(p.endFrac * 100).toFixed(0)}% 以下就是文明崩潰，結局名稱取最近 40 年造成死亡最多的原因；超級智慧失控直接結束。完成「星際航行」且火星可自給自足時發射移民船，飛 ${p.voyageYears} 年抵達就是「人類走向星際」。</li>
+      </ul>
+      <p class="dim">所有死亡都寫在各國的因果帳裡（「?」可以追查），每場災難都是事件，可以用「如果？」改寫它沒有發生。係數在 engine/params.js 的 future 區塊。</p>`);
+  }
+  function endingBanner() {
+    const w = W();
+    if (!ended()) return '';
+    const E = w.future.ended, K = FUT().KINDS[E.kind];
+    return `<div class="card ending-banner ${E.good ? 'good' : ''}"><h3>${K.icon} 世界結局：${esc(E.title)}・${E.y} 年</h3><p>${esc(E.text)}</p>
+      <div class="row"><button class="btn gold" data-act="ending">看世界結局報告</button><button class="btn" data-act="tab" data-v="history">回到過去的年份重來</button></div></div>`;
+  }
+  function endingModal() {
+    const w = W();
+    if (!ended()) return;
+    const R = FUT().report(w), E = R.ended, K = FUT().KINDS[E.kind];
+    const ser = R.series;
+    const step = Math.max(1, Math.ceil(ser.y.length / 160));
+    const pick = (a) => a.filter((_, i) => i % step === 0 || i === a.length - 1);
+    const labels = pick(ser.y);
+    const peakW = Math.max(R.warming, ...ser.warming);
+    const tl = R.turning.slice(-40);
+    const nPlayer = R.player.length + R.whatifs.length;
+    const cat = R.catastrophes.filter((c) => c.kind !== 'aiIncident' || c.deaths > 0);
+    const cf = S.cf && S.cf.key === w.world_id + w.branch.id + E.y ? S.cf : null;
+    openModal(`<div class="ending-head ${E.good ? 'good' : ''}"><div class="ending-icon">${K.icon}</div><div><div class="dim">世界結局・${esc(w.branch.name)}</div><h2 style="margin:2px 0">${esc(E.title)}</h2><div class="num">${R.start} → ${E.y} 年・存在 ${R.years} 年</div></div></div>
+      ${mediaHtml(w.events.find((e) => e.id === E.eventId) || { countries: [], title: E.title, y: E.y, m: E.m, type: 'ending', fk: E.kind, id: E.eventId })}
+      <p>${esc(E.text)}</p>
+      <div class="kpis">
+        ${kpi('人口高峰', fPeople2(R.peak.pop), R.peak.y + ' 年')}
+        ${kpi('結局時地球人口', fPeople2(E.earthPop), sg(((E.earthPop - R.peak.pop) / R.peak.pop) * 100, 0) + '%')}
+        ${kpi('最高暖化', '+' + peakW.toFixed(1) + '°C', null)}
+        ${kpi('火星', R.mars ? fPeople2(R.mars.pop) : '沒有殖民地', R.mars ? R.mars.founded + ' 年建立' : null)}
+        ${kpi('未來科技', R.techs + '／' + R.techTotal, null)}
+        ${kpi('擁核國', R.nukes + ' 個', null)}
+      </div>
+      <h3 class="dv-h">世界人口（百萬）</h3>${chart(labels, [{ name: '地球人口', color: '#38bdf8', data: pick(ser.pop), bold: true }], { label: '世界人口', zero: true, h: 170 })}
+      <h3 class="dv-h">暖化（°C）與每年災難機率（%）</h3>${chart(labels, [{ name: '暖化 °C', color: '#fb923c', data: pick(ser.warming), bold: true }, { name: '災難機率 %', color: '#f87171', data: pick(ser.risk) }, { name: 'AI 能力−安全差距', color: '#a78bfa', data: pick(ser.gap) }], { label: '暖化與風險', zero: true, h: 170 })}
+      <h3 class="dv-h">關鍵轉折點</h3>
+      <ul class="events">${tl.map((x) => `<li class="${x.kind === 'catastrophe' || x.kind === 'ending' ? 'war l3' : x.kind === 'whatif' ? 'wi' : ''}" ${x.eventId ? `data-act="event" data-id="${x.eventId}"` : ''}><div class="when">${x.y}${x.m ? '.' + String(x.m).padStart(2, '0') : ''}・${typeLabel(x.kind)}</div>${esc(x.title)}</li>`).join('') || '<li class="dim">沒有</li>'}</ul>
+      ${cat.length ? `<h3 class="dv-h">災難</h3><table class="wi-table"><tr><th>年份</th><th>災難</th><th class="num">直接死亡</th></tr>${cat.map((c) => `<tr data-act="event" data-id="${c.eventId}"><td class="num">${c.y}</td><td>${esc(c.title)}</td><td class="num">${c.deaths ? fPeople2(c.deaths) : '—'}</td></tr>`).join('')}</table>` : ''}
+      <h3 class="dv-h">你的介入（${nPlayer} 次）</h3>
+      ${nPlayer ? `<ul class="list-plain">${R.player.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> ${esc(x.text)}</li>`).join('')}${R.whatifs.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> 平行世界改寫：${esc(x.label)}</li>`).join('')}</ul>` : '<p class="dim">這一次你完全沒有介入，世界自己走到了這一步。</p>'}
+      <div class="wi-box"><h3>沒有你的世界會怎樣？</h3>
+        <p class="dim">從 ${R.start} 年用同一個種子重跑，<b>不重播</b>你的政策、神之手、世界規則與「如果？」改寫，看看世界會在什麼時候、因為什麼終結。最多再多跑 200 年。目前的世界不會被改動。</p>
+        <div id="cf-out">${cf ? cfHtml(cf, R) : `<button class="btn gold" data-act="cf-run" ${nPlayer ? '' : 'disabled'}>${nPlayer ? '開始重跑' : '你沒有介入，兩個世界會完全一樣'}</button>`}</div></div>
+      <div class="row" style="margin-top:14px"><button class="btn" data-act="tab" data-v="history">回到過去的年份重來</button><button class="btn" data-act="close-modal">關閉</button></div>`);
+    mountMedia();
+  }
+  function cfHtml(cf, R) {
+    if (!cf.done) return `<p class="num">重跑中…… ${cf.year} 年</p>`;
+    const A = cf.result, E = R.ended;
+    const endTxt = (e, y) => (e ? `${FUT().KINDS[e.kind].icon} ${esc(e.title)}（${e.y} 年）` : `到 ${y} 年仍未終結`);
+    const life = A.ended ? A.ended.y - R.start : null;
+    const diff = A.ended ? (E.y - A.ended.y) : null;
+    let verdict;
+    if (!A.ended) verdict = `沒有你的話，世界至少撐到 ${A.year} 年，比你的世界多 ${A.year - E.y} 年以上。`;
+    else if (A.ended.kind === E.kind && A.ended.y === E.y) verdict = '兩個世界在同一年、因為同樣的原因終結：你的介入沒有改變結局。';
+    else if (diff > 0) verdict = `你的介入讓世界多活了 ${diff} 年${A.ended.kind !== E.kind ? '，結局也不一樣' : ''}。`;
+    else if (diff < 0) verdict = `沒有你的話，世界會多撐 ${-diff} 年${A.ended.kind !== E.kind ? '，結局也不一樣' : ''}。`;
+    else verdict = '兩個世界在同一年終結，但原因不同。';
+    return `<table class="wi-table"><tr><th></th><th>你的世界</th><th>沒有你的世界</th></tr>
+      <tr><td>結局</td><td>${endTxt(E)}</td><td>${endTxt(A.ended, A.year)}</td></tr>
+      <tr><td>存在年數</td><td class="num">${R.years}</td><td class="num">${life != null ? life : '> ' + (A.year - R.start)}</td></tr>
+      <tr><td>人口高峰</td><td class="num">${fPeople2(R.peak.pop)}（${R.peak.y}）</td><td class="num">${fPeople2(A.peak.pop)}（${A.peak.y}）</td></tr>
+      <tr><td>最高暖化</td><td class="num">+${Math.max(R.warming, ...R.series.warming).toFixed(1)}°C</td><td class="num">+${A.maxWarm.toFixed(1)}°C</td></tr>
+      <tr><td>災難次數</td><td class="num">${R.catastrophes.filter((c) => c.kind !== 'aiIncident').length}</td><td class="num">${A.cats}</td></tr>
+      <tr><td>火星</td><td>${R.mars ? fPeople2(R.mars.pop) : '—'}</td><td>${A.mars ? fPeople2(A.mars.pop) : '—'}</td></tr></table>
+      <p><b>${esc(verdict)}</b></p>
+      ${A.firstDiff ? `<p class="dim">兩個世界第一個不同的重大事件：${esc(A.firstDiff)}</p>` : ''}`;
+  }
+  function cfRun() {
+    const w = W();
+    const E = w.future.ended;
+    const key = w.world_id + w.branch.id + E.y;
+    const run = FUT().counterfactual(w, 200);
+    if (!run) { toast('這個世界沒有起點設定，無法重跑'); return; }
+    S.cf = { key, done: false, year: run.sim.w.year };
+    const R = FUT().report(w);
+    const out = () => document.getElementById('cf-out');
+    const tick = () => {
+      if (!S.cf || S.cf.key !== key) return;
+      const sw = run.run(4);
+      S.cf.year = sw.year;
+      if (run.done()) {
+        const F = sw.future;
+        const big = (x) => x.level >= 3 && x.type !== 'system';
+        const a = w.events.filter(big), b = sw.events.filter(big);
+        let firstDiff = null;
+        for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i].title !== b[i].title || a[i].y !== b[i].y) { firstDiff = `${a[i].y} 年你的世界：「${a[i].title}」／沒有你的世界：${b[i].y} 年「${b[i].title}」`; break; }
+        S.cf = { key, done: true, year: sw.year, result: { ended: F.ended, year: sw.year, peak: F.peak, maxWarm: Math.max(F.warming, ...F.series.warming), cats: F.catastrophes.filter((c) => c.kind !== 'aiIncident').length, mars: F.mars, firstDiff } };
+      }
+      const el = out();
+      if (el) el.innerHTML = cfHtml(S.cf, R);
+      if (!S.cf.done) setTimeout(tick, 0);
+    };
+    const el = out();
+    if (el) el.innerHTML = cfHtml(S.cf, R);
+    setTimeout(tick, 30);
   }
 
   function systemTab() {
@@ -1559,18 +1744,22 @@
   }
 
   function doAdvance(months) {
+    if (ended()) { endingModal(); return { stopped: true, ended: true }; }
     const res = engine.advance(months);
     WS.Save.autosave(W());
     render();
+    if (res.ended) { stopAuto(); endingModal(); return res; }
     if (res.stopped) { stopAuto(); decisionModal(res.events); }
     return res;
   }
   function stopAuto() { if (S.auto) { clearInterval(S.auto); S.auto = null; } }
   function toggleAuto() {
     if (S.auto) { stopAuto(); WS.Save.autosave(W()); render(); return; }
+    if (ended()) { endingModal(); return; }
     S.auto = setInterval(() => {
       const res = engine.advance(1);
       if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) WS.Save.autosave(W());
+      if (res.ended) { stopAuto(); WS.Save.autosave(W()); render(); endingModal(); return; }
       // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
       // 遠古世界走到近代門檻：暫停，問玩家要不要進入近代（只問一次）
@@ -1653,6 +1842,9 @@
       case 'divine-opt': S.divine.opt = v; divineModal(); break;
       case 'divine-cast': divineCast(); break;
       case 'divine-log': divineLogModal(); break;
+      case 'ending': endingModal(); break;
+      case 'future-info': futureModal(); break;
+      case 'cf-run': cfRun(); break;
       case 'wi-metric': S.wiMetric = v; whatifReport(); break;
       case 'whatif-chart': {
         if (!whatifValid()) break;
