@@ -11,7 +11,7 @@
   WS.Data.scenarios = WS.Data.scenarios || {};
   WS.Data.scenarios['1911'] = {
     id: '1911',
-    name: '帝國的轉折：1911',
+    name: '近代世界：1911',
     startYear: 1911,
     startMonth: 1,
     provenance: { population: SRC_M, gdp: SRC_M, indices: SRC_D },

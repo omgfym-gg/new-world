@@ -309,9 +309,8 @@
           <button class="btn primary" data-act="new-world">開始新世界<small>選擇國家模式或全球模式，簡易設定即可開始</small></button>
           <button class="btn" data-act="continue" ${hasAuto ? '' : 'disabled'}>繼續遊戲<small>${hasAuto ? '回到上次自動存檔' : '尚無自動存檔'}</small></button>
           <button class="btn" data-act="load-menu" ${saves.length ? '' : 'disabled'}>載入存檔<small>${saves.length} 個存檔</small></button>
-          <button class="btn gold" data-act="scenario">歷史世界<small>測試劇本《帝國的轉折：1911–1930》</small></button>
           <button class="btn gold" data-act="ancient">遠古世界<small>《人類的黎明》：從西元前 10,000 年的狩獵採集開始</small></button>
-          <button class="btn" data-act="custom-world">自訂世界<small>全球模式：修改世界制度與規則</small></button>
+          <button class="btn" data-act="custom-world">自訂世界<small>選起點（1911 年真實世界或遠古），修改世界制度與規則</small></button>
         </div>
         <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
       </div>`;
@@ -2041,7 +2040,6 @@
       case 'home': stopAuto(); S.screen = 'start'; render(); break;
       case 'new-world': S.setup = newSetup('country'); S.nl = ''; S.nlResult = null; S.screen = 'setup'; render(); break;
       case 'custom-world': S.setup = Object.assign(newSetup('global'), { depth: 'custom', civil: 'custom' }); S.screen = 'setup'; render(); break;
-      case 'scenario': startWorld(Object.assign(newSetup('country'), { focus: 'CHN', intervention: 'none', direction: 'natural', speed: 'decade' })); toast('《帝國的轉折》：中國 1911、真實歷史、自然發展、不介入'); break;
       case 'continue': WS.Save.readAutosave().then((w2) => { if (!w2) { toast('找不到自動存檔'); return; } engine.load(w2); S.screen = 'game'; S.speed = W().speed || 'decade'; render(); }).catch((e) => toast('自動存檔無法讀取：' + e.message)); break;
       case 'load-menu': openModal(`<h2>載入存檔</h2>${WS.Save.list().map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year}.${s.month}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.auto ? '・自動保存' : ''}</small></div><button class="btn small" data-act="load" data-id="${s.id}">載入</button></div>`).join('')}`); break;
       case 'set': {
