@@ -15,6 +15,7 @@
   Divine.KINDS = {
     health: { name: '援助公共衛生', icon: '✚', short: '提高醫療水準的目標，幾年內逐漸見效' },
     tech: { name: '分享一項已知科技', icon: '✦', short: '把世界上已有的技術知識送進一個國家' },
+    invent: { name: '啟發一項新發明', icon: '✧', short: '世界上還沒有人做出來的技術：給一個國家靈感，研究得比較快（停滯時可用）' },
     drought: { name: '引發局部旱災', icon: '☀', short: '讓某個地區今年收成大減' },
     leader: { name: '讓領導人候選者出現', icon: '♛', short: '讓一位有特定性格的人物進入政壇' },
     // 未來時代（世界上出現相關科技後才能施展）
@@ -47,6 +48,13 @@
       .sort((a, b) => WS.Data.techs[a].cost - WS.Data.techs[b].cost || (a < b ? -1 : 1));
   };
 
+  // 新發明：世界上還沒有任何國家完成、這個國家已具備前置科技的技術（未來科技排前面，其次依成本）
+  Divine.inventOptions = function (w, c) {
+    if (!c || !c.alive) return [];
+    return WS.Technology.available(c, w).filter((t) => !w.invented[t])
+      .sort((a, b) => (WS.Data.techs[b].future ? 1 : 0) - (WS.Data.techs[a].future ? 1 : 0) || WS.Data.techs[a].cost - WS.Data.techs[b].cost || (a < b ? -1 : 1));
+  };
+
   Divine.preview = function (w, kind, cid, opt) {
     if (w.era === 'ancient') return Divine.ancientPreview(w, kind, cid, opt);
     const D = Divine.ensure(w), p = P(w);
@@ -66,6 +74,20 @@
       risk.push(`行政效率 ${c.pol.admin.toFixed(0)}：吸收約 ${(absorb * 100).toFixed(0)}%`);
       risk.push(`腐敗 ${c.pol.corruption.toFixed(0)}：一部分援助會被耗損`);
       risk.push('實際成效還有運氣成分（由世界種子決定）');
+    }
+    if (kind === 'invent' && c) {
+      const list = Divine.inventOptions(w, c);
+      const t = opt || list[0];
+      checks.push([!(st.tech && st.tech.until > w.tick), '這個國家沒有正在開放的知識管道']);
+      checks.push([!!t && list.includes(t), t && WS.Data.techs[t] ? `「${WS.Data.techs[t].name}」世界上還沒有人完成，且${c.name}具備前置科技` : '有可以啟發的新技術（世界上還沒有、本國具備前置條件）']);
+      if (t && WS.Data.techs[t]) {
+        const talent = Math.pow(Math.max(1, c.demo.edu) / 50, 0.8);
+        const months = Math.ceil(1 / Math.max(1e-6, p.inventMonthlyShare * talent));
+        info.push(`啟發持續 ${p.inventMonths} 個月，教育 ${c.demo.edu.toFixed(0)} 時光靠啟發大約要 ${months} 個月（再加上本國原本的研究）`);
+        info.push('完成研究後仍要依引擎慢慢普及，其他國家之後也能用較低成本引進');
+        risk.push(`吸收速度取決於教育水準（目前 ${c.demo.edu.toFixed(0)}），期限內不一定完成`);
+        risk.push('實際速度還有運氣成分（由世界種子決定）');
+      }
     }
     if (kind === 'tech' && c) {
       const list = Divine.techOptions(w, c);
@@ -166,6 +188,17 @@
       causes.push(`這項技術已存在（${by}）`, `${c.name}教育 ${c.demo.edu.toFixed(0)} → 吸收倍率 ${talent.toFixed(2)}`, `運氣（世界種子）× ${luck.toFixed(2)}`);
       effects = [`每月增加約 ${(rate * 100).toFixed(1)}% 的研究進度，持續 ${p.techMonths} 個月`, '完成後仍需時間普及'];
       entry.label = `分享「${def.name}」給${c.name}`;
+      entry.tech = t;
+    } else if (kind === 'invent') {
+      const t = opt || Divine.inventOptions(w, c)[0];
+      const def = WS.Data.techs[t];
+      const talent = Math.pow(Math.max(1, c.demo.edu) / 50, 0.8);
+      const rate = p.inventMonthlyShare * talent * luck;
+      st.tech = { id: t, rate, start: w.tick, until: w.tick + p.inventMonths, gain: 0, logId: entry.id, invent: true };
+      title = `神之手：啟發${c.name}研究「${def.name}」`;
+      causes.push('世界上還沒有任何國家完成這項技術', `${c.name}教育 ${c.demo.edu.toFixed(0)} → 吸收倍率 ${talent.toFixed(2)}`, `運氣（世界種子）× ${luck.toFixed(2)}`);
+      effects = [`每月增加約 ${(rate * 100).toFixed(2)}% 的研究進度，持續 ${p.inventMonths} 個月`, '完成後仍需時間普及'];
+      entry.label = `啟發${c.name}研究「${def.name}」`;
       entry.tech = t;
     } else if (kind === 'drought') {
       const regs = c.regions.slice().sort();

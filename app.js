@@ -273,10 +273,10 @@
     return alive.sort();
   }
 
-  function toast(msg) {
+  function toast(msg, ms) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.hidden = false;
-    clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600);
+    clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms || 2600);
   }
   function openModal(html) {
     modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0;
@@ -294,8 +294,7 @@
 
   // ======================= 開始畫面 =======================
   function renderStart() {
-    const st = WS.Save.storage();
-    const hasAuto = !!(st && st.getItem('ws.autosave'));
+    const hasAuto = WS.Save.hasAutosave();
     const saves = WS.Save.list();
     app.innerHTML = `
       <div class="start">
@@ -611,6 +610,7 @@
       ${endingBanner()}
       <div class="grid g2">${headlinesCard()}${divineCard()}</div>
       ${summaryCard()}
+      ${progressCard()}
       ${futureCard()}
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
@@ -828,8 +828,9 @@
       ${mediaHtml(e)}
       ${e.text ? `<p>${esc(e.text)}</p>` : ''}
       ${e.trigger ? `<p><span class="tag gold">觸發</span> ${esc(e.trigger)}</p>` : ''}
-      ${e.causes.length ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">為什麼會發生</h3><ul class="list-plain">${e.causes.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
-      ${e.effects.length ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">造成的影響</h3><ul class="list-plain">${e.effects.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+      ${e.causes.length ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">${e.type === 'catastrophe' ? '事件觸發：為什麼會發生' : '為什麼會發生'}</h3><ul class="list-plain">${e.causes.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+      ${e.effects.length ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">${e.type === 'catastrophe' ? '發生當下造成的變化（引擎計算）' : '造成的影響'}</h3><ul class="list-plain">${e.effects.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+      ${e.type === 'catastrophe' ? catImpactHtml(e) : ''}
       ${e.decision ? `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">決策過程</h3><p class="dim">候選方案：${e.decision.alternatives.map((a) => esc(a[0]) + ' ' + a[1]).join('、') || '無'}（選中方案評分 ${e.decision.score}）</p>` : ''}
       ${parent ? `<p>前因事件：<button class="link" data-act="event" data-id="${parent.id}">${esc(parent.title)}</button></p>` : ''}
       ${fol.length ? `<p>後續事件：${fol.map((f) => `<button class="link" data-act="event" data-id="${f.id}">${esc(f.title)}</button>`).join('、')}</p>` : ''}
@@ -837,6 +838,24 @@
     mountMedia();
   }
 
+  // 災難到目前為止的實際影響（含之後每年累計的死亡），讓玩家分辨「事件觸發」與「造成的數值變化」
+  function catImpactHtml(e) {
+    const F = W().future;
+    const c = F && F.catastrophes.find((x) => x.eventId === e.id);
+    if (!c) return '';
+    const im = c.impact;
+    if (!im) return `<p class="dim">直接死亡：${c.deaths ? fPeople2(c.deaths) : '0'}（這是舊版紀錄，沒有之後的影響資料）</p>`;
+    const sev = c.sev != null ? c.sev : FUT().severity(W(), c);
+    const share = im.popBefore ? ((c.deaths + (im.later || 0)) / im.popBefore) * 100 : 0;
+    return `<h3 style="color:var(--blue);font-size:14px;margin-top:10px">到目前為止的實際影響 <span class="sev s${sev}">${FUT().SEVERITY[sev]}</span></h3>
+      <ul class="list-plain">
+        <li>直接死亡：${c.deaths ? fPeople2(c.deaths) : '0（發生當下沒有直接傷亡）'}</li>
+        <li>之後的死亡：${im.later > 0.001 ? fPeople2(im.later) : '0'}${c.kind === 'climate' ? '（額外升溫在之後每年多造成的氣候災害與饑荒死亡，依公式拆分）' : c.kind === 'nuclear' || c.kind === 'asteroid' ? '（寒冬期間每年的額外死亡）' : ''}</li>
+        <li>合計約占災難前世界人口 ${share.toFixed(share < 1 ? 2 : 1)}%</li>
+        ${im.warming ? `<li>額外升溫：+${im.warming.toFixed(2)}°C（無法逆轉）</li>` : ''}
+        ${im.harvestBefore != null && Math.abs(im.harvestBefore - im.harvestAfter) > 0.001 ? `<li>全球平均收成：${(im.harvestBefore * 100).toFixed(0)}% → ${(im.harvestAfter * 100).toFixed(0)}%</li>` : ''}
+      </ul>`;
+  }
   // ======================= 如果（平行世界） =======================
   function whatifOptions(e) {
     const av = engine.whatIfAvailable(e.id);
@@ -902,6 +921,7 @@
     openModal(`<h2>平行世界：${esc(R.label)}</h2>
       <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。從 ${esc(R.from)} 用同一個種子重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。</p>
       ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
+      ${wiSummaryHtml(R, false)}
       <div class="table-wrap"><table class="wi-table">
         <tr><th></th><th>原世界<br><small>${esc(parentName)}</small></th><th>平行世界</th><th>差距</th></tr>
         ${focusRows}
@@ -927,6 +947,22 @@
         <button class="btn" data-act="whatif-chart">在歷史圖表對照</button>
         <button class="btn" data-act="close-modal">留在原世界</button>
       </div>`);
+  }
+  // 「如果？」重點摘要：改寫了什麼、差異何時出現、最後造成什麼結果（內容由 WhatIf.summary 從比較結果整理）
+  function wiSummaryHtml(R, anc) {
+    const X = R.summary;
+    if (!X) return '';
+    const when = (y, m) => (anc ? yl(y) : `${y} 年${m ? ' ' + m + ' 月' : ''}`);
+    const side = { orig: '原世界有、平行世界沒有', new: '只在平行世界發生', alt: '只在平行世界發生' };
+    const first = X.first
+      ? `${X.first.after ? `分岔後 ${X.first.after.toLocaleString()} 年` : '當年'}（${esc(when(X.first.y, X.first.m))}）出現第一個不同的重大事件：${X.first.side === 'orig' && X.first.eventId ? `<button class="link" data-act="event" data-id="${X.first.eventId}">「${esc(X.first.title)}」</button>` : `「${esc(X.first.title)}」`}（${side[X.first.side] || ''}）`
+      : '沒有出現只在其中一個世界發生的重大事件';
+    const dv = X.diverge ? `；${X.diverge.metric}從 ${X.diverge.y} 年（${X.diverge.after ? `分岔後 ${X.diverge.after} 年` : '分岔當年'}）開始相差超過 1%` : '';
+    return `<div class="wi-summary"><h3>重點摘要</h3><ol>
+      <li><b>改寫了什麼</b>：${esc(X.changed)}</li>
+      <li><b>差異何時出現</b>：${first}${dv}</li>
+      <li><b>最後造成什麼結果</b>：<ul>${X.result.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></li></ol>
+      <p class="dim" style="margin:6px 0 0">下面是完整的數字比較與差異擴散的過程。</p></div>`;
   }
   function whatifValid() {
     const st = S.whatif;
@@ -1057,6 +1093,11 @@
     if (!w.countries[st.cid] || !w.countries[st.cid].alive || !ids.includes(st.cid)) st.cid = ids[0];
     const c = w.countries[st.cid];
     let optHtml = '';
+    if (st.kind === 'invent') {
+      const list = WS.Divine.inventOptions(w, c);
+      if (!st.opt || !list.includes(st.opt)) st.opt = list[0] || null;
+      optHtml = list.length ? `<div class="field"><label>要啟發的新技術（世界上還沒有、${esc(c.name)}具備前置條件）</label><select data-act="divine-opt-select">${list.map((t) => `<option value="${t}" ${t === st.opt ? 'selected' : ''}>${esc(WS.Data.techs[t].name)}${WS.Data.techs[t].future ? '（未來科技）' : ''}</option>`).join('')}</select></div>` : '';
+    }
     if (st.kind === 'tech') {
       const list = WS.Divine.techOptions(w, c);
       if (!st.opt || !list.includes(st.opt)) st.opt = list[0] || null;
@@ -1090,7 +1131,7 @@
     const st = S.divine;
     const r = engine.divine(st.kind, st.cid, st.opt || undefined);
     if (!r.ok) { toast('無法施展：' + r.reason); divineModal(); return; }
-    WS.Save.autosave(W());
+    autosave();
     closeModal(); render();
     toast('已施展：' + r.effects[0]);
   }
@@ -1149,6 +1190,43 @@
       <p class="dim" style="margin:6px 0 0">兩種終點都不會在固定年份發生，全看這個世界怎麼演變。<button class="link" data-act="future-info">結局怎麼判定、報告會有什麼？</button></p>
     </div>`;
   }
+  // 文明進程：階段目標、下一個突破、停滯時的原因與可以做的事（資料來自 Future.progress，只讀）
+  function progressCard() {
+    const w = W();
+    if (isAnc() || ended()) return '';
+    const G = FUT().progress(w);
+    const D = w.divine || { energy: 0 };
+    const stages = G.stages.map((st, i) => {
+      const done = st.done === st.total, cur = i === G.cur;
+      if (i > G.cur + 1 && !done) return '';
+      return `<li class="${done ? 'done' : cur ? 'cur' : ''}"><span>${done ? '✓' : cur ? '●' : '○'}</span><div><b>${esc(st.name)}</b> <span class="num dim">${st.done}／${st.total}</span>${done && st.year ? ` <span class="dim">（${st.year} 年完成）</span>` : ''}<br><small class="dim">${esc(st.goal)}</small></div></li>`;
+    }).join('');
+    const nxt = G.next.slice(0, 3).map((n) => `<li>${esc(n.name)}${n.future ? ' <span class="tag violet">未來科技</span>' : ''}：${esc(n.byName)}最接近（進度 ${(n.prog * 100).toFixed(0)}%）・${n.years == null ? '目前沒有國家在研究' : n.years > 300 ? '照目前速度要超過 300 年' : `照目前速度約 ${n.years} 年`}</li>`).join('');
+    const far = G.next.length && (G.next[0].years == null || G.next[0].years > 60);
+    let help = '';
+    if (G.stalled || far) {
+      const acts = [];
+      const lead = G.lead && w.countries[G.lead];
+      const inv = lead ? WS.Divine.inventOptions(w, lead) : [];
+      if (lead && inv.length) acts.push(`<button class="btn small" data-act="divine-open" data-v="invent" data-c="${lead.id}" ${D.energy < WS.Divine.cost(w, 'invent') ? 'disabled' : ''}>✧ 神之手：啟發${esc(lead.name)}研究新技術<small class="num">${WS.Divine.cost(w, 'invent')} 神力</small></button>`);
+      const shareTo = U.ids(w).find((id) => WS.Divine.techOptions(w, w.countries[id]).length);
+      if (shareTo) acts.push(`<button class="btn small" data-act="divine-open" data-v="tech" data-c="${shareTo}" ${D.energy < WS.Divine.cost(w, 'tech') ? 'disabled' : ''}>✦ 神之手：把已知科技分享給落後國家<small class="num">${WS.Divine.cost(w, 'tech')} 神力</small></button>`);
+      if (w.mode === 'country' && w.countries[w.focus] && w.countries[w.focus].alive) {
+        const ev = engine.evaluate(w.focus);
+        for (const pid of ['research', 'education']) { const p = ev.list.find((x) => x.id === pid); if (p && p.feasible === true) acts.push(`<button class="btn small" data-act="policy" data-c="${w.focus}" data-p="${pid}">${esc(p.name)}（${esc(w.countries[w.focus].name)}）</button>`); }
+      } else acts.push('<span class="dim">切換到國家模式，可以直接替一個國家執行「科研投入」「教育投資」。</span>');
+      if (w.future && w.future.warming > 1.5 && WS.Divine.KINDS.green && FUT().maxAdopt(w, U.ids(w), 'renewables') > 0) acts.push(`<button class="btn small" data-act="divine-open" data-v="green" data-c="${G.lead || U.ids(w)[0]}">❀ 神之手：推動綠色轉型（減緩暖化）</button>`);
+      help = `<div class="stall"><h4>${G.stalled ? `文明停滯：已經 ${G.since} 年沒有新的發明` : '下一個突破還很遠'}</h4>
+        <p class="dim" style="margin:0 0 4px">模擬裡的實際原因：</p><ul class="list-plain">${G.why.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        <p class="dim" style="margin:6px 0 4px">你可以：</p><div class="divine-btns">${acts.join('')}</div>
+        <p class="dim" style="margin:6px 0 0">也可以什麼都不做，看世界自己能不能走出來。所有介入都會記錄，結局報告會比較「沒有你的世界」。</p></div>`;
+    }
+    return `<div class="card"><h3>文明進程 <span class="dim" style="font-weight:400;font-size:12px">階段目標（不照年份，全看研究）</span></h3>
+      <ul class="progress-stages">${stages}</ul>
+      ${nxt ? `<h3 class="dv-h" style="margin-top:10px">接下來可能的突破</h3><ul class="list-plain">${nxt}</ul>` : ''}
+      <p class="dim" style="margin:6px 0 0">${G.last != null ? `最近一次世界首創的發明在 ${G.last} 年（${G.since} 年前）。` : `接到近代以來還沒有新的發明（${G.since} 年）。`}</p>
+      ${help}</div>`;
+  }
   function futureCard() {
     const w = W();
     const F = w.future;
@@ -1205,7 +1283,8 @@
         <li>成績：人口高峰與結局時的地球人口、最高暖化、火星人口、完成幾項未來科技、擁核國數</li>
         <li>世界人口曲線，以及暖化、每年災難機率、AI 能力與安全差距的曲線</li>
         <li>關鍵轉折點：災難、未來科技、重大戰爭與政變、你的「如果？」改寫（每一項都能點開追查原因）</li>
-        <li>每場災難的直接死亡人數</li>
+        <li>結局是怎麼發生的：從排放、暖化、臨界點、收成到各原因的死亡，一步一步串起來</li>
+        <li>每場災難的嚴重度、直接死亡、之後每年多造成的死亡、升溫與收成變化</li>
         <li>你的每一次介入（政策、神之手、世界規則、「如果？」）</li>
         <li>「沒有你的世界」：同一個種子、不重播你的介入重跑一次，比較哪個世界先毀滅</li>
       </ul>
@@ -1242,11 +1321,19 @@
         ${kpi('未來科技', R.techs + '／' + R.techTotal, null)}
         ${kpi('擁核國', R.nukes + ' 個', null)}
       </div>
+      ${R.chain && R.chain.length ? `<h3 class="dv-h">結局是怎麼發生的</h3><ul class="end-chain">${R.chain.map((x, i) => `<li class="${x.k === 'end' ? 'end' : ''}">${esc(x.t)}</li>${i < R.chain.length - 1 ? '<li class="arrow" aria-hidden="true">↓</li>' : ''}`).join('')}</ul><p class="dim" style="margin:4px 0 0">每一步都來自模擬紀錄（累計排放、臨界點、收成、各原因的死亡），死亡都寫在各國因果帳裡。</p>` : ''}
       <h3 class="dv-h">世界人口（百萬）</h3>${chart(labels, [{ name: '地球人口', color: '#38bdf8', data: pick(ser.pop), bold: true }], { label: '世界人口', zero: true, h: 170 })}
+      ${ser.harvest && ser.harvest.some((x) => x != null && x < 99.5) ? `<h3 class="dv-h">全球平均收成（%，100＝沒有受暖化或寒冬影響）</h3>${chart(labels, [{ name: '全球收成 %', color: '#4ade80', data: pick(ser.harvest), bold: true }], { label: '全球收成', zero: true, h: 150 })}` : ''}
       <h3 class="dv-h">暖化（°C）與每年災難機率（%）</h3>${chart(labels, [{ name: '暖化 °C', color: '#fb923c', data: pick(ser.warming), bold: true }, { name: '災難機率 %', color: '#f87171', data: pick(ser.risk) }, { name: 'AI 能力−安全差距', color: '#a78bfa', data: pick(ser.gap) }], { label: '暖化與風險', zero: true, h: 170 })}
       <h3 class="dv-h">關鍵轉折點</h3>
       <ul class="events">${tl.map((x) => `<li class="${x.kind === 'catastrophe' || x.kind === 'ending' ? 'war l3' : x.kind === 'whatif' ? 'wi' : ''}" ${x.eventId ? `data-act="event" data-id="${x.eventId}"` : ''}><div class="when">${x.y}${x.m ? '.' + String(x.m).padStart(2, '0') : ''}・${typeLabel(x.kind)}</div>${esc(x.title)}</li>`).join('') || '<li class="dim">沒有</li>'}</ul>
-      ${cat.length ? `<h3 class="dv-h">災難</h3><table class="wi-table"><tr><th>年份</th><th>災難</th><th class="num">直接死亡</th></tr>${cat.map((c) => `<tr data-act="event" data-id="${c.eventId}"><td class="num">${c.y}</td><td>${esc(c.title)}</td><td class="num">${c.deaths ? fPeople2(c.deaths) : '—'}</td></tr>`).join('')}</table>` : ''}
+      ${cat.length ? `<h3 class="dv-h">災難：觸發了什麼、實際造成多少損失</h3>
+        <p class="dim" style="margin:0 0 6px">「直接死亡」是發生當下的死亡；「之後的死亡」是它留下的長期影響（臨界點的額外升溫、核子寒冬）在之後每年多造成的死亡，依公式拆分。嚴重度只看實際的死亡、升溫與收成損失，不看名稱。點一列可以看詳細原因。</p>
+        <div class="table-wrap"><table class="wi-table"><tr><th>年份</th><th>災難</th><th>嚴重度</th><th class="num">直接死亡</th><th class="num">之後的死亡</th><th>其他影響</th></tr>${cat.map((c) => {
+          const im = c.impact, sev = c.sev != null ? c.sev : im ? FUT().severity(w, c) : null;
+          const other = im ? [im.warming ? `+${im.warming.toFixed(2)}°C` : '', im.harvestBefore != null && Math.abs(im.harvestBefore - im.harvestAfter) > 0.001 ? `收成 ${(im.harvestBefore * 100).toFixed(0)}→${(im.harvestAfter * 100).toFixed(0)}%` : ''].filter(Boolean).join('、') : '';
+          return `<tr data-act="event" data-id="${c.eventId}"><td class="num">${c.y}</td><td>${esc(c.title)}</td><td>${sev != null ? `<span class="sev s${sev}">${FUT().SEVERITY[sev]}</span>` : '<span class="dim">舊紀錄</span>'}</td><td class="num">${c.deaths ? fPeople2(c.deaths) : '0'}</td><td class="num">${im ? (im.later > 0.001 ? fPeople2(im.later) : '0') : '—'}</td><td>${esc(other) || '<span class="dim">—</span>'}</td></tr>`;
+        }).join('')}</table></div>${cat.some((c) => !c.impact) ? '<p class="dim">標示「舊紀錄」的災難發生在更新之前，當時還沒有記錄之後的影響；回到過去的年份重來，就會有完整資料。</p>' : ''}` : ''}
       <h3 class="dv-h">你的介入（${nPlayer} 次）</h3>
       ${nPlayer ? `<ul class="list-plain">${R.player.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> ${esc(x.text)}</li>`).join('')}${R.whatifs.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> 平行世界改寫：${esc(x.label)}</li>`).join('')}</ul>` : '<p class="dim">這一次你完全沒有介入，世界自己走到了這一步。</p>'}
       <div class="wi-box"><h3>沒有你的世界會怎樣？</h3>
@@ -1314,8 +1401,9 @@
     return `
       <div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + w.year)}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year}.${s.month}・${s.mode === 'country' ? '國家模式' : '全球模式'}・${new Date(s.saved).toLocaleString()}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year}.${s.month}・${s.mode === 'country' ? '國家模式' : '全球模式'}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。每次推進後會自動存到「繼續遊戲」。</p>'}</div>
       </div>
       <div class="grid g2">
@@ -1677,8 +1765,9 @@
     const w = W(), saves = WS.Save.list();
     return `<div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + yShort(w.year))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">匯出 JSON</button><label class="btn small" style="display:inline-flex;align-items:center">匯入 JSON<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
       <div class="card"><h3>這個世界</h3><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
@@ -1705,6 +1794,7 @@
     openModal(`<h2>平行世界：${esc(R.label)}</h2>
       <p class="dim">分岔於${esc(yl(R.y))}。從${esc(R.from)}用同一個種子重跑 ${R.years.toLocaleString()} 年到${esc(yl(R.now.y))}，只有這一件事不同，其他全部由引擎計算。</p>
       ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
+      ${wiSummaryHtml(R, true)}
       <div class="table-wrap"><table class="wi-table">
         <tr><th></th><th>原世界<br><small>${esc(parentName)}</small></th><th>平行世界</th><th>差距</th></tr>
         <tr><td>世界人口</td>${cell(Wo.pop, Wa.pop, fPeople, true)}</tr>
@@ -1788,13 +1878,13 @@
   function toModern() {
     stopAuto(); S.resumeAuto = false;
     const prev = W();
-    const r1 = WS.Save.write(prev, prev.name + '・' + prev.branch.name + '・' + prev.year + '（遠古）');
+    const saving = saveParent(prev, prev.name + '・' + prev.branch.name + '・' + prev.year + '（遠古）');
     const res = engine.toModern();
     if (!res.ok) { toast(res.reason); return; }
     S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null; S.speed = 'decade';
-    WS.Save.autosave(W());
+    autosave();
     closeModal(); render(); window.scrollTo(0, 0);
-    toast(r1.ok ? '遠古世界已存檔，現在進入近代' : '已進入近代（遠古世界未能存檔：' + r1.reason + '）');
+    toast('現在進入近代（遠古世界存檔中…）'); void saving;
   }
   function renderAncientGame() {
     const w = W();
@@ -1822,7 +1912,7 @@
     stopAuto();
     engine.create({ scenario: 'bc10000', seed: seed || '' });
     S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null; S.aSpeed = 'c5'; S.histFilter = 'major';
-    WS.Save.autosave(W());
+    autosave();
     render(); window.scrollTo(0, 0);
   }
 
@@ -1835,14 +1925,14 @@
       direction: s.direction, speed: s.speed, rules, seed: s.seed
     });
     S.speed = s.speed; S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null;
-    WS.Save.autosave(W());
+    autosave();
     render(); window.scrollTo(0, 0);
   }
 
   function doAdvance(months) {
     if (ended()) { endingModal(); return { stopped: true, ended: true }; }
     const res = engine.advance(months);
-    WS.Save.autosave(W());
+    autosave();
     render();
     if (res.ended) { stopAuto(); endingModal(); return res; }
     if (res.stopped) { stopAuto(); decisionModal(res.events); }
@@ -1857,12 +1947,12 @@
   }
   function stopAuto() { if (S.auto) { clearInterval(S.auto); S.auto = null; } }
   function toggleAuto() {
-    if (S.auto) { stopAuto(); WS.Save.autosave(W()); render(); return; }
+    if (S.auto) { stopAuto(); autosave(); render(); return; }
     if (ended()) { endingModal(); return; }
     S.auto = setInterval(() => {
       const res = engine.advance(1);
-      if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) WS.Save.autosave(W());
-      if (res.ended) { stopAuto(); WS.Save.autosave(W()); render(); endingModal(); return; }
+      if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) autosave(true);
+      if (res.ended) { stopAuto(); autosave(); render(); endingModal(); return; }
       if (W().month === 1 && !isAnc()) yearToast();
       // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
@@ -1877,8 +1967,64 @@
     stopAuto(); S.resumeAuto = false;
     engine.load(w2);
     S.screen = 'game'; S.compare = null; S.speed = W().speed || 'decade';
-    WS.Save.autosave(W());
+    autosave();
     closeModal(); render(); if (msg) toast(msg);
+  }
+  // 自動存檔（「繼續遊戲」）：失敗時提醒一次，並在系統頁顯示原因
+  function autosave(soft) {
+    // 自動播放中：大世界每次存檔要花一點時間，最多每 15 秒存一次（停下來、換世界時一定會存）
+    if (soft && Date.now() - (S.lastAutoAt || 0) < 15000) return;
+    S.lastAutoAt = Date.now();
+    const p = WS.Save.autosave(W());
+    if (p && p.then) p.then((r) => {
+      if (r && r.ok === false && !S.autoWarned) { S.autoWarned = true; toast('自動存檔失敗：' + r.reason, 6000); }
+      if (r && r.ok) S.autoWarned = false;
+    });
+  }
+  // 匯出：產生 JSON 檔讓瀏覽器下載，並清楚告訴玩家成功或失敗
+  function exportWorld() {
+    const name = `world-${W().branch.name}-${W().year}.json`.replace(/[\\/:*?"<>|\s]+/g, '_');
+    let json;
+    try { json = engine.serialize(); } catch (e) { openModal(`<h2>匯出失敗</h2><p>無法產生存檔資料：${esc(e.message)}</p>`); return; }
+    try {
+      if (S.exportUrl) URL.revokeObjectURL(S.exportUrl);
+      S.exportUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const el = document.createElement('a');
+      el.href = S.exportUrl; el.download = name; document.body.appendChild(el); el.click(); el.remove();
+    } catch (e) {
+      openModal(`<h2>匯出失敗</h2><p>瀏覽器不允許下載檔案（${esc(e.message)}）。可以換一個瀏覽器（例如 Chrome、Safari）再試一次。</p>`);
+      return;
+    }
+    openModal(`<h2>匯出完成</h2>
+      <p>已產生檔案 <b>${esc(name)}</b>（${WS.Save.mb(json.length)}），瀏覽器應該已經開始下載。</p>
+      <p class="dim">電腦通常在「下載」資料夾；手機可能在「檔案」App 的下載項目。之後到「系統 → 匯入 JSON」選這個檔案，就能回到這個世界（包含分支、「如果？」與完整紀錄）。</p>
+      <div class="row"><a class="btn primary" href="${S.exportUrl}" download="${esc(name)}">沒看到下載？再下載一次</a><button class="btn" data-act="close-modal">關閉</button></div>`);
+  }
+  // 系統頁：存檔空間使用量（非同步填入）
+  function fillSaveUsage() {
+    const el = document.getElementById('save-usage');
+    if (!el) return;
+    let cur = 0;
+    try { cur = engine.serialize().length; } catch (e) { /* 略過 */ }
+    WS.Save.usage().then((u) => {
+      const el2 = document.getElementById('save-usage');
+      if (!el2) return;
+      const mb = WS.Save.mb;
+      const la = WS.Save.lastAuto;
+      el2.innerHTML = `<p class="dim" style="margin:0 0 4px">目前這個世界約 <b class="num">${mb(cur)}</b>。已存：手動存檔 ${u.count - u.autoCount} 個（${mb(u.saves)}）、自動保存 ${u.autoCount} 個（${mb(u.autoSaves)}，最多保留 ${WS.Save.keepAuto} 個，越舊的越先清掉）、「繼續遊戲」${mb(u.autosave)}。</p>
+        ${u.quota ? `<div class="meter"><span>儲存空間</span><div class="bar"><i style="width:${Math.min(100, (u.used / u.quota) * 100).toFixed(1)}%"></i></div><span class="num">${mb(u.used || 0)}／${mb(u.quota)}</span></div>` : ''}
+        ${u.backend === 'local' ? '<p class="gold" style="margin:4px 0 0">這個瀏覽器只能用較小的儲存空間（約 5 MB），玩到後期的大世界可能存不下；建議定期「匯出 JSON」保存到裝置。</p>' : ''}
+        ${la && la.ok === false ? `<p class="bad" style="margin:4px 0 0">最近一次自動存檔失敗：${esc(la.reason)}</p>` : la && la.compact ? '<p class="dim" style="margin:4px 0 0">最近一次自動存檔空間不足，改存精簡版（只留最近 5 年的詳細原因，模擬結果不變）。</p>' : ''}
+        ${u.autoCount ? `<button class="btn small" data-act="clear-auto" style="margin-top:6px">清除全部自動保存（${u.autoCount} 個）</button>` : ''}`;
+    }).catch(() => { el.textContent = ''; });
+  }
+  // 進入新世界線前，把原世界線存成「自動保存」：先開始寫入（內容在這一刻固定），寫完再告訴玩家結果
+  function saveParent(parent, name) {
+    return WS.Save.write(parent, name, { auto: true }).then((r) => {
+      if (r.ok) toast(`原世界線已存檔（${WS.Save.mb(r.bytes)}${r.compact ? '，精簡版' : ''}）${r.pruned && r.pruned.length ? `；為了騰出空間，清掉了 ${r.pruned.length} 個最舊的自動保存` : ''}`, 4500);
+      else toast('原世界線未能存檔：' + r.reason, 8000);
+      return r;
+    });
   }
 
   document.addEventListener('click', (ev) => {
@@ -1891,8 +2037,8 @@
       case 'new-world': S.setup = newSetup('country'); S.nl = ''; S.nlResult = null; S.screen = 'setup'; render(); break;
       case 'custom-world': S.setup = Object.assign(newSetup('global'), { depth: 'custom', civil: 'custom' }); S.screen = 'setup'; render(); break;
       case 'scenario': startWorld(Object.assign(newSetup('country'), { focus: 'CHN', intervention: 'none', direction: 'natural', speed: 'decade' })); toast('《帝國的轉折》：中國 1911、真實歷史、自然發展、不介入'); break;
-      case 'continue': try { engine.load(WS.Save.readAutosave()); S.screen = 'game'; S.speed = W().speed || 'decade'; render(); } catch (e) { toast('自動存檔無法讀取：' + e.message); } break;
-      case 'load-menu': openModal(`<h2>載入存檔</h2>${WS.Save.list().map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year}.${s.month}</small></div><button class="btn small" data-act="load" data-id="${s.id}">載入</button></div>`).join('')}`); break;
+      case 'continue': WS.Save.readAutosave().then((w2) => { if (!w2) { toast('找不到自動存檔'); return; } engine.load(w2); S.screen = 'game'; S.speed = W().speed || 'decade'; render(); }).catch((e) => toast('自動存檔無法讀取：' + e.message)); break;
+      case 'load-menu': openModal(`<h2>載入存檔</h2>${WS.Save.list().map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year}.${s.month}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.auto ? '・自動保存' : ''}</small></div><button class="btn small" data-act="load" data-id="${s.id}">載入</button></div>`).join('')}`); break;
       case 'set': {
         const s = S.setup;
         s[t.dataset.k] = v;
@@ -1925,7 +2071,7 @@
         S.aSpeed = v;
         // 第一次走到近代門檻時停在門檻上，讓玩家決定要不要進入近代
         const by = W().params.ancient.bridge.year, y0 = W().year;
-        engine.advanceYears(y0 < by ? Math.min(A_SPEEDS[v][0], by - y0) : A_SPEEDS[v][0]); WS.Save.autosave(W()); render(); if (bridgeDue()) bridgeModal(); break; }
+        engine.advanceYears(y0 < by ? Math.min(A_SPEEDS[v][0], by - y0) : A_SPEEDS[v][0]); autosave(); render(); if (bridgeDue()) bridgeModal(); break; }
       case 'tab': S.tab = v; closeModal(); render(); window.scrollTo(0, 0); break;
       case 'mode': engine.setMode(v); render(); toast(v === 'global' ? '切換為全球模式（世界狀態不變）' : '切換為國家模式'); break;
       case 'view': S.view = v; render(); break;
@@ -1961,9 +2107,9 @@
         if (!whatifValid()) break;
         const parent = W();
         const { res } = S.whatif;
-        const r1 = WS.Save.write(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
+        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
         const cmp = { name: '原世界：' + parent.branch.name, series: parent.series };
-        switchWorld(res.world, r1.ok ? '原世界已存檔，現在進入平行世界' : '已進入平行世界（原世界未能存檔：' + r1.reason + '）');
+        switchWorld(res.world, '現在進入平行世界（原世界存檔中…）');
         engine.snapshots = res.snapshots;
         S.compare = cmp; S.whatif = null; render(); break;
       }
@@ -1998,44 +2144,43 @@
       case 'branch-confirm': {
         const name = (document.getElementById('branch-name').value || '').trim() || '分支 ' + W().year;
         const parent = W();
-        const r1 = WS.Save.write(parent, parent.name + '・' + parent.branch.name + '・' + parent.year + '（分歧點）');
+        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year + '（分歧點）');
         const nw = engine.createBranch(name, '玩家在 ' + parent.year + ' 年建立分支');
         const keep = engine.snapshots;
-        switchWorld(nw, r1.ok ? '已保存原世界線，現在進入新分支「' + name + '」' : '已進入新分支（原世界線未能存檔：' + r1.reason + '）');
+        switchWorld(nw, '現在進入新分支「' + name + '」（原世界線存檔中…）');
         engine.snapshots = keep; render();
         break;
       }
       case 'rewind': {
         const snap = engine.snapshots[+t.dataset.i];
         const parent = W();
-        const r1 = WS.Save.write(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
+        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
         const yt = isAnc() ? yl(snap.year) : snap.year + ' 年';
         const nw = engine.branchFromSnapshot(+t.dataset.i, '回溯 ' + (isAnc() ? yShort(snap.year) : snap.year), '歷史回溯至 ' + yt);
         const snaps = engine.snapshots.filter((s) => s.year <= snap.year);
-        switchWorld(nw, r1.ok ? `原世界線已存檔，已回到${yt}的新分支` : `已回到${yt}（原世界線未能存檔：${r1.reason}）`);
+        switchWorld(nw, `已回到${yt}的新分支（原世界線存檔中…）`);
         engine.snapshots = snaps.map((s) => s);
         render(); break;
       }
       case 'compare': {
-        const other = WS.Save.read(t.dataset.id);
-        if (other) { S.compare = { name: other.branch.name + '・' + other.year, series: other.series }; render(); toast('已加入比較（虛線）'); }
+        WS.Save.read(t.dataset.id).then((other) => { if (other) { S.compare = { name: other.branch.name + '・' + other.year, series: other.series }; render(); toast('已加入比較（虛線）'); } else toast('讀不到這個存檔'); }).catch((e) => toast('讀取失敗：' + e.message));
         break;
       }
       case 'compare-clear': S.compare = null; render(); break;
       case 'save': {
-        const r = WS.Save.write(W(), document.getElementById('save-name').value);
-        toast(r.ok ? '已儲存' : r.reason); render(); break;
+        toast('儲存中…');
+        WS.Save.write(W(), document.getElementById('save-name').value).then((r) => {
+          if (r.ok) toast(`已儲存（${WS.Save.mb(r.bytes)}${r.compact ? '，空間不足改存精簡版：只留最近 5 年的詳細原因' : ''}）${r.pruned && r.pruned.length ? `；清掉了 ${r.pruned.length} 個最舊的自動保存` : ''}`, 4500);
+          else openModal(`<h2>存檔失敗</h2><p>${esc(r.reason)}</p><div class="row"><button class="btn primary" data-act="export">匯出 JSON 到裝置</button><button class="btn" data-act="close-modal">關閉</button></div>`);
+          render();
+        });
+        break;
       }
-      case 'load': { const w2 = WS.Save.read(t.dataset.id); if (w2) switchWorld(w2, '已載入'); break; }
+      case 'load': WS.Save.read(t.dataset.id).then((w2) => { if (w2) switchWorld(w2, '已載入'); else toast('讀不到這個存檔'); }).catch((e) => toast('載入失敗：' + e.message)); break;
       case 'del-save': openModal(`<h2>刪除這個存檔？</h2><p class="dim">刪除後無法復原。</p><div class="row"><button class="btn" data-act="del-save-yes" data-id="${esc(t.dataset.id)}">刪除</button><button class="btn" data-act="close-modal">取消</button></div>`); break;
-      case 'del-save-yes': WS.Save.remove(t.dataset.id); closeModal(); render(); toast('已刪除'); break;
-      case 'export': {
-        const blob = new Blob([engine.serialize()], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const el = document.createElement('a');
-        el.href = url; el.download = `world-${W().branch.name}-${W().year}.json`;
-        el.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); break;
-      }
+      case 'del-save-yes': WS.Save.remove(t.dataset.id).then(() => { closeModal(); render(); toast('已刪除'); }); break;
+      case 'clear-auto': WS.Save.clearAuto().then((n) => { render(); toast(n ? `已清除 ${n} 個自動保存` : '沒有自動保存'); }); break;
+      case 'export': exportWorld(); break;
       case 'depth-live': engine.setDifficulty(v); render(); break;
       case 'intervention-live': engine.setIntervention(v); render(); break;
     }
@@ -2060,4 +2205,6 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
   render();
+  // 存檔改放大容量的 IndexedDB：啟動時把舊版放在 localStorage 的存檔搬過去（騰出空間），搬完重畫開始畫面
+  WS.Save.init().then(() => { if (S.screen === 'start') render(); }).catch(() => { /* 無法使用時維持原狀 */ });
 })();

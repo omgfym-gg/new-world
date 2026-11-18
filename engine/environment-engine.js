@@ -50,6 +50,8 @@
       let eff = ratio;
       if (ratio < 1) eff = ratio + (1 - ratio) * Env.importCover(c, w);
       r.foodRatio = ratio;
+      // 暖化與寒冬占糧食缺口的比例（只做紀錄，讓結局報告能分辨「氣候造成的饑荒」；不影響模擬）
+      if (fh && ratio < 1 && ratioD > ratio) r.foodClimate = Math.min(1, (ratioD - ratio) / (1 - ratio)); else if (r.foodClimate) r.foodClimate = 0;
       r.foodEff = eff;
       const delta = eff - 1;
       r.foodStock += delta;
