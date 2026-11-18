@@ -307,7 +307,7 @@
 
   WS.Data.scenarios['1911w'] = {
     id: '1911w',
-    name: '帝國的轉折：1911 全世界',
+    name: '近代世界：1911 全世界',
     startYear: 1911,
     startMonth: 1,
     provenance: {
