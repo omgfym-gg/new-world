@@ -354,7 +354,7 @@ body::after {
 /* ---- 背景音樂按鈕（ui/music.js） ---- */
 .music-btn { position: fixed; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(56, 189, 248, .5); background: rgba(3, 6, 14, .85); color: var(--cyan); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--glow); backdrop-filter: blur(6px); }
 .music-btn.off { color: var(--dim); border-color: var(--line); box-shadow: none; text-decoration: line-through; }
-.music-panel { position: fixed; right: 12px; bottom: calc(126px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 210px; max-width: calc(100vw - 24px); padding: 12px; border-radius: 12px; background: rgba(8, 14, 30, .96); border: 1px solid rgba(56, 189, 248, .4); box-shadow: var(--shadow); display: grid; gap: 10px; }
+.music-panel { position: fixed; right: 12px; bottom: calc(126px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 230px; max-width: calc(100vw - 24px); padding: 12px; border-radius: 12px; background: rgba(8, 14, 30, .96); border: 1px solid rgba(56, 189, 248, .4); box-shadow: var(--shadow); display: grid; gap: 10px; }
 .music-panel[hidden] { display: none; }
 .music-title { font-weight: 600; }
 .music-title small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
