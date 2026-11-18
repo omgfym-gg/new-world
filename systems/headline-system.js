@@ -13,8 +13,17 @@
   const EVENT_SCORE = {
     war: [3, '戰爭'], regime: [3, '政局'], newcountry: [3, '新國家'], newregime: [2.6, '新制度'],
     historical: [2.8, '歷史'], 'historical-missed': [1.6, '歷史分歧'], organization: [2.2, '國際'],
-    divine: [2, '神之手'], tech: [1.4, '科技'], leader: [1.1, '人物']
+    divine: [2, '神之手'], tech: [1.4, '科技'], leader: [1.1, '人物'],
+    catastrophe: [4, '災難'], ending: [5, '結局']
   };
+  const PACE = (w) => (w.params && w.params.pacing) || WS.DEFAULT_PARAMS.pacing;
+  // 事件規模：當事國越小，分數越低（多個小國同時改革時，不會淹沒大國的戰爭或革命）
+  function sizeMult(w, countries) {
+    if (!countries || !countries.length) return 1;
+    const q = PACE(w);
+    const share = WS.Events.share(w, { countries });
+    return q.headlineSmallMult + (1 - q.headlineSmallMult) * Math.min(1, share / q.headlineBigShare);
+  }
   const CONDITIONAL = { revolution: 3, coup: 2.8, secession: 3, independence: 3, warlordism: 2.6, reunification: 2.6, democratization: 2.6, famine: 2.2, debt_crisis: 2, protest: 1.2 };
 
   const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
@@ -41,11 +50,13 @@
       let base = null, kicker = null;
       if (e.type === 'conditional' && e.defId && CONDITIONAL[e.defId] != null) { base = CONDITIONAL[e.defId]; kicker = '動盪'; if (e.defId === 'famine') kicker = '糧食'; }
       else if (e.type === 'conditional' && /旱災/.test(e.title)) { base = 1.3; kicker = '氣候'; }
+      else if (e.type === 'future' && e.level >= 3) { base = e.crisis ? 3.5 : 2.6; kicker = '未來'; }
       else if (EVENT_SCORE[e.type]) [base, kicker] = EVENT_SCORE[e.type];
       if (base == null) continue;
+      base *= sizeMult(w, e.countries);
       if (e.type === 'tech' && e.level < 2) continue;           // 只有「率先完成」才上頭條
       if (e.type === 'divine' && e.level < 3) continue;           // 干預結束的追蹤紀錄只留在神之手面板
-      if (e.type === 'leader' && e.level >= 3) base = 2;          // 神之手的候選者上台
+      if (e.type === 'leader' && e.level >= 3) base = 2 * sizeMult(w, e.countries);   // 神之手的候選者上台
       // 同一串因果（例如革命 → 制度轉變 → 領導人更替）只留源頭，分數合併
       if (e.parent && ids.has(e.parent)) { const p = out.find((x) => x.eventId === e.parent); if (p) { p.score += 0.3; continue; } }
       const lead = (e.text ? [e.text] : []).concat((e.effects || []).slice(0, 2)).join('；');
@@ -118,22 +129,62 @@
     w.headlines = w.headlines || [];
     const focus = w.mode === 'country' ? w.focus : null;
     const cands = eventCandidates(w, y).concat(metricCandidates(w, y));
-    for (const h of cands) if (focus && h.countries.includes(focus)) h.score += 0.8;
+    for (const h of cands) {
+      if (h.kind === 'metric') h.score *= sizeMult(w, h.countries);
+      if (focus && h.countries.includes(focus)) h.score += 0.8;
+    }
     cands.sort((a, b) => b.score - a.score || (a.title < b.title ? -1 : 1));
     const picked = [];
-    const seen = new Set();
+    const seen = new Set(), perKind = {};
+    const maxKind = PACE(w).headlineMaxPerKind;
     for (const h of cands) {
       if (h.score < p.headlineMinScore) break;
       // 同一國同一類（例如同國的人口與政局都因同一場戰爭）最多一則，讓頭條涵蓋更多面向
       const key = h.kicker + '|' + (h.countries[0] || '');
       if (seen.has(key)) continue;
+      // 同一類每年最多幾則（例如多國同時改革，只刊最重要的，其餘收進年度摘要）
+      if ((perKind[h.kicker] || 0) >= maxKind) continue;
       seen.add(key);
+      perKind[h.kicker] = (perKind[h.kicker] || 0) + 1;
       picked.push(h);
       if (picked.length >= p.headlinesPerYear) break;
     }
     picked.forEach((h, i) => w.headlines.push(Object.assign({ id: `H${y}-${i + 1}`, year: y, score: +h.score.toFixed(2) }, h)));
     if (w.headlines.length > 150) w.headlines.splice(0, w.headlines.length - 150);
     return picked;
+  };
+
+  // ---------- 年度摘要 ----------
+  // 沒上頭條的事件依類別收在這裡（只讀事件紀錄，不另外存資料，也不改世界）。每個事件都可以點開追查原因。
+  const CD = (e, ids) => e.type === 'conditional' && ids.includes(e.defId);
+  Headlines.GROUPS = [
+    { k: 'crisis', name: '災難與危機', icon: '⚠', test: (e) => e.type === 'catastrophe' || e.type === 'ending' || (e.type === 'future' && e.crisis) },
+    { k: 'war', name: '戰爭與和平', icon: '⚔', test: (e) => e.type === 'war' },
+    { k: 'unrest', name: '革命、政變與動盪', icon: '✊', test: (e) => CD(e, ['revolution', 'coup', 'warlordism', 'protest', 'secession']) },
+    { k: 'nation', name: '新國家、獨立與統一', icon: '⚑', test: (e) => e.type === 'newcountry' || CD(e, ['independence', 'reunification']) || (e.type === 'system' && /不再存在/.test(e.title)) },
+    { k: 'regime', name: '制度改革', icon: '⚖', test: (e) => e.type === 'regime' || e.type === 'newregime' || CD(e, ['democratization']) },
+    { k: 'leader', name: '領導人更替', icon: '♟', test: (e) => e.type === 'leader' },
+    { k: 'food', name: '饑荒、旱災與經濟危機', icon: '❀', test: (e) => e.type === 'conditional' && (CD(e, ['famine', 'debt_crisis']) || !e.defId) },
+    { k: 'world', name: '國際與歷史', icon: '◎', test: (e) => ['organization', 'historical', 'historical-missed', 'diplomacy'].includes(e.type) },
+    { k: 'future', name: '未來', icon: '✧', test: (e) => e.type === 'future' },
+    { k: 'tech', name: '率先發明', icon: '✦', test: (e) => e.type === 'tech' && e.level >= 2 },
+    { k: 'divine', name: '神之手與玩家', icon: '☄', test: (e) => (e.type === 'divine' && e.level >= 3) || (e.type === 'decision' && e.level >= 2) || e.type === 'whatif' || e.type === 'rule' },
+    { k: 'policy', name: '各國政策決定', icon: '▤', test: (e) => e.type === 'decision' }
+  ];
+  Headlines.summary = function (w, year) {
+    if (year == null) year = w.year - 1;
+    const inHead = new Set((w.headlines || []).filter((h) => h.year === year && h.eventId).map((h) => h.eventId));
+    const headlines = (w.headlines || []).filter((h) => h.year === year);
+    const groups = Headlines.GROUPS.map((g) => ({ k: g.k, name: g.name, icon: g.icon, items: [] }));
+    let total = 0;
+    for (const e of w.events) {
+      if (e.y !== year || inHead.has(e.id)) continue;
+      const i = Headlines.GROUPS.findIndex((g) => g.test(e));
+      if (i < 0) continue;
+      groups[i].items.push(e);
+      total++;
+    }
+    return { year, headlines, groups: groups.filter((g) => g.items.length), total };
   };
 
   Headlines.latest = function (w) {

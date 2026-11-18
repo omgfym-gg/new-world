@@ -193,7 +193,7 @@
     const prevW = F.warming;
     F.warming = F.warming0 + p.warmingPerFossil * F.co2 + F.tipping;
     for (const t of [1.5, 2, 3, 4, 5, 6]) if (prevW < t && F.warming >= t) mark('warm' + t, () => ev({
-      title: `全球暖化突破 ${t}°C`, level: t >= 3 ? 3 : 2, countries: [],
+      title: `全球暖化突破 ${t}°C`, level: t >= 3 ? 3 : 2, crisis: t >= 3, countries: [],
       causes: [`累積化石燃料使用造成升溫 ${(p.warmingPerFossil * F.co2).toFixed(2)}°C`].concat(F.tipping ? [`氣候臨界點額外升溫 ${F.tipping.toFixed(2)}°C`] : []),
       effects: [t >= p.harvestLossFrom ? '收成開始受影響（低緯度最嚴重）' : '氣候開始改變', ...(t >= p.climateDeathFrom ? ['熱浪、洪水、風災造成死亡'] : [])]
     }));

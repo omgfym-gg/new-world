@@ -12,6 +12,17 @@
     screen: 'start', tab: 'overview', view: null, histFilter: 'major', chartMetric: 'gdp', auto: null,
     setup: null, compare: null, nl: '', nlResult: null, speed: 'decade', whatif: null, wiMetric: 'gdp', mapView: 'globe'
   };
+  // 事件介入方式（玩家偏好，存在這台裝置上；只決定自動播放什麼時候停下來，不影響世界）
+  const PAUSE_KEY = 'ws.pauseMode';
+  function loadPauseMode() {
+    try { const st = WS.Save.storage(); const v = st && st.getItem(PAUSE_KEY); return WS.Events.PAUSE_MODES[v] ? v : 'critical'; } catch (e) { return 'critical'; }
+  }
+  function setPauseMode(v) {
+    if (!WS.Events.PAUSE_MODES[v]) return;
+    S.pauseMode = v; engine.pauseMode = v;
+    try { const st = WS.Save.storage(); if (st) st.setItem(PAUSE_KEY, v); } catch (e) { /* 無法儲存時只在這次有效 */ }
+  }
+  S.pauseMode = loadPauseMode(); engine.pauseMode = S.pauseMode;
   // 會轉的地球（只畫圖）：點國家＝打開該國資料；點標籤＝看事件原因或戰場畫面
   const globe = window.WSGlobe ? WSGlobe.get() : null;
   if (globe) {
@@ -593,11 +604,13 @@
       </div>
       <div class="row" style="margin-top:10px">${Object.keys(w.rules).map((k) => `<span class="tag ${w.rules[k] !== RULE_DEFAULTS[k] ? 'gold' : ''}">${esc(WS.Data.rules[k].name)}：${esc(WS.Rules.describe(k, w.rules[k]))}</span>`).join('')}</div></div>`;
     }
-    const evs = w.events.filter((e) => e.level >= 2 && (w.mode === 'global' || e.level >= 3 || e.countries.includes(w.focus))).slice(-12).reverse();
+    // 全球模式只列重要事件（領導人更替、各國政策等收進年度摘要）
+    const evs = w.events.filter((e) => e.level >= 3 || (w.mode === 'country' && e.level >= 2 && e.countries.includes(w.focus))).slice(-12).reverse();
     const chron = w.chronicle.slice(-3).reverse();
     return observatory() + head + `
       ${endingBanner()}
       <div class="grid g2">${headlinesCard()}${divineCard()}</div>
+      ${summaryCard()}
       ${futureCard()}
       <div class="grid g2">
         <div class="card"><h3>最新事件 <button class="link" data-act="tab" data-v="history">全部</button></h3>${evs.some((e) => WS.WhatIf.options(w, e).length) ? '<p class="dim wi-hint">按事件旁的 <b class="gold">如果？</b>，看看改寫這件事後，世界會變成怎樣。</p>' : ''}<ul class="events">${evs.map(eventItem).join('') || '<li class="dim">尚無事件，推進時間開始模擬。</li>'}</ul></div>
@@ -942,15 +955,25 @@
     const focus = w.mode === 'country' ? w.countries[w.focus] : null;
     const ev = focus && focus.alive ? engine.evaluate(focus.id) : null;
     const pic = evs.find((e) => sceneFor(e));
-    openModal(`<h2>重大事件：要介入嗎？</h2>
+    const crit = evs.some((e) => WS.Events.isCritical(w, e));
+    openModal(`<h2>${crit ? '重大危機' : '重要事件'}：要介入嗎？</h2>
       ${S.resumeAuto ? '<p class="dim" style="margin:0 0 8px">自動播放已暫停。選好後關掉這個視窗，世界會自動繼續運轉。</p>' : ''}
       ${pic ? mediaHtml(pic) : ''}
       <ul class="events">${evs.map(eventItem).join('')}</ul>
       ${ev ? `<h3 style="color:var(--blue);font-size:14px;margin:12px 0 6px">${esc(focus.name)}可採取的政策（系統評分）</h3>
         ${ev.list.filter((p) => p.feasible === true).slice(0, 5).map((p) => `<div class="policy"><div>${esc(p.name)}<small>${esc(WS.Policies.defs[p.id].desc)}</small></div><button class="btn small" data-act="policy" data-c="${focus.id}" data-p="${p.id}" data-close="1">執行</button></div>`).join('')}`
         : eventDivineHtml(evs)}
-      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${S.resumeAuto ? '<button class="btn" data-act="stay-paused">先停在這裡</button>' : ''}</div>`);
+      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="close-modal">交由系統處理，繼續</button>${S.resumeAuto ? '<button class="btn" data-act="stay-paused">先停在這裡</button>' : ''}</div>
+      <div class="pause-pick">${pauseSetting(true)}</div>`);
     mountMedia();
+  }
+  // 事件介入方式設定（系統頁與事件視窗共用）
+  function pauseSetting(compact) {
+    const w = W();
+    const M = WS.Events.PAUSE_MODES;
+    const note = w.intervention === 'none' ? '目前「玩家介入」設為「不介入」，世界不會暫停；要暫停請把玩家介入改成「偶爾決策」。' : M[S.pauseMode].desc;
+    return `<div class="field"><label>${compact ? '以後遇到事件' : '事件介入方式'}</label>${seg2('pause-mode', S.pauseMode, Object.entries(M).map(([k, d]) => [k, d.name]))}</div>
+      <p class="dim" style="margin:4px 0 0">${esc(note)}${compact ? '（之後可以在「系統」頁更改）' : ''}</p>`;
   }
 
   // ======================= 系統 =======================
@@ -970,7 +993,35 @@
     const w = W();
     const L = WS.Headlines.latest(w);
     return `<div class="card"><h3>世界頭條${L.year ? `・${L.year} 年` : ''} ${(w.headlines || []).length > L.items.length ? '<button class="link" data-act="headlines-all">往年頭條</button>' : ''}</h3>
-      ${L.items.length ? `<div class="headlines">${L.items.map(headlineItem).join('')}</div>` : '<p class="dim">世界出現重大變化時（戰爭、政權更替、人口或經濟劇變……），這裡會刊出當年最多 3 則頭條，每一則都能點開追查原因。</p>'}</div>`;
+      ${L.items.length ? `<div class="headlines">${L.items.map(headlineItem).join('')}</div>` : '<p class="dim">世界出現重大變化時（戰爭、革命、災難、人口或經濟劇變……），這裡會刊出當年影響最大的最多 3 則頭條，每一則都能點開追查原因；其餘的事收進下方的年度摘要。</p>'}</div>`;
+  }
+  // ---------- 年度摘要：沒有上頭條的事件依類別收在這裡（每件都能點開追查原因） ----------
+  function summaryBody(Y, open) {
+    if (!Y.total && !Y.headlines.length) return '<p class="dim">這一年沒有記錄到值得注意的事件。</p>';
+    const top = Y.headlines.length ? `<p class="dim" style="margin:0 0 6px">頭條 ${Y.headlines.length} 則：${Y.headlines.map((h) => `<button class="link" ${h.eventId ? `data-act="event" data-id="${h.eventId}"` : `data-act="why" data-c="${h.cid}" data-m="${h.metric}" data-s="y${h.year}"`}>${esc(h.title)}</button>`).join('、')}</p>` : '';
+    return top + `<div class="sum-groups">${Y.groups.map((g) => {
+      const names = [...new Set(g.items.flatMap((e) => e.countries).map((c) => nameOf(W(), c)))];
+      const who = names.length ? '：' + names.slice(0, 4).map(esc).join('、') + (names.length > 4 ? ` 等 ${names.length} 國` : '') : '';
+      return `<details class="qa sum-g" ${open && g.items.length <= 3 ? 'open' : ''}><summary><b>${g.icon}</b> ${esc(g.name)} <span class="num gold">${g.items.length}</span><span class="dim">${who}</span></summary>
+        <ul class="events">${g.items.slice(-30).reverse().map(eventItem).join('')}</ul>${g.items.length > 30 ? `<p class="dim">只列出最後 30 件，其餘在「歷史」頁。</p>` : ''}</details>`;
+    }).join('')}</div>`;
+  }
+  function summaryCard() {
+    const w = W();
+    if (w.year <= w.startYear) return '';
+    const Y = WS.Headlines.summary(w, w.year - 1);
+    return `<div class="card"><h3>年度摘要・${Y.year} 年 <button class="link" data-act="summary-all" data-v="${Y.year}">往年摘要</button></h3>
+      <p class="dim" style="margin:0 0 8px">頭條以外的 ${Y.total} 件事依類別收在這裡；點任何一件可以看原因與後續。自動播放只會在${esc(WS.Events.PAUSE_MODES[S.pauseMode].name.replace(/^只暫停/, '').replace('所有事件都詢問', '重要事件').replace('全部交由系統', '世界結局'))}時停下來。</p>
+      ${summaryBody(Y, false)}</div>`;
+  }
+  function summaryModal(year) {
+    const w = W();
+    const y = Math.max(w.startYear, Math.min(w.year - 1, year));
+    const Y = WS.Headlines.summary(w, y);
+    const min = w.events.length ? Math.max(w.startYear, w.events[0].y) : w.startYear;
+    openModal(`<h2>年度摘要・${y} 年</h2>
+      <div class="row" style="margin-bottom:8px"><button class="btn small" data-act="summary-all" data-v="${y - 1}" ${y - 1 < min ? 'disabled' : ''}>‹ ${y - 1}</button><button class="btn small" data-act="summary-all" data-v="${y + 1}" ${y + 1 > w.year - 1 ? 'disabled' : ''}>${y + 1} ›</button></div>
+      <p class="dim">這一年頭條以外的 ${Y.total} 件事。內容全部來自模擬紀錄。</p>${summaryBody(Y, true)}`);
   }
   function headlinesModal() {
     const w = W();
@@ -1073,10 +1124,43 @@
     const v = U.clamp(Math.sqrt(p) * 200, 0, 100);  // 小機率也看得到：用平方根放大
     return `<div class="meter risk"><span>${label}</span><div class="bar"><i style="width:${v}%"></i></div><span class="num">${pctR(p)}</span><span class="dim">${note || ''}</span></div>`;
   }
+  // 文明的終點：離「文明崩潰」與「走向星際」各還有多遠（只讀引擎狀態）
+  function endgameHtml() {
+    const w = W(), F = w.future, p = w.params.future || WS.DEFAULT_PARAMS.future;
+    const ser = F.series.pop;
+    const pop = ser.length ? ser[ser.length - 1] : U.ids(w).reduce((s, id) => s + U.popTotal(w.countries[id]), 0);
+    const peak = Math.max(F.peak.pop || 0, pop);
+    const ratio = peak ? pop / peak : 1;
+    // 崩潰進度：人口從高峰往門檻（高峰的 35%）下滑了多少
+    const fall = U.clamp((1 - ratio) / (1 - p.endFrac), 0, 1);
+    const steps = [
+      ['研究出「星際航行」', !!w.invented.interstellar],
+      [`火星人口達 ${fPeople2(p.marsSelfSustain)}、可以自給自足`, !!(F.mars && F.mars.selfSustain)],
+      ['發射星際移民船', !!F.voyage],
+      [`移民船飛行 ${p.voyageYears} 年後抵達`, false]
+    ];
+    const voyage = F.voyage ? U.clamp((w.year - F.voyage.launched) / (F.voyage.arrive - F.voyage.launched), 0, 1) : 0;
+    return `<div class="endgame">
+      <div class="eg-row"><div class="eg-h">☠ 文明崩潰</div>
+        <div class="meter risk"><span>崩潰進度</span><div class="bar"><i style="width:${(fall * 100).toFixed(1)}%"></i></div><span class="num">${(fall * 100).toFixed(0)}%</span></div>
+        <p class="dim">目前地球人口是高峰的 ${(ratio * 100).toFixed(0)}%。人口跌到高峰（${fPeople2(peak)}，${F.peak.y || w.year} 年）的 ${(p.endFrac * 100).toFixed(0)}% 以下，文明就會崩潰；結局名稱取最近 40 年死亡最多的原因。超級智慧失控則直接結束。</p></div>
+      <div class="eg-row"><div class="eg-h good">✧ 走向星際</div>
+        <ul class="eg-steps">${steps.map(([t, ok], i) => `<li class="${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${esc(t)}${i === 3 && F.voyage ? `（${(voyage * 100).toFixed(0)}%，預計 ${F.voyage.arrive} 年）` : ''}</li>`).join('')}</ul></div>
+      <p class="dim" style="margin:6px 0 0">兩種終點都不會在固定年份發生，全看這個世界怎麼演變。<button class="link" data-act="future-info">結局怎麼判定、報告會有什麼？</button></p>
+    </div>`;
+  }
   function futureCard() {
     const w = W();
     const F = w.future;
-    if (!F || (w.year < 1945 && !F.nukes.length && F.warming < 1)) return '';
+    if (!F || isAnc()) return '';
+    // 還沒有全球性風險的早期：只顯示「文明的終點」與目前的風險來源
+    if (w.year < 1945 && !F.nukes.length && F.warming < 1 && !F.ended) {
+      const r = F.risk || {};
+      const inv = Object.keys(w.invented).filter((k) => WS.Data.techs[k] && WS.Data.techs[k].future).length;
+      return `<div class="card future-card"><h3>文明的終點</h3>
+        <p class="dim" style="margin:0 0 8px">目前每年發生全球性災難的機率約 <b class="num">${pctR(r.total || 0)}</b>（主要是小行星）。核武、人工智慧、人造瘟疫、氣候風險要等相關科技或暖化出現後才會開始累積；暖化目前 +${F.warming.toFixed(2)}°C，未來科技 ${inv} 項。</p>
+        ${endgameHtml()}</div>`;
+    }
     const r = F.risk || {};
     const inv = Object.keys(w.invented).filter((k) => WS.Data.techs[k] && WS.Data.techs[k].future);
     const tot = Object.values(WS.Data.techs).filter((t) => t.future).length;
@@ -1099,11 +1183,12 @@
         ${riskBar('氣候臨界點', r.climate || 0, F.warming > w.params.future.tippingFrom ? '' : `暖化超過 ${w.params.future.tippingFrom}°C 後`)}
         ${riskBar('小行星', r.asteroid || 0, '')}
       </div>
-      <p class="dim" style="margin:8px 0 0">未來科技 ${inv.length}／${tot}${inv.length ? '：' + inv.map((k) => esc(WS.Data.techs[k].name)).join('、') : '（要等各國研究出來，不照年份）'}</p></div>`;
+      <p class="dim" style="margin:8px 0 0">未來科技 ${inv.length}／${tot}${inv.length ? '：' + inv.map((k) => esc(WS.Data.techs[k].name)).join('、') : '（要等各國研究出來，不照年份）'}</p>
+      <h3 class="dv-h" style="margin-top:12px">文明的終點</h3>${endgameHtml()}</div>`;
   }
   function futureModal() {
     const w = W(), p = w.params.future;
-    openModal(`<h2>未來時代怎麼計算</h2>
+    openModal(`<h2>未來時代與世界結局怎麼計算</h2>
       <p class="dim">全部是遊戲用的假設（示意值，尚未校準），不是預測。每年一月依世界當時的狀態算出各種風險的機率，再用這個世界的種子亂數判定。</p>
       <ul class="list-plain">
         <li><b>氣候</b>：暖化＝起點暖化＋累積化石燃料使用量 × 係數。再生能源、核融合越普及，排放越少；碳捕集會慢慢移除累積排放。超過 ${p.harvestLossFrom}°C 收成下降（低緯度最嚴重），超過 ${p.climateDeathFrom}°C 開始有氣候災害死亡，超過 ${p.tippingFrom}°C 每年有 ${(p.tippingChance * 100).toFixed(1)}% 機率觸發無法逆轉的臨界點。</li>
@@ -1113,6 +1198,16 @@
         <li><b>小行星</b>：每年很小的自然機率；行星防禦普及後可以偏轉。</li>
         <li><b>火星</b>：完成「火星殖民」後建立殖民地，人口成長受容量限制；達到 100 萬人可以自給自足，地球毀滅時人類仍能延續。</li>
         <li><b>結局</b>：地球人口跌到高峰的 ${(p.endFrac * 100).toFixed(0)}% 以下就是文明崩潰，結局名稱取最近 40 年造成死亡最多的原因；超級智慧失控直接結束。完成「星際航行」且火星可自給自足時發射移民船，飛 ${p.voyageYears} 年抵達就是「人類走向星際」。</li>
+      </ul>
+      <h3 class="dv-h">世界結局報告會呈現</h3>
+      <ul class="list-plain">
+        <li>結局名稱、年份，世界存在了多少年</li>
+        <li>成績：人口高峰與結局時的地球人口、最高暖化、火星人口、完成幾項未來科技、擁核國數</li>
+        <li>世界人口曲線，以及暖化、每年災難機率、AI 能力與安全差距的曲線</li>
+        <li>關鍵轉折點：災難、未來科技、重大戰爭與政變、你的「如果？」改寫（每一項都能點開追查原因）</li>
+        <li>每場災難的直接死亡人數</li>
+        <li>你的每一次介入（政策、神之手、世界規則、「如果？」）</li>
+        <li>「沒有你的世界」：同一個種子、不重播你的介入重跑一次，比較哪個世界先毀滅</li>
       </ul>
       <p class="dim">所有死亡都寫在各國的因果帳裡（「?」可以追查），每場災難都是事件，可以用「如果？」改寫它沒有發生。係數在 engine/params.js 的 future 區塊。</p>`);
   }
@@ -1227,6 +1322,7 @@
         <div class="card"><h3>設定</h3>
           <div class="field"><label>設定深度</label>${seg2('depth-live', w.difficulty, [['simple', '簡易'], ['custom', '自訂'], ['advanced', '進階']])}</div>
           <div class="field"><label>玩家介入</label>${seg2('intervention-live', w.intervention, [['none', '不介入'], ['occasional', '偶爾決策'], ['full', '完全控制']])}</div>
+          ${pauseSetting(false)}
           <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
         </div>
         <div class="card"><h3>數值驗證</h3><p class="dim">已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個問題（自動修正並記錄）。</p>
@@ -1752,6 +1848,13 @@
     if (res.stopped) { stopAuto(); decisionModal(res.events); }
     return res;
   }
+  // 每年一月：用一行通知告訴玩家去年的頭條與摘要（不暫停）
+  function yearToast() {
+    const w = W();
+    const Y = WS.Headlines.summary(w, w.year - 1);
+    if (!Y.headlines.length) return;
+    toast(`📰 ${Y.year} 年頭條：${Y.headlines[0].title}${Y.headlines.length > 1 ? ` 等 ${Y.headlines.length} 則` : ''}；其他 ${Y.total} 件事收進年度摘要`);
+  }
   function stopAuto() { if (S.auto) { clearInterval(S.auto); S.auto = null; } }
   function toggleAuto() {
     if (S.auto) { stopAuto(); WS.Save.autosave(W()); render(); return; }
@@ -1760,6 +1863,7 @@
       const res = engine.advance(1);
       if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) WS.Save.autosave(W());
       if (res.ended) { stopAuto(); WS.Save.autosave(W()); render(); endingModal(); return; }
+      if (W().month === 1 && !isAnc()) yearToast();
       // 自動播放遇到重大事件：先暫停讓玩家選擇，選完（關掉視窗）後自動繼續
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
       // 遠古世界走到近代門檻：暫停，問玩家要不要進入近代（只問一次）
@@ -1837,6 +1941,8 @@
       case 'whatif-run': whatifRun(t.dataset.id, t.dataset.k); break;
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'headlines-all': headlinesModal(); break;
+      case 'summary-all': summaryModal(+v); break;
+      case 'pause-mode': setPauseMode(v); if (modal.hidden) render(); else { const box = modalBody.querySelector('.pause-pick'); if (box) box.innerHTML = pauseSetting(true); } toast('事件介入方式：' + WS.Events.PAUSE_MODES[v].name); break;
       case 'divine-open': S.divine = { kind: v || 'health', cid: t.dataset.c || (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
       case 'divine-kind': S.divine.kind = v; S.divine.opt = null; divineModal(); break;
       case 'divine-opt': S.divine.opt = v; divineModal(); break;
