@@ -103,6 +103,7 @@
       u.cause(c, 'population', '出生', births, d.health < 0.3 ? '高生育率社會' : '一般生育');
       u.cause(c, 'population', '死亡', -baseD, '一般死亡');
       if (foodD) u.cause(c, 'population', '死亡', -foodD, '糧食短缺');
+      if (foodD && WS.Future && w.future) WS.Future.noteFamine(w, foodD, foodD * (c.res.foodClimate || 0));   // 只做紀錄
       if (conflictD) u.cause(c, 'population', '死亡', -conflictD, '社會動亂');
 
       // 教育：取決於教育支出

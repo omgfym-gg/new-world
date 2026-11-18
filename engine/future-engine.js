@@ -31,7 +31,8 @@
       winter: null, nukes: [], ai: { cap: 0, align: 0, gap: 0, leader: null, bonus: 0 },
       bio: 0, risk: {}, mars: null, peak: { pop: 0, y: w.year, gdp: 0, gy: w.year },
       marks: {}, catastrophes: [], ended: null,
-      series: { y: [], warming: [], gap: [], risk: [], mars: [], pop: [] }
+      tollAll: {}, food: { total: 0, climate: 0, yearClimate: 0 },
+      series: { y: [], warming: [], gap: [], risk: [], mars: [], pop: [], harvest: [] }
     };
     return w.future;
   };
@@ -91,8 +92,39 @@
       const T = w.future.toll || (w.future.toll = {});
       const row = T[w.year] || (T[w.year] = {});
       row[kind] = (row[kind] || 0) + d;
+      const A = w.future.tollAll || (w.future.tollAll = {});   // 整個世界史的累計（不會刪除，結局報告用）
+      A[kind] = (A[kind] || 0) + d;
     }
     return d;
+  };
+  // 糧食短缺死亡的紀錄（人口引擎每月呼叫；climate＝其中由暖化或寒冬造成的部分，依糧食缺口比例估算）。只做紀錄，不影響模擬。
+  Future.noteFamine = function (w, total, climate) {
+    const F = w.future;
+    if (!F) return;
+    const f = F.food || (F.food = { total: 0, climate: 0, yearClimate: 0 });
+    f.total += total; f.climate += climate; f.yearClimate += climate;
+  };
+  // 全球平均收成（依人口加權；暖化與寒冬的影響，1 = 沒有影響）。warming 可以代入假設值（用來算臨界點多造成多少損失）
+  Future.globalHarvest = function (w, ids, warming) {
+    const F = w.future;
+    if (!F) return 1;
+    const save = F.warming;
+    if (warming != null) F.warming = warming;
+    let s = 0, n = 0;
+    for (const id of ids) { const c = w.countries[id], P0 = U().popTotal(c); s += Future.harvestMult(c, w) * P0; n += P0; }
+    F.warming = save;
+    return n ? s / n : 1;
+  };
+  // 災難的嚴重度：依「實際造成的變化」（直接＋之後的死亡占當時世界人口、額外升溫、收成損失）分級，不看災難名稱
+  Future.SEVERITY = ['輕微', '嚴重', '重大', '毀滅性'];
+  Future.severity = function (w, rec) {
+    const p = P(w), sv = p.severity || WS.DEFAULT_PARAMS.future.severity;
+    const im = rec.impact || {};
+    const share = im.popBefore ? ((rec.deaths || 0) + (im.later || 0)) / im.popBefore : 0;
+    const warm = im.warming || 0, harv = Math.max(0, (im.harvestBefore || 1) - (im.harvestAfter || 1));
+    let lv = 0;
+    for (let i = 0; i < 3; i++) if (share >= sv.deathShare[i] || warm >= sv.warming[i] || harv >= sv.harvest[i]) lv = i + 1;
+    return lv;
   };
   const worldPop = (w, ids) => ids.reduce((s, id) => s + U().popTotal(w.countries[id]), 0);
   const worldGdp = (w, ids) => ids.reduce((s, id) => s + w.countries[id].econ.gdp, 0);
@@ -213,22 +245,52 @@
     }
 
     // 2. 氣候災害與臨界點
+    // 臨界點造成的「之後的損失」：今年氣候災害死亡中，有多少是臨界點的額外升溫造成的（依公式拆分，不是估計）
+    const tips = F.catastrophes.filter((x) => x.kind === 'climate' && x.impact && x.impact.warming > 0);
+    const tipShare = (loss) => {
+      if (!F.tipping || !tips.length) return 0;
+      const all = loss(F.warming), base = loss(F.warming - F.tipping);
+      return all > 0 ? Math.max(0, 1 - base / all) : 0;
+    };
+    const giveTips = (amount) => {
+      if (!(amount > 0)) return;
+      for (const t of tips) t.impact.later = (t.impact.later || 0) + amount * t.impact.warming / F.tipping;
+    };
     if (F.warming > p.climateDeathFrom) {
       const x = F.warming - p.climateDeathFrom;
+      let dead = 0;
       for (const id of ids) {
         const c = w.countries[id];
         const lat = Math.abs(c.lat || 0);
         const zone = lat < 25 ? p.tropicsMult : lat > 50 ? p.polarMult : 1;
         const rich = Math.min(1, (c.econ.gdppc || 0) / 20000);
-        Future.kill(w, c, p.climateDeath * x * x * zone * (1 - 0.5 * rich), '氣候災害（熱浪、洪水、風災）', 'climate');
+        dead += Future.kill(w, c, p.climateDeath * x * x * zone * (1 - 0.5 * rich), '氣候災害（熱浪、洪水、風災）', 'climate');
       }
+      giveTips(dead * tipShare((v) => Math.pow(Math.max(0, v - p.climateDeathFrom), 2)));
     }
+    // 去年由暖化造成的饑荒死亡，也依同樣的方式拆給臨界點
+    if (F.food && F.food.yearClimate > 0) {
+      giveTips(F.food.yearClimate * tipShare((v) => Math.pow(Math.max(0, v - p.harvestLossFrom), p.harvestLossExp)));
+      F.food.yearClimate = 0;
+    }
+    // 寒冬（核子、撞擊）期間的死亡算在造成寒冬的那場災難
+    const winterRec = F.winter && F.winter.until > w.year && F.winter.rec != null ? F.catastrophes[F.winter.rec] : null;
     if (r.climate > 0 && rng.chance(r.climate)) {
       catastrophe(w, ctx, 'climate', () => {
         const add = p.tippingMin + (p.tippingMax - p.tippingMin) * rng.next();
+        const h0 = Future.globalHarvest(w, ids);
         F.tipping += add;
         F.warming += add;
-        return { title: '氣候臨界點：永凍土融化、雨林崩潰', countries: [], causes: [`全球暖化 ${(F.warming - add).toFixed(1)}°C，超過臨界門檻 ${p.tippingFrom}°C`, `每年觸發機率 ${(r.climate * 100).toFixed(0)}%（世界種子決定）`], effects: [`額外升溫 ${add.toFixed(2)}°C，而且無法逆轉`], deaths: 0 };
+        const h1 = Future.globalHarvest(w, ids);
+        const n = F.catastrophes.filter((x) => x.kind === 'climate').length + 1;
+        return {
+          title: `氣候臨界點（第 ${n} 次）：永凍土融化、雨林崩潰`, countries: [],
+          causes: [`全球暖化 ${(F.warming - add).toFixed(1)}°C，超過臨界門檻 ${p.tippingFrom}°C`, `每年觸發機率 ${(r.climate * 100).toFixed(1)}%（世界種子決定）`],
+          effects: [`額外升溫 ${add.toFixed(2)}°C，而且無法逆轉（全球暖化 ${(F.warming - add).toFixed(2)} → ${F.warming.toFixed(2)}°C）`,
+            `全球平均收成（受暖化影響）：${pctTxt(h0)} → ${pctTxt(h1)}`,
+            '當下沒有直接死亡；之後每年因額外升溫多出的氣候災害與饑荒死亡，會持續記在這次臨界點的「之後的死亡」'],
+          deaths: 0, impact: { warming: add, harvestBefore: h0, harvestAfter: h1 }
+        };
       });
     }
 
@@ -256,18 +318,26 @@
           c.pol.conflict = Math.min(100, c.pol.conflict + 30); u.cause(c, 'conflict', '核子攻擊', 30);
         }
         const sev = Math.min(p.winterMax, p.winterBase + p.winterPerPower * powers.length);
-        F.winter = { until: w.year + p.winterYears, mult: 1 - sev, sev, from: w.year, kind: 'nuclear' };
+        const h0 = Future.globalHarvest(w, ids);
+        F.winter = { until: w.year + p.winterYears, mult: 1 - sev, sev, from: w.year, kind: 'nuclear', rec: F.catastrophes.length };
+        const h1 = Future.globalHarvest(w, ids);
         const nm = (x) => w.countries[x].name;
         return {
           title: pick.crisis ? `核危機升級：${nm(pick.a)}與${nm(pick.d)}爆發核子交火` : `核子戰爭：${war ? war.name : nm(pick.a) + '對' + nm(pick.d)}動用核武`,
           countries: side,
-          causes: [pick.crisis ? `兩個擁核國關係極差（${u.relation(w, pick.a, pick.d).rel.toFixed(0)}）` : '交戰雙方或戰況危急的一方擁有核武', `涉及擁核國：${powers.map(nm).join('、')}`, `今年動用核武的機率約 ${(pick.q * 100).toFixed(1)}%（世界種子決定）`],
-          effects: [`直接死亡約 ${fmtPeople(deaths)}`, `核子寒冬：全球收成 −${(sev * 100).toFixed(0)}%，持續 ${p.winterYears} 年`].concat(joined.length ? [`盟國被捲入：${joined.map(nm).join('、')}`] : []), deaths
+          causes: [pick.crisis ? `兩個擁核國關係極差（${u.relation(w, pick.a, pick.d).rel.toFixed(0)}）` : '交戰雙方或戰況危急的一方擁有核武', `涉及擁核國：${powers.map(nm).join('、')}`, `今年動用核武的機率約 ${(pick.q * 100).toFixed(pick.q < 0.001 ? 3 : 1)}%（世界種子決定）`],
+          effects: [`直接死亡約 ${fmtPeople(deaths)}`, `核子寒冬：全球收成 −${(sev * 100).toFixed(0)}%，持續 ${p.winterYears} 年（全球平均收成 ${pctTxt(h0)} → ${pctTxt(h1)}）`, '寒冬期間每年的額外死亡，會持續記在這場災難的「之後的死亡」'].concat(joined.length ? [`盟國被捲入：${joined.map(nm).join('、')}`] : []), deaths,
+          impact: { harvestBefore: h0, harvestAfter: h1 }
         };
       });
     }
     // 核子寒冬期間的額外死亡
-    if (F.winter && F.winter.until > w.year) for (const id of ids) Future.kill(w, w.countries[id], p.winterDeath * F.winter.sev, F.winter.kind === 'asteroid' ? '撞擊冬天（塵埃遮蔽陽光）' : '核子寒冬（日照不足、農業崩潰）', F.winter.kind || 'nuclear');
+    if (F.winter && F.winter.until > w.year) {
+      let dead = 0;
+      for (const id of ids) dead += Future.kill(w, w.countries[id], p.winterDeath * F.winter.sev, F.winter.kind === 'asteroid' ? '撞擊冬天（塵埃遮蔽陽光）' : '核子寒冬（日照不足、農業崩潰）', F.winter.kind || 'nuclear');
+      const wr = winterRec || (F.winter.rec != null ? F.catastrophes[F.winter.rec] : null);
+      if (wr && wr.impact) wr.impact.later = (wr.impact.later || 0) + dead;
+    }
 
     // 4. 人工智慧
     if (r.ai > 0 && rng.chance(r.ai)) {
@@ -318,11 +388,14 @@
           const sev = p.asteroidDeathMin + (p.asteroidDeathMax - p.asteroidDeathMin) * rng.next();
           let deaths = 0;
           for (const id of ids) deaths += Future.kill(w, w.countries[id], sev, '小行星撞擊', 'asteroid');
-          F.winter = { until: w.year + 3, mult: 1 - 0.5 * sev, sev: 0.5 * sev, from: w.year, kind: 'asteroid' };
+          const h0 = Future.globalHarvest(w, ids);
+          F.winter = { until: w.year + 3, mult: 1 - 0.5 * sev, sev: 0.5 * sev, from: w.year, kind: 'asteroid', rec: F.catastrophes.length };
+          const h1 = Future.globalHarvest(w, ids);
           return {
             title: '小行星撞擊地球', countries: [], level: 3,
             causes: ['自然風險（每年機率很小，世界種子決定）', def > 0 ? `行星防禦普及只有 ${(def * 100).toFixed(0)}%，沒能偏轉` : '還沒有行星防禦技術'],
-            effects: [`死亡約 ${fmtPeople(deaths)}`, '撞擊塵埃遮蔽陽光，收成大減 3 年'], deaths
+            effects: [`死亡約 ${fmtPeople(deaths)}`, `撞擊塵埃遮蔽陽光，收成大減 3 年（全球平均收成 ${pctTxt(h0)} → ${pctTxt(h1)}）`], deaths,
+            impact: { harvestBefore: h0, harvestAfter: h1 }
           };
         });
       }
@@ -348,6 +421,7 @@
     }
 
     for (const y in F.toll || {}) if (+y < w.year - 60) delete F.toll[y];
+    for (const c of F.catastrophes) if (c.impact && c.impact.later > 0) c.sev = Future.severity(w, c);   // 之後的損失累計後，嚴重度跟著更新
     // 8. 高峰與紀錄
     const pop = worldPop(w, ids), gdp = worldGdp(w, ids);
     if (pop > F.peak.pop) { F.peak.pop = pop; F.peak.y = w.year; }
@@ -355,6 +429,9 @@
     const S = F.series;
     S.y.push(w.year); S.warming.push(+F.warming.toFixed(3)); S.gap.push(+F.ai.gap.toFixed(3)); S.risk.push(+(r.total * 100).toFixed(2));
     S.mars.push(F.mars ? +F.mars.pop.toFixed(4) : 0); S.pop.push(+pop.toFixed(1));
+    if (!S.harvest) S.harvest = [];   // 舊存檔沒有這條數列：之前的年份補空白
+    while (S.harvest.length < S.y.length - 1) S.harvest.push(null);
+    S.harvest.push(+(Future.globalHarvest(w, ids) * 100).toFixed(1));
 
     // 9. 結局判定
     if (!F.ended) {
@@ -383,6 +460,7 @@
   }
   function fmtPeople(m) { return m >= 100 ? (m / 100).toFixed(2) + ' 億人' : m >= 1 ? m.toFixed(1) + ' 百萬人' : Math.round(m * 1e6).toLocaleString() + ' 人'; }
   Future.fmtPeople = fmtPeople;
+  function pctTxt(h) { return (h * 100).toFixed(0) + '%'; }
 
   // 災難：先看「如果？」平行世界有沒有阻止它，再執行並記錄
   function catastrophe(w, ctx, kind, run) {
@@ -393,9 +471,18 @@
       WS.WhatIf.logDivergence(w, ctx, o, [], [`原本這一年會發生：${name}`]);
       return null;
     }
+    const ids = U().ids(w);
+    const popBefore = worldPop(w, ids);
     const res = run();
-    const e = WS.Events.log(w, ctx, { type: 'catastrophe', fk: kind, title: res.title, countries: res.countries || [], level: res.level || 3, causes: res.causes, effects: res.effects });
-    F.catastrophes.push({ y: w.year, kind, title: res.title, deaths: res.deaths || 0, eventId: e.id });
+    const impact = Object.assign({ popBefore, later: 0, warming: 0 }, res.impact || {});
+    const rec = { y: w.year, kind, title: res.title, deaths: res.deaths || 0, impact };
+    rec.sev = Future.severity(w, rec);
+    // 事件分成「觸發條件」（causes）與「實際造成的變化」（effects，全部是引擎算出的數字）
+    const share = popBefore ? (rec.deaths / popBefore) : 0;
+    const effects = (res.effects || []).concat(rec.deaths > 0 ? [`直接死亡占世界人口 ${(share * 100).toFixed(share < 0.01 ? 2 : 1)}%`] : []).concat([`目前嚴重度：${Future.SEVERITY[rec.sev]}（依實際死亡、升溫與收成損失分級，之後的損失會持續累計）`]);
+    const e = WS.Events.log(w, ctx, { type: 'catastrophe', fk: kind, title: res.title, countries: res.countries || [], level: res.level || 3, causes: res.causes, effects });
+    rec.eventId = e.id;
+    F.catastrophes.push(rec);
     if (res.final) Future.end(w, ctx, kind, { pop: worldPop(w, U().ids(w)), cause: F.catastrophes[F.catastrophes.length - 1] });
     return e;
   }
@@ -453,8 +540,116 @@
       peak: F.peak, warming: F.warming, mars: F.mars, nukes: F.nukes.length, ai: F.ai,
       catastrophes: F.catastrophes.slice(), deathsBy, turning, player, divine, whatifs, series: F.series,
       techs: Object.keys(w.invented).filter((k) => WS.Data.techs[k] && WS.Data.techs[k].future).length,
-      techTotal: Object.values(WS.Data.techs).filter((t) => t.future).length
+      techTotal: Object.values(WS.Data.techs).filter((t) => t.future).length,
+      tollAll: Object.assign({}, F.tollAll || {}), food: Object.assign({}, F.food || {}),
+      chain: F.ended ? Future.endingChain(w) : []
     };
+  };
+
+  // 結局是怎麼發生的：只用模擬紀錄（累計排放、臨界點、收成、各原因死亡、人口），一步一步串起來
+  Future.endingChain = function (w) {
+    const F = Future.ensure(w), p = P(w), E = F.ended;
+    if (!E) return [];
+    const out = [];
+    const S = F.series;
+    const maxW = Math.max(F.warming, ...(S.warming.length ? S.warming : [0]));
+    const harv = (S.harvest || []).filter((x) => x != null);
+    const minH = harv.length ? Math.min(...harv) : null;
+    const minHy = minH != null ? S.y[S.harvest.indexOf(minH)] : null;
+    const tips = F.catastrophes.filter((c) => c.kind === 'climate');
+    const tipAdd = F.tipping || 0;
+    const tipLater = tips.reduce((s, c) => s + ((c.impact && c.impact.later) || 0), 0);
+    // 各原因的累計死亡；舊存檔沒有整段紀錄時，改用最近 60 年的逐年紀錄
+    let T = F.tollAll || {}, partial = false;
+    if (!Object.keys(T).length && F.toll) { T = {}; partial = true; for (const y in F.toll) for (const k in F.toll[y]) T[k] = (T[k] || 0) + F.toll[y][k]; }
+    const span = partial ? '最近 60 年' : '累計';
+    const yearOf = (t) => { const i = S.warming.findIndex((x) => x >= t); return i >= 0 ? S.y[i] : null; };
+    if (E.kind === 'climate' || maxW >= p.climateDeathFrom) {
+      const fossil = p.warmingPerFossil * F.co2;
+      out.push({ k: 'cause', t: `化石燃料累積使用造成升溫 ${fossil.toFixed(2)}°C` + (F.warming0 >= 0.005 ? `（起點已有 ${F.warming0.toFixed(2)}°C）` : '') });
+      if (tips.length) out.push({ k: 'tip', t: `暖化超過 ${p.tippingFrom}°C 後觸發 ${tips.length} 次氣候臨界點（${tips.map((c) => c.y).join('、')} 年），額外升溫 ${tipAdd.toFixed(2)}°C，無法逆轉` });
+      out.push({ k: 'warm', t: `全球暖化最高 +${maxW.toFixed(1)}°C` + [[p.harvestLossFrom, '收成開始下降'], [p.climateDeathFrom, '氣候災害開始致死'], [p.tippingFrom, '可能觸發臨界點']].map(([t, l]) => (yearOf(t) ? `；${yearOf(t)} 年超過 ${t}°C（${l}）` : '')).join('') });
+      if (minH != null && minH < 99.5) out.push({ k: 'harvest', t: `全球平均收成最低只剩正常的 ${minH.toFixed(0)}%（${minHy} 年），低緯度地區最嚴重` });
+      if (T.climate) out.push({ k: 'death', t: `熱浪、洪水、風災${span}死亡約 ${fmtPeople(T.climate)}` });
+      if (tipLater > 0.01) out.push({ k: 'death', t: `其中因為臨界點的額外升溫而多出的死亡（氣候災害＋饑荒）約 ${fmtPeople(tipLater)}，依公式拆分` });
+      if (F.food && F.food.climate > 0.01) out.push({ k: 'death', t: `收成減少造成的糧食短缺死亡約 ${fmtPeople(F.food.climate)}（依糧食缺口中暖化所占比例估算）` });
+    }
+    const other = Object.entries(T).filter(([k, v]) => k !== 'climate' && v > 0).sort((a, b) => b[1] - a[1]);
+    for (const [k, v] of other) out.push({ k: 'death', t: `${(Future.KINDS[k] || { name: k === 'ai' ? 'AI 事故' : k }).name}${span}死亡約 ${fmtPeople(v)}` });
+    if (E.kind === 'ai') out.push({ k: 'end', t: '超級智慧失控，世界直接結束（不看人口）' });
+    else if (E.kind === 'stars') out.push({ k: 'end', t: '星際移民船抵達鄰近恆星' });
+    else out.push({ k: 'end', t: `地球人口從高峰 ${fmtPeople(F.peak.pop)}（${F.peak.y} 年）跌到 ${fmtPeople(E.earthPop)}，低於高峰的 ${(p.endFrac * 100).toFixed(0)}% → 文明崩潰（${E.y} 年）` });
+    return out;
+  };
+
+  // ---------- 文明進程：階段目標、下一個突破、停滯診斷（只讀，不改世界） ----------
+  // 階段只是把科技樹分組給玩家看「現在走到哪裡」，不會強制任何事情在某一年發生
+  Future.STAGES = [
+    { name: '工業化', techs: ['railway', 'electrification', 'ice', 'sanitation', 'fertilizer'], goal: '鐵路、電力、內燃機、公共衛生' },
+    { name: '大量生產', techs: ['assembly', 'automobile', 'vaccines', 'radio', 'petrochem', 'tractor'], goal: '流水線、汽車、疫苗、無線電' },
+    { name: '原子與電腦', techs: ['computing', 'nuclear', 'antibiotics', 'aviation', 'green'], goal: '電子計算、核能、抗生素' },
+    { name: '資訊時代', techs: ['internet', 'satellite', 'automation', 'rocketry'], goal: '網際網路、人造衛星、自動化' },
+    { name: '未來科技', techs: ['ai', 'renewables', 'genetics', 'reusable'], goal: '人工智慧、再生能源、基因工程、可回收火箭' },
+    { name: '走出地球', techs: ['mars', 'pdefense', 'alignment', 'agi', 'synbio'], goal: '火星殖民、行星防禦、通用 AI' },
+    { name: '星際文明', techs: ['fusion', 'capture', 'interp', 'asi', 'interstellar'], goal: '核融合、超級智慧、星際航行' }
+  ];
+  const ptsCache = new Map();
+  const pts = (c) => { if (!ptsCache.has(c)) ptsCache.set(c, WS.Technology.researchPoints(c, ptsCache.w).pts); return ptsCache.get(c); };
+  const topResearch = (w, c) => {
+    const tp = w.params.technology, milFirst = c.goal === 'expand' || c.goal === 'security' || c.flags.atWar;
+    const cost = (t) => WS.Data.techs[t].cost * (w.invented[t] ? tp.diffusionDiscount : 1) * (milFirst && WS.Data.techs[t].field === 'military' ? 0.5 : 1);
+    return WS.Technology.available(c, w).sort((a, b) => cost(a) - cost(b) || (a < b ? -1 : 1)).slice(0, 3);
+  };
+  Future.progress = function (w) {
+    const u = U(), ids = u.ids(w), p = P(w);
+    ptsCache.clear(); ptsCache.w = w;
+    const T = WS.Data.techs;
+    const stages = Future.STAGES.map((st) => {
+      const list = st.techs.filter((t) => T[t]);
+      const done = list.filter((t) => w.invented[t]);
+      return { name: st.name, goal: st.goal, total: list.length, done: done.length, year: done.length === list.length && list.length ? Math.max(...done.map((t) => w.invented[t].year)) : null, missing: list.filter((t) => !w.invented[t]) };
+    });
+    const cur = stages.findIndex((x) => x.done < x.total);
+    // 下一批可能的突破：前置科技已在某國普及、世界上還沒有人完成
+    const next = [];
+    for (const t in T) {
+      if (w.invented[t]) continue;
+      let best = null;
+      for (const id of ids) {
+        const c = w.countries[id];
+        if (!T[t].req.every((r) => u.adopt(c, r) >= w.params.technology.prereqAdoption)) continue;
+        const prog = c.tech[t] ? c.tech[t].progress / T[t].cost : 0;
+        // 照目前速度每年完成的比例：和科技引擎一樣，研究點數平均分給最便宜的 3 項可研究科技
+        const top = topResearch(w, c);
+        const rate = top.includes(t) ? pts(c) / top.length / T[t].cost : 0;
+        const score = prog + rate * 20;
+        if (!best || score > best.score) best = { id, name: c.name, prog, rate, score };
+      }
+      if (best) next.push({ id: t, name: T[t].name, future: !!T[t].future, by: best.id, byName: best.name, prog: Math.min(0.999, best.prog), years: best.rate > 0 ? Math.ceil((1 - Math.min(1, best.prog)) / best.rate) : null });
+    }
+    next.sort((a, b) => (a.years == null ? 1e9 : a.years) - (b.years == null ? 1e9 : b.years) || b.prog - a.prog);
+    // 停滯：多久沒有世界首創的新技術
+    const years = Object.values(w.invented).map((x) => x.year);
+    const last = years.length ? Math.max(...years) : null;
+    const since = w.year - (last != null ? last : (w.startYear || w.year));
+    const sv = p.stagnationYears || 25;
+    const stalled = since >= sv;
+    // 停滯的原因：只看模擬裡的實際數字（研究投入、教育、政局、戰爭、經濟）
+    const why = [];
+    const lead = next.length && next[0].years != null ? w.countries[next[0].by] : ids.map((id) => w.countries[id]).sort((a, b) => pts(b) - pts(a) || (a.id < b.id ? -1 : 1))[0];
+    if (lead) {
+      const r = WS.Technology.researchPoints(lead, w);
+      const share = (lead.fiscal.budget && lead.fiscal.budget.research) || 0;
+      if (lead.demo.edu < 40) why.push(`研究最快的${lead.name}教育只有 ${lead.demo.edu.toFixed(0)}（研究與普及都慢）`);
+      if (share < 0.03) why.push(`${lead.name}的科研只占財政支出 ${(share * 100).toFixed(0)}%`);
+      if (lead.pol.stability < 40) why.push(`${lead.name}政局不穩（穩定度 ${lead.pol.stability.toFixed(0)}），研究效率打折`);
+      if (lead.flags.atWar) why.push(`${lead.name}正在打仗`);
+      if ((lead.econ.gdppc || 0) < 3000) why.push(`${lead.name}人均 GDP 約 ${Math.round(lead.econ.gdppc || 0).toLocaleString()} 美元，研究經費很少`);
+      why.push(`全世界研究投入每年約 ${u.fmt(ids.reduce((s2, id) => s2 + pts(w.countries[id]), 0), 2)}（${lead.name} ${u.fmt(r.pts, 2)}；最便宜的一項新技術要 ${Math.min(...Object.keys(T).filter((t) => !w.invented[t]).map((t) => T[t].cost))}）`);
+    }
+    const warAll = w.wars.filter((x) => !x.ended).length;
+    if (warAll >= 3) why.push(`世界上同時有 ${warAll} 場戰爭`);
+    return { stages, cur, next: next.slice(0, 4), last, since, stalled, stallYears: sv, why, lead: lead ? lead.id : null };
   };
 
   // ---------- 「沒有你介入的世界」：從起點用同一個種子重跑，不重播玩家的政策、神之手、規則與「如果？」 ----------

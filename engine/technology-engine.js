@@ -90,7 +90,7 @@
         if (s.progress < def.cost) {
           const add = def.cost * ch.rate;
           s.progress += add; ch.gain += add;
-          U.cause(c, 'research', def.name, add, '神之手：知識分享');
+          U.cause(c, 'research', def.name, add, ch.invent ? '神之手：啟發新發明' : '神之手：知識分享');
           if (!done.includes(ch.id)) done.push(ch.id);
         } else ch.closed = true;
       }
@@ -107,7 +107,7 @@
             countries: [id], level: first ? 2 : 1, major: first && id === w.focus,
             text: first ? '世界首次出現這項技術，其他國家之後可用較低成本引進。' : '技術進入實際應用階段，接下來需要時間普及。',
             causes: [
-              ...(ch && ch.id === t ? ['神之手開啟的知識管道加速了研究'] : []),
+              ...(ch && ch.id === t ? [ch.invent ? '神之手的啟發加速了研究' : '神之手開啟的知識管道加速了研究'] : []),
               `科研投入每年約 ${U.fmt(r.budget, 2)}（十億）`,
               `人才倍率 ${r.talent.toFixed(2)}（教育 ${c.demo.edu.toFixed(0)}）`,
               `制度倍率 ${r.inst.toFixed(2)}（穩定度 ${c.pol.stability.toFixed(0)}）`,

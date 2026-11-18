@@ -250,13 +250,68 @@
       for (const m of ['gdp', 'population', 'stability']) reasons[id][m] = WhatIf.ledgerDiff(orig, alt, id, m, fromYear).slice(0, 3);
     }
 
-    return {
+    const rep = {
       label: info.label, y: info.y, m: info.m, tick: info.tick, applied: info.applied, from: info.from,
       years: Math.round((orig.tick - info.tick) / 12), now: { y: orig.year, m: orig.month },
       focus, rows, world, onlyOrig, onlyAlt, chain, reasons,
       failed: (info.failed || []).map((f) => ({ y: f.cmd.y, m: f.cmd.m, text: describeCmd(orig, f.cmd), reason: f.reason }))
     };
+    rep.summary = WhatIf.summary(orig, alt, rep);
+    return rep;
   };
+
+  // ---------- 6. 重點摘要：改寫了什麼、差異何時出現、最後造成什麼結果（只引用比較結果與兩條世界線的紀錄） ----------
+  // 世界總量（人口、GDP）在年度數列中第一次相差超過 threshold 的年份
+  WhatIf.divergeYear = function (orig, alt, fromYear, threshold) {
+    const th = threshold || 0.01;
+    const tot = (w, y, m) => { const i = w.series.labels.indexOf(y); if (i < 0) return null; let s = 0; for (const id in w.series.c) { const v = w.series.c[id][m] && w.series.c[id][m][i]; if (v > 0) s += v; } return s; };
+    for (const y of orig.series.labels) {
+      if (y < fromYear) continue;
+      for (const m of ['gdp', 'pop']) {
+        const a = tot(orig, y, m), b = tot(alt, y, m);
+        if (a > 0 && b != null && Math.abs(b / a - 1) >= th) return { y, metric: m, pct: (b / a - 1) * 100 };
+      }
+    }
+    return null;
+  };
+  WhatIf.summary = function (orig, alt, R) {
+    const pct = (a, b) => (a > 0 ? (b / a - 1) * 100 : 0);
+    const sg = (x) => (x >= 0 ? '+' : '') + x.toFixed(Math.abs(x) < 1 ? 1 : 0) + '%';
+    const first = R.chain.find((c) => c.kind !== 'start') || null;
+    const div = WhatIf.divergeYear(orig, alt, R.y);
+    const out = { changed: `${R.y} 年 ${R.m} 月：${R.label}`, first: null, diverge: null, result: [] };
+    if (!R.applied) { out.result.push('重跑時沒有遇到這件事，兩個世界沒有分岔。'); return out; }
+    if (first) out.first = { y: first.y, m: first.m, after: Math.max(0, first.y - R.y), title: first.title, side: first.side, eventId: first.eventId };
+    if (div) out.diverge = { y: div.y, after: Math.max(0, div.y - R.y), metric: div.metric === 'gdp' ? '世界 GDP' : '世界人口', pct: div.pct };
+    const W0 = R.world.orig, W1 = R.world.alt;
+    const dp = pct(W0.pop, W1.pop), dg = pct(W0.gdp, W1.gdp);
+    if (Math.abs(dp) >= 0.5 || Math.abs(dg) >= 0.5) out.result.push(`到 ${R.now.y} 年，世界人口 ${sg(dp)}、世界 GDP ${sg(dg)}（平行世界比原世界）`);
+    else out.result.push(`到 ${R.now.y} 年，世界總人口與 GDP 幾乎一樣（差距不到 0.5%）`);
+    const top = R.rows.find((r) => r.score > 0.05);
+    if (top) {
+      if (!top.orig || !top.alt || top.orig.alive !== top.alt.alive) out.result.push(`影響最大的是${top.name}：${top.alt && top.alt.alive ? '只存在於平行世界' : '在平行世界不存在'}`);
+      else {
+        const bits = [];
+        const g = pct(top.orig.gdp, top.alt.gdp), q = pct(top.orig.pop, top.alt.pop);
+        if (Math.abs(g) >= 1) bits.push(`GDP ${sg(g)}`);
+        if (Math.abs(q) >= 1) bits.push(`人口 ${sg(q)}`);
+        if (top.orig.regime !== top.alt.regime) bits.push(`制度 ${top.orig.regime} → ${top.alt.regime}`);
+        if (Math.abs(top.alt.stability - top.orig.stability) >= 10) bits.push(`穩定度 ${top.orig.stability.toFixed(0)} → ${top.alt.stability.toFixed(0)}`);
+        if (bits.length) out.result.push(`影響最大的是${top.name}：${bits.join('、')}`);
+      }
+    }
+    if (W0.wars !== W1.wars) out.result.push(`分岔後爆發的戰爭：原世界 ${W0.wars} 場、平行世界 ${W1.wars} 場`);
+    const E0 = orig.future && orig.future.ended, E1 = alt.future && alt.future.ended;
+    if ((E0 || E1) && !(E0 && E1 && E0.kind === E1.kind && E0.y === E1.y)) {
+      const t = (E) => (E ? `${E.title}（${E.y} 年）` : '還沒有走到結局');
+      out.result.push(`世界結局：原世界 ${t(E0)}；平行世界 ${t(E1)}`);
+    }
+    const n = R.onlyOrig.length + R.onlyAlt.length;
+    if (n) out.result.push(`分岔後共有 ${n} 件重大事件只在其中一個世界發生`);
+    return out;
+  };
+
+
 
 
   // ---------- 遠古時代 ----------
@@ -337,7 +392,20 @@
       reasons[top].population = [...new Set(Object.keys(a).concat(Object.keys(b)))].map((k) => ({ factor: k, orig: a[k] || 0, alt: b[k] || 0, diff: (b[k] || 0) - (a[k] || 0) }))
         .filter((x) => Math.abs(x.diff) > 1e-9).sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff)).slice(0, 3);
     }
+    const first = chain.find((c) => c.kind !== 'start');
+    const wo = world.orig, wa = world.alt;
+    const dpop = wo.pop > 0 ? (wa.pop / wo.pop - 1) * 100 : 0;
+    const res = [];
+    if (!info.applied) res.push('重跑時沒有遇到這件事，兩個世界沒有分岔。');
+    else {
+      res.push(Math.abs(dpop) >= 0.5 ? `到${A.yearLabel(orig.year)}，世界人口 ${dpop >= 0 ? '+' : ''}${dpop.toFixed(1)}%（平行世界比原世界）` : `到${A.yearLabel(orig.year)}，世界人口幾乎一樣`);
+      if (wo.polities !== wa.polities || wo.states !== wa.states) res.push(`政體：原世界 ${wo.polities} 個（國家 ${wo.states}）、平行世界 ${wa.polities} 個（國家 ${wa.states}）`);
+      if (rows[0] && rows[0].score > 0.05) { const r0 = rows[0]; res.push(`影響最大的是${r0.name}：人口 ${r0.orig.pop > 0 ? ((r0.alt.pop / r0.orig.pop - 1) * 100).toFixed(0) : 0}%${r0.orig.polity !== r0.alt.polity ? `，政體 ${r0.orig.polity} → ${r0.alt.polity}` : ''}`); }
+      if (firsts.length) res.push(`有 ${firsts.length} 項發明的地點或年代不同`);
+    }
+    const summary = { changed: `${A.yearLabel(info.y)}：${info.label}`, first: first ? { y: first.y, after: Math.max(0, first.y - info.y), title: first.title, side: first.side, eventId: first.eventId, ancient: true } : null, diverge: null, result: res };
     return {
+      summary,
       ancient: true, label: info.label, y: info.y, m: 1, tick: info.tick, applied: info.applied, from: info.from,
       years: orig.year - info.y, now: { y: orig.year, m: 1 }, focus: top, rows, world, firsts, onlyOrig, onlyAlt, chain, reasons,
       failed: (info.failed || []).map((f) => ({ y: f.cmd.y, m: 1, text: f.cmd.cmd === 'divine' && WS.Divine.ANCIENT_KINDS ? '神之手：' + ((WS.Divine.ANCIENT_KINDS[f.cmd.args[0]] || {}).name || f.cmd.args[0]) : f.cmd.cmd, reason: f.reason }))

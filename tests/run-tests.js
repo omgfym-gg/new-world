@@ -5,11 +5,18 @@ const load = require('./load.js');
 let WS = load();
 
 const results = [];
+const pending = [];
 function test(name, fn) {
   WS = load(); // 每個測試重新載入，避免互相污染
   const t = Date.now();
-  try { fn(); results.push(['✔', name, Date.now() - t]); }
-  catch (e) { results.push(['✘', name, Date.now() - t, e.message]); }
+  const i = results.length;
+  results.push(null);
+  try {
+    const r = fn();
+    // 非同步測試（存檔）：等全部同步測試跑完再收結果
+    if (r && typeof r.then === 'function') { pending.push(r.then(() => { results[i] = ['✔', name, Date.now() - t]; }, (e) => { results[i] = ['✘', name, Date.now() - t, e.message]; })); return; }
+    results[i] = ['✔', name, Date.now() - t];
+  } catch (e) { results[i] = ['✘', name, Date.now() - t, e.message]; }
 }
 const make = (setup = {}) => { const e = new WS.WorldEngine(); e.create(Object.assign({ mode: 'country', focus: 'CHN', seed: 'unit' }, setup)); return e; };
 const total = (w) => WS.util.ids(w).reduce((s, id) => s + WS.util.popTotal(w.countries[id]), 0);
@@ -650,18 +657,78 @@ test('加入全世界劇本後，原本 8 國劇本的結果不受影響（不�
   const e = make({ mode: 'global', seed: 'unit' }); e.advance(120);
   for (const id of WS.util.ids(e.world)) assert.ok(!('overlord' in e.world.countries[id]), id);
 });
+// 測試用的瀏覽器儲存：總容量超過 limit 就丟出 QuotaExceededError（像真的 localStorage 一樣）
+const fakeStorage = (limit) => {
+  const store = {};
+  const used = () => Object.values(store).reduce((s, v) => s + v.length, 0);
+  return {
+    store,
+    get length() { return Object.keys(store).length; },
+    key: (i) => Object.keys(store)[i],
+    setItem(k, v) { const before = store[k] ? store[k].length : 0; if (used() - before + v.length > limit) { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; } store[k] = String(v); },
+    getItem: (k) => (k in store ? store[k] : null),
+    removeItem: (k) => { delete store[k]; }
+  };
+};
 test('存檔空間不足時改存精簡版，載入後繼續推進結果相同', () => {
+  const W0 = WS;
   const e = makeW(); e.advance(144);
-  const store = {}; let limit = 1e12;
-  const fake = { setItem(k, v) { if (v.length > limit) throw new Error('QuotaExceeded'); store[k] = v; }, getItem: (k) => store[k] ?? null, removeItem: (k) => delete store[k] };
-  WS.Save.storage = () => fake;
-  limit = JSON.stringify(e.world).length - 1;
-  const r = WS.Save.write(e.world, 't');
-  assert.ok(r.ok && r.compact, '改存精簡版');
-  const back = WS.Save.read(r.meta.id);
-  const b = new WS.WorldEngine(); b.load(JSON.stringify(back));
-  e.advance(24); b.advance(24);
-  for (const id of WS.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
+  const full = JSON.stringify(e.world).length;
+  const fake = fakeStorage(full - 1);
+  W0.Save.storage = () => fake; W0.Save.useIDB = false; W0.Save.reset();
+  return W0.Save.write(e.world, 't').then((r) => {
+    assert.ok(r.ok && r.compact, '改存精簡版');
+    assert.ok(r.bytes < full * 0.8, '精簡版明顯比較小');
+    return W0.Save.read(r.meta.id);
+  }).then((back) => {
+    const b = new W0.WorldEngine(); b.load(JSON.stringify(back));
+    e.advance(24); b.advance(24);
+    for (const id of W0.util.ids(e.world)) assert.strictEqual(e.world.countries[id].econ.gdp, b.world.countries[id].econ.gdp, id);
+  });
+});
+test('存檔：空間不足時先清掉最舊的自動保存；自動保存最多留幾個；索引記錄大小', () => {
+  const W0 = WS;
+  const e = make(); e.advance(24);
+  const size = JSON.stringify(e.world).length;
+  const fake = fakeStorage(size * 3.5);
+  W0.Save.storage = () => fake; W0.Save.useIDB = false; W0.Save.reset();
+  let chain = Promise.resolve();
+  for (let i = 0; i < 3; i++) chain = chain.then(() => W0.Save.write(e.world, 'auto' + i, { auto: true }));
+  return chain.then(() => {
+    assert.strictEqual(W0.Save.list().length, 3);
+    assert.ok(W0.Save.list().every((m) => m.bytes > 0 && m.auto), '索引有大小與自動保存標記');
+    return W0.Save.write(e.world, '玩家存檔');
+  }).then((r) => {
+    assert.ok(r.ok, r.reason);
+    assert.ok(r.pruned.length >= 1, '清掉了最舊的自動保存');
+    assert.ok(r.pruned.includes('auto0'), '最舊的先清');
+    assert.ok(W0.Save.list().some((m) => m.name === '玩家存檔' && !m.auto));
+    // 自動保存的數量上限
+    W0.Save.keepAuto = 1;
+    return W0.Save.write(e.world, 'autoX', { auto: true });
+  }).then(() => {
+    assert.strictEqual(W0.Save.list().filter((m) => m.auto).length, 1, '只留最新的一個自動保存');
+    assert.ok(Object.keys(fake.store).filter((k) => k.indexOf('ws.save.') === 0).length === W0.Save.list().length, '刪掉的內容也從儲存移除');
+    return W0.Save.clearAuto();
+  }).then((n) => {
+    assert.strictEqual(n, 1);
+    assert.ok(W0.Save.list().every((m) => !m.auto));
+  });
+});
+test('存檔：真的放不下時清楚說明大小與解法（不會假裝成功）', () => {
+  const W0 = WS;
+  const e = make(); e.advance(12);
+  const fake = fakeStorage(1000);
+  W0.Save.storage = () => fake; W0.Save.useIDB = false; W0.Save.reset();
+  return W0.Save.write(e.world, 'x').then((r) => {
+    assert.strictEqual(r.ok, false);
+    assert.ok(/儲存空間不足/.test(r.reason) && /匯出/.test(r.reason) && /(KB|MB)/.test(r.reason), r.reason);
+    assert.strictEqual(W0.Save.list().length, 0, '失敗時不留下空的存檔紀錄');
+    return W0.Save.autosave(e.world);
+  }).then((r) => {
+    assert.strictEqual(r.ok, false, '自動存檔失敗也會回報');
+    assert.ok(W0.Save.lastAuto && W0.Save.lastAuto.ok === false);
+  });
 });
 
 // ---------- 遠古時代 ----------
@@ -958,8 +1025,90 @@ test('頭條聚焦：小國的事件分數打折，大國的戰爭與革命優�
   assert.ok(avg(ev, share) > avg(all, (x) => WS.Events.share(w, x)), '頭條偏向影響較大的事件');
 });
 
+// ---------- 結局後的改善（2026-11-18）：災難的實際影響、結局因果鏈、文明進程、「如果？」摘要 ----------
+const hotWorld = (seed) => {
+  const e = runTo(makeG(seed || 'hot'), 1960);
+  const w = e.world, F = WS.Future.ensure(w);
+  // 讓暖化超過臨界門檻、而且臨界點今年一定觸發（只用來測試記帳，不是正常的世界）
+  F.warming0 += 3.4 - F.warming; w.params.future.tippingChance = 1;
+  return e;
+};
+test('災難紀錄：氣候臨界點記下升溫、收成變化、之後的死亡與嚴重度（不再只有「—」）', () => {
+  const e = hotWorld();
+  runTo(e, e.world.year + 1);
+  const F = e.world.future;
+  const tip = F.catastrophes.find((c) => c.kind === 'climate');
+  assert.ok(tip, '觸發臨界點');
+  assert.strictEqual(tip.deaths, 0, '當下沒有直接死亡');
+  assert.ok(tip.impact.warming > 0 && tip.impact.popBefore > 0);
+  assert.ok(tip.impact.harvestAfter < tip.impact.harvestBefore, '全球收成下降');
+  e.world.params.future.tippingChance = 0;
+  runTo(e, e.world.year + 3);
+  assert.ok(tip.impact.later > 0, '之後每年的額外死亡算到這次臨界點');
+  assert.ok(tip.sev >= 1, '依實際影響分級：' + tip.sev);
+  const ev = e.world.events.find((x) => x.id === tip.eventId);
+  assert.ok(ev.effects.some((x) => /收成/.test(x)) && ev.effects.some((x) => /嚴重度/.test(x)), '事件分開寫出實際變化');
+  // 拆分不會超過氣候災害的總死亡（含饑荒的估算）
+  assert.ok(tip.impact.later <= F.tollAll.climate + F.food.climate + 1e-6);
+});
+test('結局因果鏈：氣候結局一步步列出排放、臨界點、收成、死亡與人口門檻', () => {
+  const e = hotWorld('hot2');
+  let n = 0;
+  while (!e.world.future.ended && n++ < 12 * 400) e.step();
+  const R = WS.Future.report(e.world);
+  assert.ok(R.ended, '走到結局');
+  assert.ok(R.chain.length >= 3);
+  assert.ok(R.chain.some((x) => /化石燃料/.test(x.t)) && R.chain[R.chain.length - 1].k === 'end');
+  if (R.ended.kind === 'climate') assert.ok(R.chain.some((x) => /臨界點/.test(x.t)) && R.chain.some((x) => /收成/.test(x.t)));
+  assert.ok(R.series.harvest.length === R.series.y.length, '收成數列與年份對齊');
+});
+test('文明進程：階段目標、下一個突破；多年沒有發明時列出停滯原因（只讀，不改世界）', () => {
+  const e = runTo(makeG('pg'), 1915);
+  const w = e.world;
+  const before = e.serialize();
+  const G = WS.Future.progress(w);
+  assert.ok(G.stages.length >= 6 && G.cur >= 0);
+  assert.ok(G.next.length > 0 && G.next[0].byName);
+  assert.strictEqual(e.serialize(), before, '不改變世界');
+  const c = JSON.parse(before);
+  for (const k in c.invented) c.invented[k].year = c.year - 40;
+  const G2 = WS.Future.progress(c);
+  assert.ok(G2.stalled && G2.since >= 25 && G2.why.length > 0, '停滯與原因');
+});
+test('神之手「啟發一項新發明」：只能選世界上還沒有的技術；寫入指令紀錄、加快研究、可重現', () => {
+  const run = () => {
+    const e = runTo(makeG('inv'), 1913);
+    const w = e.world;
+    w.divine.energy = 100;
+    const t = WS.Divine.inventOptions(w, w.countries.USA)[0];
+    assert.ok(t && !w.invented[t]);
+    const r = e.divine('invent', 'USA', t);
+    assert.ok(r.ok, r.reason);
+    assert.strictEqual(w.commandLog[w.commandLog.length - 1].cmd, 'divine');
+    const p0 = w.countries.USA.tech[t] ? w.countries.USA.tech[t].progress : 0;
+    e.advance(12);
+    assert.ok(w.countries.USA.tech[t].progress > p0);
+    assert.strictEqual(WS.Divine.preview(w, 'invent', 'USA', Object.keys(w.invented)[0]).ok, false, '已經有人發明的不能選');
+    return e.serialize();
+  };
+  assert.strictEqual(run(), run());
+});
+test('「如果？」重點摘要：改寫了什麼、差異何時出現、最後造成什麼結果', () => {
+  const e = runTo(makeG('h'), 2012);
+  const w = e.world;
+  const cat = w.events.find((x) => x.type === 'catastrophe');
+  const r = e.whatIf(cat.id, WS.WhatIf.options(w, cat)[0].key);
+  const X = r.report.summary;
+  assert.ok(X && /如果/.test(X.changed));
+  assert.ok(X.result.length >= 1);
+  if (X.first) assert.ok(X.first.y >= cat.y && X.first.after >= 0);
+  if (X.diverge) assert.ok(X.diverge.y >= cat.y);
+});
+
 // ---------- 輸出 ----------
-let fail = 0;
-for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
-console.log(`\n${results.length - fail} / ${results.length} 通過`);
-process.exit(fail ? 1 : 0);
+Promise.all(pending).then(() => {
+  let fail = 0;
+  for (const r of results) { console.log(`${r[0]} ${r[1]}（${r[2]} ms）${r[3] ? '\n    → ' + r[3] : ''}`); if (r[0] === '✘') fail++; }
+  console.log(`\n${results.length - fail} / ${results.length} 通過`);
+  process.exit(fail ? 1 : 0);
+});
