@@ -1,4 +1,4 @@
-/* 世界模擬器：未來科技指揮中心風格（手機優先） */
+/* 創 世界：未來科技指揮中心風格（手機優先） */
 :root {
   --bg: #05070d;
   --bg2: #0a1020;
@@ -342,3 +342,11 @@ body::after {
 .ev-media { margin: 6px 0 2px; }
 .ev-media .wc-canvas { height: min(48vw, 260px); }
 .ev-media-note { margin: 2px 0 10px; font-size: 12px; }
+
+/* 地區生活畫面（點地區看人們正在做什麼） */
+.life-wrap { border-color: rgba(125, 211, 252, .45); box-shadow: 0 0 24px rgba(56, 189, 248, .15); }
+.life-wrap { max-width: 720px; margin: 0 auto; }
+.life-wrap .wc-canvas { height: auto; aspect-ratio: 16 / 9; }
+.life-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.life-list li { display: flex; gap: 8px; align-items: flex-start; line-height: 1.45; }
+.life-list .ic { width: 22px; flex: none; text-align: center; }

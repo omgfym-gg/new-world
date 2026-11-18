@@ -273,8 +273,8 @@
       <div class="start">
         <div class="globe-slot hero" id="globe-slot"><div class="hud-tag tl">TERRA-3 · 觀測中</div><div class="hud-tag br">文明調整台 v1</div></div>
         <div class="brand">
-          <div class="en">WORLD SIMULATOR · 創•世界</div>
-          <h1>世界模擬器</h1>
+          <div class="en">GENESIS · WORLD SIMULATOR</div>
+          <h1>創 世界</h1>
           <p>玩家設定世界，模擬器創造歷史，玩家觀察並改變歷史。</p>
         </div>
         <div class="menu">
@@ -381,6 +381,7 @@
     else if (isAnc()) renderAncientGame();
     else renderGame();
     mountGlobe();
+    mountLife();
   }
 
   function renderGame() {
@@ -493,7 +494,7 @@
         <div class="hud-tag bl">戰爭<b class="num ${wars ? 'bad' : ''}">${wars}</b>同盟<b class="num">${allies}</b></div>
         <div class="hud-tag br">GDP<b class="num">${fGdp(gdp)}</b></div>
       </div>
-      <div class="legend"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span><i style="background:#34d399"></i>貿易</span><span><i style="background:#ffd68c"></i>夜晚城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div><p class="dim" style="margin:4px 0 0">拖曳可轉動・點國家看詳情・點地球上的標籤看原因，戰區標籤可開戰場畫面</p></div>`;
+      <div class="legend"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span><i style="background:#34d399"></i>貿易</span><span><i style="background:#ffd68c"></i>夜晚城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div><p class="dim" style="margin:4px 0 0">拖曳可轉動・點國家看當地生活・點地球上的標籤看原因，戰區標籤可開戰場畫面</p></div>`;
   }
 
   // ---------- 圖表 ----------
@@ -572,7 +573,7 @@
   function countryTab() {
     const w = W();
     const ids = U.ids(w);
-    const id = S.view && w.countries[S.view] && w.countries[S.view].alive ? S.view : w.countries[w.focus] && w.countries[w.focus].alive ? w.focus : ids[0];
+    const id = cView(w);
     const c = w.countries[id];
     const adv = w.difficulty === 'advanced';
     const pol = c.pol;
@@ -584,6 +585,7 @@
     const debtR = c.fiscal.debt / Math.max(1e-6, c.econ.gdp);
     return `
       ${countryPicker(w, ids, id)}
+      ${lifeCard()}
       <div class="card"><h3><span>${esc(c.name)}・${esc(U.regime(w, c.regime).name)}</span><span class="tag">成立 ${c.founded}${c.parent ? '・分裂自' + esc(w.countries[c.parent].name) : ''}${c.independence ? '・' + c.independence + ' 年脫離' + esc(w.countries[c.formerOverlord].name) + '獨立' : ''}</span></h3>
         ${c.overlord ? `<p class="dim">${{ dominion: '自治領', protectorate: '保護國', colony: '殖民地' }[c.subjectType] || '屬地'}：外交與宣戰由宗主國「${esc(w.countries[c.overlord].name)}」決定，宗主國開戰時一起參戰。條件成熟時可能獨立。</p>` : ''}
         <div class="row"><span class="tag">領導人 ${esc(c.leader.name)}</span><span class="tag blue">目標：${esc(WS.Data.goals[c.goal])}</span><span class="tag">地區：${c.regions.map((r) => esc(w.regions[r].name)).join('、')}</span></div></div>
@@ -1039,6 +1041,136 @@
     return out;
   }
 
+  // ======================= 地區生活畫面 =======================
+  // 點地球上的地區／國家時，畫出「這裡的人現在正在做什麼」。只讀引擎狀態，不寫入任何數值。
+  let lifeCam = null;
+  function cView(w) {
+    const ids = U.ids(w);
+    return S.view && w.countries[S.view] && w.countries[S.view].alive ? S.view : w.countries[w.focus] && w.countries[w.focus].alive ? w.focus : ids[0];
+  }
+  function biomeOf(lat, g) {
+    const a = Math.abs(lat);
+    if (g && g.animals >= 0.6 && g.arable < 0.15) return 'steppe';
+    if (a < 15) return 'tropical';
+    if (g && g.wild <= 0.15 && a < 32 && (g.arable < 0.1 || a >= 15)) return 'arid';
+    if (a >= 52) return 'cold';
+    return 'temperate';
+  }
+  const pct = (v) => Math.round(v * 100) + '%';
+  function lifeData() {
+    const w = W();
+    if (!w) return null;
+    return isAnc() ? ancientLife(w) : modernLife(w);
+  }
+  function ancientLife(w) {
+    const A = AN(), id = aRegion(w), r = w.ancient.regions[id];
+    if (!r) return null;
+    const pop = A.popOf(r) || 1e-9;
+    const has = (t) => A.knows(w, r, t);
+    const shares = { wild: r.pop.F / pop, farm: r.pop.A / pop, city: r.pop.U / pop };
+    const pol = A.polityOf(w, r);
+    const PT = WS.Data.ancientPolityTypes;
+    const metal = has('iron') ? '鐵' : has('bronze') ? '青銅' : has('copper') ? '銅' : null;
+    const feat = {
+      bow: has('microliths'), pottery: has('pottery'), storage: has('storage'), herding: has('animal_domestication'),
+      plough: has('plough'), irrigation: has('irrigation'), wheel: has('wheel'), sailing: has('sailing'), currency: has('currency'),
+      writing: has('writing'), metal: !!metal, iron: has('iron'), gunpowder: has('gunpowder'),
+      horse: has('animal_domestication') && r.animals >= 0.5 && (has('wheel') || r.id === 'STE')
+    };
+    // 最近的戰爭（依每期長度，約最近兩期內）
+    const span = Math.max(20, A.dtFor(w) * 2);
+    let war = null;
+    for (let i = w.events.length - 1; i >= 0; i--) {
+      const e = w.events[i];
+      if (w.year - e.y > span) break;
+      if (e.type === 'war' && e.countries.includes(id)) {
+        const ap = e.polity && w.ancient.polities[e.polity];
+        const other = e.countries.find((x) => x !== (ap ? ap.capital : null)) || e.countries[1];
+        const or = w.ancient.regions[other];
+        war = { title: e.title, intensity: e.level >= 3 ? 1 : 0.6, colors: [ap ? ap.color : r.color, or ? polityColor(w, or) : '#999'], y: e.y };
+        break;
+      }
+    }
+    const famine = U.clamp((1 - r.fs) * 3, 0, 1), drought = U.clamp((1 - r.clim) * 2.5, 0, 1);
+    const items = [];
+    if (shares.wild > 0.005) items.push(['🏹', `${pct(shares.wild)} 的人過著遊獵生活：${feat.bow ? '拿弓箭' : '拿長矛'}打獵、採集野果${r.coast >= 0.35 ? '、捕魚' : ''}`]);
+    if (feat.herding) items.push(['🐑', `已經會養家畜：放牧牛羊${feat.horse ? '、騎馬' : ''}`]);
+    if (shares.farm > 0.005) {
+      const how = [feat.plough ? '用牛拉犁' : '用石鋤翻土', feat.irrigation ? '引河水灌溉' : null, feat.storage ? '收成存進穀倉' : null].filter(Boolean).join('、');
+      items.push(['🌾', `${pct(shares.farm)} 的人在種田：${how}`]);
+    }
+    if (shares.city > 0.002) {
+      const names = r.cities.slice(0, 3).map((c) => c.name).join('、');
+      const life = [feat.currency ? '用貨幣在市集買賣' : '在市集以物易物', feat.writing ? '書吏用文字記帳' : null].filter(Boolean).join('、');
+      items.push(['🏛', `${pct(shares.city)} 的人住在城市（${r.cities.length} 座${names ? '：' + names : ''}）：${life}`]);
+    }
+    if (metal) items.push(['⚒', `工匠在冶煉${metal}，打造工具與武器`]);
+    if (pol) items.push(['👑', `受「${pol.name}」統治（${PT[pol.type] ? PT[pol.type].name : ''}）`]);
+    if (war) items.push(['⚔', `打仗：${war.title}（${yl(war.y)}）`]);
+    if (famine > 0.15) items.push(['🥀', `糧食不夠：糧食安全只有 ${(r.fs * 100).toFixed(0)}%，有人在挨餓`]);
+    if (drought > 0.15) items.push(['☀', `氣候比平常乾，野生食物與收成減少`]);
+    const main = shares.city > 0.25 ? '城市生活' : shares.farm >= shares.wild ? '多數人在種田' : feat.herding && r.animals >= 0.6 && r.arable < 0.2 ? '多數人在放牧與遊獵' : '多數人在打獵採集';
+    const caption = [main, war ? '正在打仗' : null, famine > 0.3 ? '鬧饑荒' : null].filter(Boolean).join('・');
+    return {
+      key: [id, 'a', Math.round(shares.wild * 20), Math.round(shares.farm * 20), Math.round(shares.city * 40)].join(':'), seedKey: id,
+      modern: false, place: r.name, when: yl(w.year), caption, items, shares, feat,
+      biome: biomeOf(r.lat, r), coast: r.coast, river: r.river, famine, drought, war, unrest: 0, pollution: 0,
+      color: pol ? pol.color : r.color, polityRank: pol && PT[pol.type] ? PT[pol.type].rank : 0, polityName: pol ? pol.name : null, cities: r.cities.length
+    };
+  }
+  function modernLife(w) {
+    const id = cView(w), c = w.countries[id];
+    if (!c) return null;
+    const lab = c.econ.lab, tot = (lab.agri + lab.ind + lab.serv) || 1;
+    const has = (t) => hasTech(c, t);
+    const shares = { wild: 0, farm: lab.agri / tot, city: (lab.ind + lab.serv) / tot, ind: lab.ind / tot, serv: lab.serv / tot };
+    const feat = {
+      electric: has('electrification'), automobile: has('automobile'), railway: has('railway'), aviation: has('aviation'), tractor: has('tractor'),
+      armor: has('armor'), steam: true, wheel: true, metal: true, iron: true, sailing: true, plough: !has('tractor'), irrigation: true, computing: has('computing'), internet: has('internet')
+    };
+    const wr = w.wars.find((x) => !x.ended && (x.attackers.includes(id) || x.defenders.includes(id)));
+    let war = null;
+    if (wr) {
+      const mine = wr.attackers.includes(id) ? wr.attackers : wr.defenders, theirs = mine === wr.attackers ? wr.defenders : wr.attackers;
+      const d = warCamData(wr.id);
+      war = { title: wr.name, intensity: d ? d.intensity : 0.6, colors: [c.color, (w.countries[theirs[0]] || {}).color || '#999'], id: wr.id };
+    }
+    const famine = U.clamp((c.res.shortage || 0) * 2.5, 0, 1);
+    const unrest = U.clamp((45 - c.pol.stability) / 45, 0, 1);
+    const items = [];
+    items.push(['🌾', `${pct(shares.farm)} 的人在務農${feat.tractor ? '，用農業機械耕作' : '，多半靠人力和牲口'}`]);
+    if (shares.ind > 0.01) items.push(['🏭', `${pct(shares.ind)} 的人在工廠、礦場做工${feat.electric ? '（已用電力）' : ''}`]);
+    if (shares.serv > 0.01) items.push(['🏙', `${pct(shares.serv)} 的人做服務業：商店、辦公室、學校、醫院${feat.computing ? '，開始用電腦' : ''}`]);
+    items.push(['🏠', `城市化 ${pct(c.demo.urban)}`]);
+    const move = [feat.railway ? '火車' : null, feat.automobile ? '汽車' : null, feat.aviation ? '飛機' : null].filter(Boolean);
+    if (move.length) items.push(['🚆', `出門搭${move.join('、')}`]);
+    if (war) items.push(['⚔', `打仗：${war.title}`]);
+    if (famine > 0.15) items.push(['🥀', `糧食短缺，有人在挨餓`]);
+    if (unrest > 0.3) items.push(['📢', `政局不穩（穩定度 ${c.pol.stability.toFixed(0)}），街上有人示威`]);
+    const main = shares.farm > 0.5 ? '多數人在種田' : shares.ind > shares.serv ? '工廠與城市生活' : '城市與服務業生活';
+    const caption = [main, war ? '正在打仗' : null, famine > 0.3 ? '鬧饑荒' : null, unrest > 0.5 ? '街頭示威' : null].filter(Boolean).join('・');
+    return {
+      key: [id, 'm', Math.round(shares.farm * 20), Math.round(shares.city * 20)].join(':'), seedKey: id,
+      modern: true, place: c.name, when: `${w.year} 年 ${w.month} 月`, caption, items, shares, feat,
+      biome: biomeOf(c.lat || 30, null), coast: 0.5, river: 0.3, famine, drought: 0, war, unrest, pollution: U.clamp((c.res.pollution || 0) / 100, 0, 1),
+      color: c.color, polityRank: 3, polityName: c.name, cities: 3
+    };
+  }
+  function lifeCard() {
+    const d = lifeData();
+    if (!d || !window.WSLifeCam) return '';
+    return `<div class="card life-card"><h3>此刻的生活 <span class="dim" style="font-weight:400;font-size:12px">${esc(d.place)}・${esc(d.when)}</span></h3>
+      <div class="wc-wrap life-wrap" id="life-slot"></div>
+      <ul class="life-list">${d.items.map(([ic, tx]) => `<li><span class="ic">${ic}</span>${esc(tx)}</li>`).join('')}</ul>
+      <p class="dim" style="margin:4px 0 0;font-size:12px">依模擬數據畫的動畫，不是真實影像：田、城市、獵人的多寡跟著人口比例變，工具跟著已普及的科技變。</p></div>`;
+  }
+  function mountLife() {
+    const slot = document.getElementById('life-slot');
+    if (!slot || !window.WSLifeCam) return;
+    if (!lifeCam) lifeCam = new WSLifeCam(lifeData);
+    lifeCam.attach(slot);
+  }
+
   // ======================= 遠古時代 =======================
   // 遠古世界沒有國家、GDP；畫面以「地區」為單位。只讀取引擎狀態，不自己算數值。
   const AN = () => WS.Ancient;
@@ -1117,7 +1249,7 @@
         <div class="hud-tag br">政體<b class="num">${s.polities}</b></div>
       </div>
       <div class="legend"><span>顏色＝所屬政體</span><span><i style="background:#38bdf8"></i>同一政體</span><span><i style="background:#ffd68c"></i>城市燈光</span><span><i style="background:#c48c3c"></i>饑荒</span></div>
-      <p class="dim" style="margin:4px 0 0">拖曳可轉動・點地區看詳情・點標籤看原因・事件旁的 <b class="gold">如果？</b> 可以看另一條世界線</p></div>`;
+      <p class="dim" style="margin:4px 0 0">拖曳可轉動・點地區看當地生活・點標籤看原因・事件旁的 <b class="gold">如果？</b> 可以看另一條世界線</p></div>`;
   }
   function aEventItem(e) {
     const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '');
@@ -1165,6 +1297,7 @@
     const KIND = { land: '陸路', sea: '海路（需航海）', far: '遠方（極難往來）' };
     return `
       <div class="field"><select data-act="view-select" aria-label="選擇地區">${A.ids(w).map((x) => `<option value="${x}" ${x === id ? 'selected' : ''}>${esc(w.ancient.regions[x].name)}</option>`).join('')}</select></div>
+      ${lifeCard()}
       <div class="card"><h3><span>${esc(r.name)}</span>${pol ? `<span class="tag gold">${esc(pol.name)}</span>` : ''}</h3>
         <div class="row"><span class="tag">${esc(r.era)}</span><span class="tag blue">交換方式：${esc(r.exchangeMode)}</span>${r.clim !== 1 ? `<span class="tag">氣候 ${(r.clim * 100).toFixed(0)}%</span>` : ''}</div>
         <div class="kpis" style="margin-top:10px">
@@ -1178,7 +1311,7 @@
           ${meter('狩獵採集', share('F'))}${meter('農民', share('A'))}${meter('城市', share('U'), 'urban', id)}
           <p class="dim">約 ${bands.toLocaleString()} 個遊獵群（每群約 ${P.pop.bandSize} 人）・約 ${villages.toLocaleString()} 個村落（每村約 ${P.pop.villageSize} 人）</p>
           <p>城市：${r.cities.length ? r.cities.map((c) => `${esc(c.name)}<span class="dim">（${esc(yl(c.founded))}）</span>`).join('、') : '<span class="dim">尚無</span>'}</p>
-          <p class="dim">野生食物約可養活 ${fPeople(r.cap.forage)}${r.cap.farm > 0 ? `・農地約可養活 ${fPeople(r.cap.farm)}（農耕經驗加成 +${(A.knowBonus(w, r) * 100).toFixed(0)}%）` : ''}</p>
+          ${r.cap ? `<p class="dim">野生食物約可養活 ${fPeople(r.cap.forage)}${r.cap.farm > 0 ? `・農地約可養活 ${fPeople(r.cap.farm)}（農耕經驗加成 +${(A.knowBonus(w, r) * 100).toFixed(0)}%）` : ''}</p>` : '<p class="dim">推進時間後會算出這裡的野生食物與農地可以養活多少人。</p>'}
         </div>
         <div class="card"><h3>地理條件</h3>
           ${geoMeter('野生食物', r.wild)}${geoMeter('可耕地', r.arable)}${geoMeter('河流水源', r.river)}${geoMeter('可馴化植物', r.plants)}${geoMeter('可馴化動物', r.animals)}
