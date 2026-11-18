@@ -267,10 +267,15 @@
     t.textContent = msg; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600);
   }
-  function openModal(html) { modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0; }
+  function openModal(html) {
+    modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0;
+    // 背景音樂：視窗裡有戰場畫面（完整戰場或事件的戰場動畫）時換成戰爭曲，其他視窗用平時的曲子
+    if (WS.Music) WS.Music.setMood(/id="wc-canvas"|data-war="/.test(html) ? 'war' : 'calm');
+  }
   function closeModal() {
     modal.hidden = true;
     if (cam) { cam.stop(); cam = null; }
+    if (WS.Music) WS.Music.setMood('calm');
     if (scam) { scam.stop(); scam = null; }
     // 自動播放因事件暫停：玩家選完、關掉視窗後自動繼續
     if (S.resumeAuto) { S.resumeAuto = false; if (!S.auto && S.screen === 'game') toggleAuto(); }
@@ -394,6 +399,23 @@
     else renderGame();
     mountGlobe();
     mountLife();
+    if (WS.Music && S.screen === 'game' && engine.world) WS.Music.setEra(musicEra(W()));
+  }
+
+  // 背景音樂的時代：看世界上已經出現的最先進科技（只讀取，不改任何數值）
+  function musicEra(w) {
+    if (isAnc()) {
+      const has = (t) => !!(w.ancient && w.ancient.firsts && w.ancient.firsts[t]);
+      if (has('printing') || has('gunpowder') || has('compass')) return 'renai';
+      if (has('writing')) return 'classic';
+      return 'stone';
+    }
+    const inv = w.invented || {};
+    const has = (t) => !!inv[t];
+    const futureTech = Object.keys(inv).some((t) => WS.Data.techs[t] && WS.Data.techs[t].future);
+    if (futureTech || (has('internet') && has('satellite'))) return 'future';
+    if (has('computing')) return 'digital';
+    return 'industrial';
   }
 
   function renderGame() {
