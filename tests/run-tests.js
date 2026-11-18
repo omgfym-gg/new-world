@@ -1105,6 +1105,26 @@ test('「如果？」重點摘要：改寫了什麼、差異何時出現、最�
   if (X.diverge) assert.ok(X.diverge.y >= cat.y);
 });
 
+test('介面隨時代換風格：依世界上出現的科技決定，只讀取不改世界', () => {
+  require('vm').runInThisContext(require('fs').readFileSync(require('path').join(__dirname, '../ui/era-theme.js'), 'utf8'));
+  const ET = WS.EraTheme;
+  const a = makeA('ui');
+  assert.strictEqual(ET.themeOf(a.world), 'stone', '遠古一開始是石板');
+  a.world.ancient.firsts.writing = { y: -3000 };
+  assert.strictEqual(ET.themeOf(a.world), 'scroll', '有文字以後是羊皮卷');
+  const e = makeG('ui');
+  const before = e.serialize();
+  assert.strictEqual(ET.themeOf(e.world), 'paper', '1911 年是報紙');
+  assert.strictEqual(e.serialize(), before, '判斷時代不會改變世界');
+  e.world.invented.computing = { y: 1950 };
+  assert.strictEqual(ET.themeOf(e.world), 'dash');
+  const fut = Object.keys(WS.Data.techs).find((t) => WS.Data.techs[t].future);
+  e.world.invented[fut] = { y: 2050 };
+  assert.strictEqual(ET.themeOf(e.world), 'holo');
+  assert.strictEqual(ET.pick(e.world, 'stone'), 'stone', '玩家可以固定風格');
+  assert.strictEqual(ET.pick(null, 'auto'), 'dash', '開始畫面用儀表板');
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;

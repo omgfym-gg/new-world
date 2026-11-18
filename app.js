@@ -23,6 +23,7 @@
     try { const st = WS.Save.storage(); if (st) st.setItem(PAUSE_KEY, v); } catch (e) { /* 無法儲存時只在這次有效 */ }
   }
   S.pauseMode = loadPauseMode(); engine.pauseMode = S.pauseMode;
+  S.uiTheme = WS.EraTheme.pref();
   // 會轉的地球（只畫圖）：點國家＝打開該國資料；點標籤＝看事件原因或戰場畫面
   const globe = window.WSGlobe ? WSGlobe.get() : null;
   if (globe) {
@@ -407,25 +408,27 @@
     else if (S.screen === 'setup') renderSetup();
     else if (isAnc()) renderAncientGame();
     else renderGame();
+    applyTheme();
     mountGlobe();
     mountLife();
     if (WS.Music && S.screen === 'game' && engine.world) WS.Music.setEra(musicEra(W()));
   }
 
-  // 背景音樂的時代：看世界上已經出現的最先進科技（只讀取，不改任何數值）
-  function musicEra(w) {
-    if (isAnc()) {
-      const has = (t) => !!(w.ancient && w.ancient.firsts && w.ancient.firsts[t]);
-      if (has('printing') || has('gunpowder') || has('compass')) return 'renai';
-      if (has('writing')) return 'classic';
-      return 'stone';
+  // 背景音樂與介面風格的時代：看世界上已經出現的最先進科技（只讀取，不改任何數值）
+  function musicEra(w) { return WS.EraTheme.age(w); }
+  // 介面隨時代換風格（只改外觀）：開始與設定畫面用儀表板，進入世界後跟著時代（或玩家固定的風格）
+  function applyTheme() {
+    const w = S.screen === 'game' ? engine.world : null;
+    const key = WS.EraTheme.pick(w, S.uiTheme);
+    if (WS.EraTheme.apply(key) && w && S.uiTheme === 'auto') {
+      const T = WS.EraTheme.THEMES[key];
+      toast(`世界進入${T.era}：介面換成「${T.name}」風格`, 3600);
     }
-    const inv = w.invented || {};
-    const has = (t) => !!inv[t];
-    const futureTech = Object.keys(inv).some((t) => WS.Data.techs[t] && WS.Data.techs[t].future);
-    if (futureTech || (has('internet') && has('satellite'))) return 'future';
-    if (has('computing')) return 'digital';
-    return 'industrial';
+  }
+  function themeSetting() {
+    const ET = WS.EraTheme, cur = ET.pick(S.screen === 'game' ? engine.world : null, 'auto');
+    return `<div class="field"><label>介面風格</label>${seg2('ui-theme', S.uiTheme, [['auto', '跟著時代'], ...Object.entries(ET.THEMES).map(([k, t]) => [k, t.name])])}
+      <span class="dim">${S.uiTheme === 'auto' ? `世界現在是${ET.THEMES[cur].era}，介面是「${ET.THEMES[cur].name}」（${ET.THEMES[cur].desc}）。石器時代是石板、古文明到大航海是羊皮卷、工業時代是報紙、資訊時代是儀表板、未來是全息螢幕，跟著世界上出現的科技自動換。` : `已固定為「${ET.THEMES[S.uiTheme].name}」，不會隨時代改變。`}只改外觀，不影響世界。</span></div>`;
   }
 
   function renderGame() {
@@ -1411,6 +1414,7 @@
           <div class="field"><label>設定深度</label>${seg2('depth-live', w.difficulty, [['simple', '簡易'], ['custom', '自訂'], ['advanced', '進階']])}</div>
           <div class="field"><label>玩家介入</label>${seg2('intervention-live', w.intervention, [['none', '不介入'], ['occasional', '偶爾決策'], ['full', '完全控制']])}</div>
           ${pauseSetting(false)}
+          ${themeSetting()}
           <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
         </div>
         <div class="card"><h3>數值驗證</h3><p class="dim">已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個問題（自動修正並記錄）。</p>
@@ -1770,6 +1774,7 @@
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
+      <div class="card"><h3>介面</h3>${themeSetting()}</div>
       <div class="card"><h3>這個世界</h3><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
 </div>`;
   }
@@ -2088,6 +2093,7 @@
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'headlines-all': headlinesModal(); break;
       case 'summary-all': summaryModal(+v); break;
+      case 'ui-theme': S.uiTheme = WS.EraTheme.THEMES[v] ? v : 'auto'; WS.EraTheme.setPref(S.uiTheme); render(); toast('介面風格：' + (S.uiTheme === 'auto' ? '跟著時代' : WS.EraTheme.THEMES[v].name)); break;
       case 'pause-mode': setPauseMode(v); if (modal.hidden) render(); else { const box = modalBody.querySelector('.pause-pick'); if (box) box.innerHTML = pauseSetting(true); } toast('事件介入方式：' + WS.Events.PAUSE_MODES[v].name); break;
       case 'divine-open': S.divine = { kind: v || 'health', cid: t.dataset.c || (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
       case 'divine-kind': S.divine.kind = v; S.divine.opt = null; divineModal(); break;
