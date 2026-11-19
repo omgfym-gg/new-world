@@ -313,7 +313,22 @@
           <button class="btn" data-act="custom-world">自訂世界<small>選起點（1911 年真實世界或遠古），修改世界制度與規則</small></button>
         </div>
         <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
+        ${langPicker()}
       </div>`;
+  }
+  // 語言（只改畫面文字，不影響世界）：開始畫面的小選單用各語言自己的名稱，不翻譯
+  function langPicker() {
+    const I = WS.I18n;
+    if (!I) return '';
+    return `<div class="lang-pick" translate="no"><span aria-hidden="true">🌐</span>${Object.entries(I.LANGS).map(([k, L]) =>
+      `<button class="${I.lang === k ? 'on' : ''}" data-act="lang" data-v="${k}" lang="${L.html}">${L.name}</button>`).join('')}</div>`;
+  }
+  function langSetting() {
+    const I = WS.I18n;
+    if (!I) return '';
+    const pref = I.pref();
+    return `<div class="field"><label>語言 · Language</label><div translate="no">${seg2('lang', pref, [['auto', '🌐 Auto'], ...Object.entries(I.LANGS).map(([k, L]) => [k, L.name])])}</div>
+      <span class="dim">${pref === 'auto' ? `目前依裝置語言自動選擇（${I.LANGS[I.lang].name}）。` : ''}只改畫面文字，不影響世界與存檔。</span></div>`;
   }
 
   // ======================= 設定畫面 =======================
@@ -1414,6 +1429,7 @@
           <div class="field"><label>設定深度</label>${seg2('depth-live', w.difficulty, [['simple', '簡易'], ['custom', '自訂'], ['advanced', '進階']])}</div>
           <div class="field"><label>玩家介入</label>${seg2('intervention-live', w.intervention, [['none', '不介入'], ['occasional', '偶爾決策'], ['full', '完全控制']])}</div>
           ${pauseSetting(false)}
+          ${langSetting()}
           ${themeSetting()}
         </div>
         <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary>
@@ -1776,7 +1792,7 @@
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
-      <div class="card"><h3>介面</h3>${themeSetting()}</div>
+      <div class="card"><h3>介面</h3>${langSetting()}${themeSetting()}</div>
       <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
 </details>`;
   }
@@ -2094,6 +2110,12 @@
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'headlines-all': headlinesModal(); break;
       case 'summary-all': summaryModal(+v); break;
+      case 'lang': {
+        const I = WS.I18n;
+        I.setPref(v);
+        I.switchTo(v === 'auto' ? I.detect() : v, (got) => { render(); toast('🌐 ' + I.LANGS[got].name); });
+        break;
+      }
       case 'ui-theme': S.uiTheme = WS.EraTheme.THEMES[v] ? v : 'auto'; WS.EraTheme.setPref(S.uiTheme); render(); toast('介面風格：' + (S.uiTheme === 'auto' ? '跟著時代' : WS.EraTheme.THEMES[v].name)); break;
       case 'pause-mode': setPauseMode(v); if (modal.hidden) render(); else { const box = modalBody.querySelector('.pause-pick'); if (box) box.innerHTML = pauseSetting(true); } toast('事件介入方式：' + WS.Events.PAUSE_MODES[v].name); break;
       case 'divine-open': S.divine = { kind: v || 'health', cid: t.dataset.c || (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
