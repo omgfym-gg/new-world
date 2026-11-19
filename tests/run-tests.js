@@ -1125,6 +1125,68 @@ test('介面隨時代換風格：依世界上出現的科技決定，只讀取�
   assert.strictEqual(ET.pick(null, 'auto'), 'dash', '開始畫面用儀表板');
 });
 
+
+// ---------- 多國語言（只改畫面文字，不影響模擬） ----------
+const loadLang = () => {
+  const vm = require('vm'), fs = require('fs'), path = require('path');
+  for (const f of ['i18n/i18n.js', 'i18n/en.js', 'i18n/ja.js', 'i18n/zh-cn.js']) vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), { filename: f });
+  return WS.I18n;
+};
+test('多國語言：依裝置語言自動選擇，簡繁不明時看時區（不用網路位置）', () => {
+  const I = loadLang();
+  assert.strictEqual(I.detect(['zh-TW'], ''), 'zh-TW');
+  assert.strictEqual(I.detect(['zh-HK'], ''), 'zh-TW');
+  assert.strictEqual(I.detect(['zh-Hant'], ''), 'zh-TW');
+  assert.strictEqual(I.detect(['zh-CN'], 'Asia/Taipei'), 'zh-CN', '有寫地區就照地區');
+  assert.strictEqual(I.detect(['zh-Hans-SG'], ''), 'zh-CN');
+  assert.strictEqual(I.detect(['zh'], 'Asia/Taipei'), 'zh-TW', '只寫 zh 時參考時區');
+  assert.strictEqual(I.detect(['zh'], 'Asia/Shanghai'), 'zh-CN');
+  assert.strictEqual(I.detect(['ja-JP'], ''), 'ja');
+  assert.strictEqual(I.detect(['fr-FR', 'ja'], ''), 'ja', '依偏好順序找第一個支援的語言');
+  assert.strictEqual(I.detect(['de-DE'], ''), 'en', '不支援的語言用英文');
+  assert.strictEqual(I.detect([], ''), 'en');
+});
+test('多國語言：樣板、名稱、數字單位都會翻譯；原文不變', () => {
+  const I = loadLang();
+  I.setLang('zh-TW');
+  assert.strictEqual(I.tx('中國向日本宣戰。'), '中國向日本宣戰。');
+  I.setLang('en');
+  assert.strictEqual(I.tx('中國向日本宣戰。'), 'China declares war on Japan.');
+  assert.strictEqual(I.tx('歷時 12 個月。總傷亡約 0.32 百萬人。'), 'Lasted 12 months. Total casualties about 320K people.');
+  assert.ok(/125M/.test(I.tx('人口 1.25 億')), '億換算成 M');
+  assert.strictEqual(I.tx('保加利亞第2任領導人'), "Bulgaria's leader no. 2");
+  I.setLang('ja');
+  assert.strictEqual(I.tx('中國向日本宣戰。'), '中国が日本に宣戦。');
+  assert.strictEqual(I.tx('人口 1.25 億'), '人口 1.25億');
+  assert.strictEqual(I.tx('總傷亡約 3.2 百萬人。'), '死傷者は合計約 320万人。');
+  I.setLang('zh-CN');
+  assert.strictEqual(I.tx('戰爭爆發：鄂圖曼－義大利戰爭'), '战争爆发：奥斯曼－意大利战争');
+});
+test('多國語言：字典的譯文沒有多出原文沒有的 {n}', () => {
+  const I = loadLang();
+  for (const lang of ['en', 'ja']) for (const [k, v] of Object.entries(I.DATA[lang].dict)) {
+    const has = new Set(k.match(/\{\d+\}/g) || []);
+    for (const p of v.match(/\{\d+\}/g) || []) assert.ok(has.has(p), `${lang}: ${k} → ${v}`);
+  }
+});
+test('多國語言：載入並切換語言不會改變模擬結果', () => {
+  const a = make(); a.advance(120);
+  const I = loadLang(); I.setLang('en');
+  const b = make(); b.advance(60); I.setLang('ja'); b.advance(60);
+  assert.strictEqual(a.serialize(), b.serialize());
+});
+test('多國語言：引擎產生的文字（事件、因果、歷史敘述）英文翻譯 98% 以上完整', () => {
+  const e = make(); e.advanceYears ? e.advanceYears(40, { stopOnMajor: false }) : e.advance(480);
+  const I = loadLang(); I.setLang('en');
+  const all = new Set();
+  const walk = (o, d) => { if (d > 30 || o == null) return; if (typeof o === 'string') { if (/[㐀-鿿]/.test(o)) all.add(o); return; } if (typeof o !== 'object') return; for (const k in o) { if (/[㐀-鿿]/.test(k)) all.add(k); walk(o[k], d + 1); } };
+  walk(e.world, 0);
+  I.misses = new Set();
+  for (const s of all) I.tx(s);
+  const rate = 1 - I.misses.size / all.size;
+  assert.ok(rate >= 0.98, `${(rate * 100).toFixed(1)}%，例如：${[...I.misses].slice(0, 5).join(' / ')}`);
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;
