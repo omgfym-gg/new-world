@@ -317,17 +317,26 @@
       </div>`;
   }
   // 語言（只改畫面文字，不影響世界）：開始畫面的小選單用各語言自己的名稱，不翻譯
-  function langPicker() {
+  function setLanguage(v) {
     const I = WS.I18n;
-    if (!I) return '';
-    return `<div class="lang-pick" translate="no"><span aria-hidden="true">🌐</span>${Object.entries(I.LANGS).map(([k, L]) =>
-      `<button class="${I.lang === k ? 'on' : ''}" data-act="lang" data-v="${k}" lang="${L.html}">${L.name}</button>`).join('')}</div>`;
+    I.setPref(v);
+    I.switchTo(v === 'auto' ? I.detect() : v, (got) => { render(); toast('🌐 ' + I.LANGS[got].name); });
+  }
+  // 語言選單（選項用各語言自己的名稱，不翻譯）
+  function langSelect(withAuto) {
+    const I = WS.I18n, cur = withAuto ? I.pref() : I.lang;
+    const opts = (withAuto ? [['auto', '🌐 Auto']] : []).concat(Object.entries(I.LANGS).map(([k, L]) => [k, L.name]));
+    return `<select data-act="lang-select" aria-label="Language" translate="no">${opts.map(([k, n]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`;
+  }
+  function langPicker() {
+    if (!WS.I18n) return '';
+    return `<div class="lang-pick" translate="no"><span aria-hidden="true">🌐</span>${langSelect(false)}</div>`;
   }
   function langSetting() {
     const I = WS.I18n;
     if (!I) return '';
     const pref = I.pref();
-    return `<div class="field"><label>語言 · Language</label><div translate="no">${seg2('lang', pref, [['auto', '🌐 Auto'], ...Object.entries(I.LANGS).map(([k, L]) => [k, L.name])])}</div>
+    return `<div class="field"><label>語言 · Language</label><div translate="no">${langSelect(true)}</div>
       <span class="dim">${pref === 'auto' ? `目前依裝置語言自動選擇（${I.LANGS[I.lang].name}）。` : ''}只改畫面文字，不影響世界與存檔。</span></div>`;
   }
 
@@ -2110,12 +2119,7 @@
       case 'whatif-show': if (S.whatif) whatifReport(); break;
       case 'headlines-all': headlinesModal(); break;
       case 'summary-all': summaryModal(+v); break;
-      case 'lang': {
-        const I = WS.I18n;
-        I.setPref(v);
-        I.switchTo(v === 'auto' ? I.detect() : v, (got) => { render(); toast('🌐 ' + I.LANGS[got].name); });
-        break;
-      }
+      case 'lang': setLanguage(v); break;
       case 'ui-theme': S.uiTheme = WS.EraTheme.THEMES[v] ? v : 'auto'; WS.EraTheme.setPref(S.uiTheme); render(); toast('介面風格：' + (S.uiTheme === 'auto' ? '跟著時代' : WS.EraTheme.THEMES[v].name)); break;
       case 'pause-mode': setPauseMode(v); if (modal.hidden) render(); else { const box = modalBody.querySelector('.pause-pick'); if (box) box.innerHTML = pauseSetting(true); } toast('事件介入方式：' + WS.Events.PAUSE_MODES[v].name); break;
       case 'divine-open': S.divine = { kind: v || 'health', cid: t.dataset.c || (S.divine && S.divine.cid) || (W().mode === 'country' ? W().focus : U.ids(W())[0]), opt: null }; stopAuto(); divineModal(); break;
@@ -2219,6 +2223,7 @@
     const t = ev.target;
     if (t.dataset.act === 'set-select') { S.setup[t.dataset.k] = t.value; renderSetup(); }
     if (t.dataset.act === 'focus') { engine.setFocus(t.value); S.view = null; render(); }
+    if (t.dataset.act === 'lang-select') { setLanguage(t.value); return; }
     if (t.dataset.act === 'view-select') { S.view = t.value; render(); }
     if (t.dataset.act === 'chart-metric') { S.chartMetric = t.value; render(); }
     if (t.dataset.act === 'a-metric') { S.aMetric = t.value; render(); }

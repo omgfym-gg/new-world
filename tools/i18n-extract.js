@@ -160,8 +160,12 @@ if (require.main === module) {
 function loadI18n(lang) {
   const vm = require('vm');
   vm.runInThisContext(fs.readFileSync(path.join(ROOT, 'i18n/i18n.js'), 'utf8'));
-  const f = path.join(ROOT, 'i18n', (globalThis.WS.I18n.LANGS[lang].file || lang) + '.js');
-  if (fs.existsSync(f)) vm.runInThisContext(fs.readFileSync(f, 'utf8'));
+  const L = globalThis.WS.I18n.LANGS;
+  for (const l of [L[lang].fb, lang]) {
+    if (!l) continue;
+    const f = path.join(ROOT, 'i18n', (L[l].file || l) + '.js');
+    if (fs.existsSync(f)) vm.runInThisContext(fs.readFileSync(f, 'utf8'));
+  }
   globalThis.WS.I18n.setLang(lang);
   return globalThis.WS.I18n;
 }
