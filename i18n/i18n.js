@@ -15,9 +15,23 @@
   I.LANGS = {
     'zh-TW': { name: '繁體中文', html: 'zh-Hant' },
     'zh-CN': { name: '简体中文', html: 'zh-Hans', file: 'zh-cn' },
-    en: { name: 'English', html: 'en', file: 'en' },
-    ja: { name: '日本語', html: 'ja', file: 'ja' }
+    en: { name: 'English', html: 'en', file: 'en', people: ' people' },
+    ja: { name: '日本語', html: 'ja', file: 'ja', people: '人' },
+    ko: { name: '한국어', html: 'ko', file: 'ko', people: '명', fb: 'en' },
+    es: { name: 'Español', html: 'es', file: 'es', people: ' personas', fb: 'en' },
+    fr: { name: 'Français', html: 'fr', file: 'fr', people: ' personnes', fb: 'en', q: ['« ', ' »'] },
+    de: { name: 'Deutsch', html: 'de', file: 'de', people: ' Menschen', fb: 'en', q: ['„', '“'] },
+    pt: { name: 'Português', html: 'pt', file: 'pt', people: ' pessoas', fb: 'en' },
+    it: { name: 'Italiano', html: 'it', file: 'it', people: ' persone', fb: 'en', q: ['«', '»'] },
+    ru: { name: 'Русский', html: 'ru', file: 'ru', people: ' чел.', fb: 'en', q: ['«', '»'] },
+    tr: { name: 'Türkçe', html: 'tr', file: 'tr', people: ' kişi', fb: 'en' },
+    ar: { name: 'العربية', html: 'ar', file: 'ar', people: ' نسمة', fb: 'en', dir: 'rtl', q: ['«', '»'] },
+    hi: { name: 'हिन्दी', html: 'hi', file: 'hi', people: ' लोग', fb: 'en' },
+    id: { name: 'Bahasa Indonesia', html: 'id', file: 'id', people: ' jiwa', fb: 'en' },
+    vi: { name: 'Tiếng Việt', html: 'vi', file: 'vi', people: ' người', fb: 'en' },
+    th: { name: 'ไทย', html: 'th', file: 'th', people: ' คน', fb: 'en' }
   };
+  // fb：字典缺句子時先用英文（比留下中文好懂）；q：引號；dir：rtl＝由右到左排版
   I.SOURCE = 'zh-TW';
   I.DATA = I.DATA || {}; // 各語言字典：{ dict: {原文: 譯文}, ... }，由 i18n/<語言>.js 填入
   const KEY = 'ws.lang';
@@ -37,8 +51,9 @@
         if (/hans|-cn|-sg|-my/.test(l)) return 'zh-CN';
         return TW_ZONES.test(tz) ? 'zh-TW' : 'zh-CN';
       }
-      if (l.startsWith('ja')) return 'ja';
-      if (l.startsWith('en')) return 'en';
+      const base = l.split(/[-_]/)[0];
+      if (base === 'in') return 'id'; // 舊的印尼文代號
+      if (I.LANGS[base]) return base;
     }
     return 'en'; // 沒有支援的語言時用英文
   };
@@ -60,7 +75,7 @@
     const ppl = /人$/.test(unit), u = unit.replace(/人$/, '').trim();
     if (lang === 'zh-CN') return raw + unit.replace('萬', '万').replace('億', '亿');
     const res = fmtUnit(raw, u, lang);
-    return ppl ? res + (lang === 'en' ? ' people' : '人') : res;
+    return ppl ? res + (I.LANGS[lang].people || '') : res;
   }
   function fmtUnit(raw, u, lang) {
     const neg = /^[\-−]/.test(raw), plus = raw[0] === '+';
@@ -71,6 +86,13 @@
       const J = [[1e12, '兆'], [1e8, '億'], [1e4, '万']];
       for (const [b, s] of J) if (n >= b) { const v = n / b; return sign + trimNum(v, dec(v)) + s; }
       return sign + Math.round(n).toLocaleString('en-US');
+    }
+    if (lang !== 'en' && root.Intl && Intl.NumberFormat) {
+      // 其他語言用各自習慣的縮寫（例如德文 1,2 Mio.、韓文 1.2억）
+      try {
+        const big = n >= 1e3 ? n / 10 ** (3 * Math.floor(Math.log10(n) / 3)) : n;
+        return sign + new Intl.NumberFormat(I.LANGS[lang].html, { notation: n >= 1e4 ? 'compact' : 'standard', maximumFractionDigits: n >= 1e4 ? dec(big) : (n >= 10 ? 0 : 2) }).format(n);
+      } catch (e) { /* 舊瀏覽器：用英文縮寫 */ }
     }
     const E = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
     for (const [b, s] of E) if (n >= b) { const v = n / b; return sign + trimNum(v, dec(v)) + s; }
@@ -101,7 +123,8 @@
   };
 
   function compile(lang) {
-    const D = (I.DATA[lang] && I.DATA[lang].dict) || {};
+    const fb = I.LANGS[lang] && I.LANGS[lang].fb;
+    const D = Object.assign({}, fb && I.DATA[fb] ? I.DATA[fb].dict : {}, (I.DATA[lang] && I.DATA[lang].dict) || {});
     const exact = new Map(), pats = [];
     for (const k0 in D) {
       const v = D[k0];
@@ -141,6 +164,17 @@
     en: { '。': '. ', '！': '! ', '？': '? ', '；': '; ', '，': ', ', '：': ': ', '、': ', ', '（': ' (', '）': ') ', '「': '“', '」': '”', '『': '‘', '』': '’', '・': ' · ', '～': '~', '／': ' / ', '　': ' ' },
     ja: { '，': '、', '；': '。' }
   };
+  // 用拼音文字（與韓文、泰文…）的語言：標點都照英文，只換引號與少數符號
+  const western = (l) => l !== 'ja' && l !== 'zh-CN' && l !== I.SOURCE;
+  function punctTable(l) {
+    if (PUNCT[l]) return PUNCT[l];
+    if (!western(l)) return null;
+    const T = Object.assign({}, PUNCT.en), q = I.LANGS[l].q;
+    if (q) { T['「'] = q[0]; T['」'] = q[1]; }
+    if (l === 'ar') { T['，'] = '، '; T['、'] = '، '; T['；'] = '؛ '; T['？'] = '؟ '; }
+    if (l === 'hi') T['。'] = '। ';
+    return (PUNCT[l] = T);
+  }
   const SPLITS = [/([。！？!?\n]+)/, /([；;]+)/, /([，,]+)/, /([：:]+)/, /([、・／]+)/, /([（）「」『』()]+)/];
 
   // 翻譯一個「形狀」字串（數字已換成記號）
@@ -286,15 +320,15 @@
     return null;
   }
   function punct(p) {
-    const T = PUNCT[I.lang];
+    const T = punctTable(I.lang);
     if (!T) return p;
     let o = '';
     for (const ch of p) o += T[ch] != null ? T[ch] : ch;
     return o;
   }
   function tidy(s) {
-    if (I.lang !== 'en') return s;
-    return s.replace(/－/g, '–').replace(/([.!?;:])(?=[A-Z“"])/g, '$1 ').replace(/ {2,}/g, ' ').replace(/ ([,.;:!?)”’])/g, '$1').replace(/([(“‘]) /g, '$1').replace(/\s+$/, (m) => (m.includes('\n') ? m : ''));
+    if (!western(I.lang)) return s;
+    return s.replace(/－/g, '–').replace(/([.!?;:])(?=[A-Z“"«„\u0400-\u04FF])/g, '$1 ').replace(/ {2,}/g, ' ').replace(/ ([,.;:!?)”’])/g, '$1').replace(/([(“‘]) /g, '$1').replace(/\s+$/, (m) => (m.includes('\n') ? m : ''));
   }
 
   // 把任意原文字串翻成目前語言
@@ -338,9 +372,12 @@
     I.lang = lang;
     cache = new Map();
     compiled = null;
-    if (root.document && root.document.documentElement) root.document.documentElement.lang = I.LANGS[lang].html;
+    if (root.document && root.document.documentElement) {
+      root.document.documentElement.lang = I.LANGS[lang].html;
+      root.document.documentElement.dir = I.LANGS[lang].dir || 'ltr';
+    }
   };
-  I.ready = (lang) => lang === I.SOURCE || !!I.DATA[lang];
+  I.ready = (lang) => lang === I.SOURCE || (!!I.DATA[lang] && (!I.LANGS[lang].fb || !!I.DATA[I.LANGS[lang].fb]));
 
   // ---------- 瀏覽器：自動把畫面上的文字翻成目前語言 ----------
   if (!root.document) return;
@@ -433,11 +470,13 @@
 
   // 載入字典：同步寫入 <script>（啟動時，讓第一個畫面就是對的語言），之後切換時用動態載入
   const base = (() => { const s = doc.currentScript && doc.currentScript.src; return s ? s.replace(/[^/]*$/, '') : 'i18n/'; })();
+  const files = (lang) => [I.LANGS[lang].fb, lang].filter((l) => l && l !== I.SOURCE && !I.DATA[l]).map((l) => base + I.LANGS[l].file + '.js');
   I.load = function (lang, cb) {
-    if (I.ready(lang)) { cb && cb(true); return; }
+    const todo = files(lang);
+    if (!todo.length) { cb && cb(I.ready(lang)); return; }
     const s = doc.createElement('script');
-    s.src = base + I.LANGS[lang].file + '.js';
-    s.onload = () => cb && cb(I.ready(lang));
+    s.src = todo[0];
+    s.onload = () => I.load(lang, cb);
     s.onerror = () => cb && cb(false);
     doc.head.appendChild(s);
   };
@@ -455,8 +494,8 @@
 
   const want = I.wanted();
   I.setLang(want);
-  if (want !== I.SOURCE && !I.DATA[want] && doc.readyState === 'loading') {
-    doc.write('<script src="' + base + I.LANGS[want].file + '.js"><\/script>');
+  if (want !== I.SOURCE && doc.readyState === 'loading') {
+    for (const f of files(want)) doc.write('<script src="' + f + '"><\/script>');
   }
   doc.addEventListener('DOMContentLoaded', () => { if (!I.ready(I.lang)) I.switchTo(I.lang); I.start(); });
 })(typeof window !== 'undefined' ? window : globalThis);
