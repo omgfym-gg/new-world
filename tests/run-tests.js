@@ -1129,7 +1129,8 @@ test('介面隨時代換風格：依世界上出現的科技決定，只讀取�
 // ---------- 多國語言（只改畫面文字，不影響模擬） ----------
 const loadLang = () => {
   const vm = require('vm'), fs = require('fs'), path = require('path');
-  for (const f of ['i18n/i18n.js', 'i18n/en.js', 'i18n/ja.js', 'i18n/zh-cn.js']) vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), { filename: f });
+  const NEW = ['ko', 'es', 'fr', 'de', 'pt', 'it', 'ru', 'tr', 'ar', 'hi', 'id', 'vi', 'th'];
+  for (const f of ['i18n/i18n.js', 'i18n/en.js', 'i18n/ja.js', 'i18n/zh-cn.js', ...NEW.map((l) => `i18n/${l}.js`)]) vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), { filename: f });
   return WS.I18n;
 };
 test('多國語言：依裝置語言自動選擇，簡繁不明時看時區（不用網路位置）', () => {
@@ -1169,7 +1170,7 @@ test('多國語言：樣板、名稱、數字單位都會翻譯；原文不變',
 });
 test('多國語言：字典的譯文沒有多出原文沒有的 {n}', () => {
   const I = loadLang();
-  for (const lang of ['en', 'ja']) for (const [k, v] of Object.entries(I.DATA[lang].dict)) {
+  for (const lang of Object.keys(I.DATA).filter((l) => I.DATA[l].dict)) for (const [k, v] of Object.entries(I.DATA[lang].dict)) {
     const has = new Set(k.match(/\{\d+\}/g) || []);
     for (const p of v.match(/\{\d+\}/g) || []) assert.ok(has.has(p), `${lang}: ${k} → ${v}`);
   }
@@ -1190,6 +1191,25 @@ test('多國語言：引擎產生的文字（事件、因果、歷史敘述）�
   for (const s of all) I.tx(s);
   const rate = 1 - I.misses.size / all.size;
   assert.ok(rate >= 0.98, `${(rate * 100).toFixed(1)}%，例如：${[...I.misses].slice(0, 5).join(' / ')}`);
+});
+test('多國語言：新增的 13 種語言都翻完英文字典裡的句子，引擎文字也翻得到', () => {
+  const I = loadLang();
+  const en = Object.keys(I.DATA.en.dict);
+  const e = make(); e.advance(240);
+  const all = new Set();
+  const walk = (o, d) => { if (d > 30 || o == null) return; if (typeof o === 'string') { if (/[㐀-鿿]/.test(o)) all.add(o); return; } if (typeof o !== 'object') return; for (const k in o) { if (/[㐀-鿿]/.test(k)) all.add(k); walk(o[k], d + 1); } };
+  walk(e.world, 0);
+  for (const lang of ['ko', 'es', 'fr', 'de', 'pt', 'it', 'ru', 'tr', 'ar', 'hi', 'id', 'vi', 'th']) {
+    const d = I.DATA[lang].dict;
+    const cover = en.filter((k) => k.trim() && d[k] != null).length / en.filter((k) => k.trim()).length;
+    assert.ok(cover >= 0.99, `${lang} 字典只翻了 ${(cover * 100).toFixed(1)}%`);
+    I.setLang(lang); I.misses = new Set();
+    const out = [...all].map((s) => I.tx(s));
+    const rate = 1 - I.misses.size / all.size;
+    assert.ok(rate >= 0.97, `${lang} 引擎文字 ${(rate * 100).toFixed(1)}%，例如：${[...I.misses].slice(0, 3).join(' / ')}`);
+    assert.ok(out.filter((s) => /[㐀-鿿]/.test(s)).length / out.length < 0.05, `${lang} 畫面還留很多中文`);
+  }
+  I.setLang('zh-TW');
 });
 
 // ---------- 輸出 ----------

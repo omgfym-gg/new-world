@@ -716,3 +716,5 @@ body[data-ui="stone"] .card h3::before, body[data-ui="scroll"] .card h3::before 
 /* 語言選單（開始畫面） */
 .lang-pick { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 4px auto 0; font-size: 13px; }
 .lang-pick select { width: auto; min-width: 160px; }
+/* 報紙風格的報頭：中文與日文寫「日報」，其他語言寫 DAILY */
+html:not([lang^="zh"]):not([lang="ja"]) body[data-ui="paper"] .sys-id::after { content: ' DAILY'; }
