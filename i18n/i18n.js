@@ -18,16 +18,16 @@
     en: { name: 'English', html: 'en', file: 'en', people: ' people' },
     ja: { name: '日本語', html: 'ja', file: 'ja', people: '人' },
     ko: { name: '한국어', html: 'ko', file: 'ko', people: '명', fb: 'en' },
-    es: { name: 'Español', html: 'es', file: 'es', people: ' personas', fb: 'en' },
-    fr: { name: 'Français', html: 'fr', file: 'fr', people: ' personnes', fb: 'en', q: ['« ', ' »'] },
-    de: { name: 'Deutsch', html: 'de', file: 'de', people: ' Menschen', fb: 'en', q: ['„', '“'] },
-    pt: { name: 'Português', html: 'pt', file: 'pt', people: ' pessoas', fb: 'en' },
-    it: { name: 'Italiano', html: 'it', file: 'it', people: ' persone', fb: 'en', q: ['«', '»'] },
-    ru: { name: 'Русский', html: 'ru', file: 'ru', people: ' чел.', fb: 'en', q: ['«', '»'] },
-    tr: { name: 'Türkçe', html: 'tr', file: 'tr', people: ' kişi', fb: 'en' },
+    es: { name: 'Español', html: 'es', file: 'es', people: ' personas', fb: 'en', gdp: 'PIB' },
+    fr: { name: 'Français', html: 'fr', file: 'fr', people: ' personnes', fb: 'en', q: ['« ', ' »'], gdp: 'PIB' },
+    de: { name: 'Deutsch', html: 'de', file: 'de', people: ' Menschen', fb: 'en', q: ['„', '“'], gdp: 'BIP' },
+    pt: { name: 'Português', html: 'pt', file: 'pt', people: ' pessoas', fb: 'en', gdp: 'PIB' },
+    it: { name: 'Italiano', html: 'it', file: 'it', people: ' persone', fb: 'en', q: ['«', '»'], gdp: 'PIL' },
+    ru: { name: 'Русский', html: 'ru', file: 'ru', people: ' чел.', fb: 'en', q: ['«', '»'], gdp: 'ВВП' },
+    tr: { name: 'Türkçe', html: 'tr', file: 'tr', people: ' kişi', fb: 'en', gdp: 'GSYİH' },
     ar: { name: 'العربية', html: 'ar', file: 'ar', people: ' نسمة', fb: 'en', dir: 'rtl', q: ['«', '»'] },
     hi: { name: 'हिन्दी', html: 'hi', file: 'hi', people: ' लोग', fb: 'en' },
-    id: { name: 'Bahasa Indonesia', html: 'id', file: 'id', people: ' jiwa', fb: 'en' },
+    id: { name: 'Bahasa Indonesia', html: 'id', file: 'id', people: ' jiwa', fb: 'en', gdp: 'PDB' },
     vi: { name: 'Tiếng Việt', html: 'vi', file: 'vi', people: ' người', fb: 'en' },
     th: { name: 'ไทย', html: 'th', file: 'th', people: ' คน', fb: 'en' }
   };
@@ -333,16 +333,18 @@
     return s.replace(/－/g, '–').replace(/([.!?;:])(?=[A-Z“"«„\u0400-\u04FF])/g, '$1 ').replace(/ {2,}/g, ' ').replace(/ ([,.;:!?)”’])/g, '$1').replace(/([(“‘]) /g, '$1').replace(/\s+$/, (m) => (m.includes('\n') ? m : ''));
   }
 
+  // 「GDP」在原文裡是英文縮寫，不會經過字典：換成該語言慣用的縮寫（西文 PIB、德文 BIP…）
+  function gdpWord(s) { const g = I.LANGS[I.lang] && I.LANGS[I.lang].gdp; return g && s.indexOf('GDP') >= 0 ? s.replace(/\bGDP\b/g, g) : s; }
   // 把任意原文字串翻成目前語言
   I.tx = function (s) {
     if (s == null || I.lang === I.SOURCE) return s;
     s = String(s);
-    if (!HAN.test(s)) return s;
+    if (!HAN.test(s)) return gdpWord(s);
     if (I.lang === 'zh-CN') return I.toSimp(s);
     if (!compiled) compiled = compile(I.lang);
     const [sh, nums] = shape(s);
     const out = trShape(sh, 0);
-    let r = out.replace(tokRe, (m, i) => { const n = nums[+i]; return n ? fmtNum(n[0], n[1], I.lang) : m; });
+    let r = gdpWord(out.replace(tokRe, (m, i) => { const n = nums[+i]; return n ? fmtNum(n[0], n[1], I.lang) : m; }));
     if (I.misses && I.lang === 'en' && HAN.test(r)) I.misses.add(s); // 檢查工具用：記下沒翻完的句子
     return r;
   };

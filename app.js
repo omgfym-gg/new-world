@@ -1058,14 +1058,14 @@
     const why = reason ? ['gdp', 'population', 'stability'].filter((m) => reason[m].length).map((m) =>
       `<li><b>${esc(WS.Explain.METRIC_NAMES[m])}</b>：${reason[m].map((f) => `${esc(f.factor)}（原世界 ${units[m](f.orig)}／平行世界 ${units[m](f.alt)}）`).join('、')}</li>`).join('') : '';
     const chain = R.chain.map((c, i) => `<li class="wi-step ${c.kind}">
-        <div class="when">${c.y}.${String(c.m).padStart(2, '0')}・${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</div>
+        <div class="when">${c.y}.${String(c.m).padStart(2, '0')}・<span>${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</span></div>
         <b>${esc(c.title)}</b>
         ${c.why && c.why.length ? `<div class="dim">${c.kind === 'gone' ? '原世界的原因' : '原因'}：${c.why.map(esc).join('；')}</div>` : ''}
         ${c.compare && c.compare.length ? `<div class="dim">事後年度紀錄：${c.compare.map(esc).join('；')}</div>` : ''}
       </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
     const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${e.y}.${String(e.m).padStart(2, '0')}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
     openModal(`<h2>平行世界：${esc(R.label)}</h2>
-      <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。從 ${esc(R.from)} 用同一個種子重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。</p>
+      <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。${R.years > 1 ? `從 ${esc(R.from)} 用同一個種子重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。` : `從 ${esc(R.from)} 用同一個種子重跑到 ${R.now.y} 年 ${R.now.m} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。`}</p>
       ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
       ${wiSummaryHtml(R, false)}
       <div class="table-wrap"><table class="wi-table">
@@ -1100,10 +1100,12 @@
     if (!X) return '';
     const when = (y, m) => (anc ? yl(y) : `${y} 年${m ? ' ' + m + ' 月' : ''}`);
     const side = { orig: '原世界有、平行世界沒有', new: '只在平行世界發生', alt: '只在平行世界發生' };
+    // 每一段都放在自己的 <span> 裡、寫成完整的句子：畫面翻譯是一段一段翻的，拼在一起的半句會翻不出來
+    const after = (n) => (!n ? '分岔當年' : n === 1 ? '分岔後隔年' : `分岔後 ${n.toLocaleString()} 年`);
     const first = X.first
-      ? `${X.first.after ? `分岔後 ${X.first.after.toLocaleString()} 年` : '當年'}（${esc(when(X.first.y, X.first.m))}）出現第一個不同的重大事件：${X.first.side === 'orig' && X.first.eventId ? `<button class="link" data-act="event" data-id="${X.first.eventId}">「${esc(X.first.title)}」</button>` : `「${esc(X.first.title)}」`}（${side[X.first.side] || ''}）`
-      : '沒有出現只在其中一個世界發生的重大事件';
-    const dv = X.diverge ? `；${X.diverge.metric}從 ${X.diverge.y} 年（${X.diverge.after ? `分岔後 ${X.diverge.after} 年` : '分岔當年'}）開始相差超過 1%` : '';
+      ? `<span>${after(X.first.after)}（${esc(when(X.first.y, X.first.m))}），第一個不同的重大事件是：</span>${X.first.side === 'orig' && X.first.eventId ? `<button class="link" data-act="event" data-id="${X.first.eventId}">「${esc(X.first.title)}」</button>` : `<span>「${esc(X.first.title)}」</span>`}<span>（${side[X.first.side] || ''}）</span>`
+      : '<span>沒有出現只在其中一個世界發生的重大事件</span>';
+    const dv = X.diverge ? `<span>；從 ${X.diverge.y} 年起（${after(X.diverge.after)}），${X.diverge.metric}相差超過 1%</span>` : '';
     return `<div class="wi-summary"><h3>重點摘要</h3><ol>
       <li><b>改寫了什麼</b>：${esc(X.changed)}</li>
       <li><b>差異何時出現</b>：${first}${dv}</li>
@@ -1484,7 +1486,7 @@
       <h3 class="dv-h">你的介入（${nPlayer} 次）</h3>
       ${nPlayer ? `<ul class="list-plain">${R.player.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> ${esc(x.text)}</li>`).join('')}${R.whatifs.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> 平行世界改寫：${esc(x.label)}</li>`).join('')}</ul>` : '<p class="dim">這一次你完全沒有介入，世界自己走到了這一步。</p>'}
       <div class="wi-box"><h3>沒有你的世界會怎樣？</h3>
-        <p class="dim">從 ${R.start} 年用同一個種子重跑，<b>不重播</b>你的政策、神之手、世界規則與「如果？」改寫，看看世界會在什麼時候、因為什麼終結。最多再多跑 200 年。目前的世界不會被改動。</p>
+        <p class="dim">從 ${R.start} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。最多再多跑 200 年。目前的世界不會被改動。</p>
         <div id="cf-out">${cf ? cfHtml(cf, R) : `<button class="btn gold" data-act="cf-run" ${nPlayer ? '' : 'disabled'}>${nPlayer ? '開始重跑' : '你沒有介入，兩個世界會完全一樣'}</button>`}</div></div>
       <div class="row" style="margin-top:14px"><button class="btn" data-act="tab" data-v="history">回到過去的年份重來</button><button class="btn" data-act="close-modal">關閉</button></div>`);
     mountMedia();
@@ -1951,7 +1953,7 @@
     const top = R.rows.filter((r) => r.score > 0.02).slice(0, 6);
     const reason = R.reasons[R.focus] && R.reasons[R.focus].population;
     const chain = R.chain.map((c, i) => `<li class="wi-step ${c.kind}">
-        <div class="when">${esc(yl(c.y))}・${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</div>
+        <div class="when">${esc(yl(c.y))}・<span>${{ start: '分岔點', gone: '原世界有，平行世界沒有', new: '只在平行世界發生' }[c.kind]}</span></div>
         <b>${esc(c.title)}</b>${c.why && c.why.length ? `<div class="dim">${c.kind === 'gone' ? '原世界的原因' : '原因'}：${c.why.map(esc).join('；')}</div>` : ''}
       </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
     const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${esc(yl(e.y))}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
@@ -2376,7 +2378,7 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
   // 給檢查工具（tools/i18n-ui-check.js）用：直接載入一個世界。和玩家按「載入存檔」走同一條路，不改模擬
-  WS.App = { load: (w2) => switchWorld(w2, '') };
+  WS.App = { load: (w2) => switchWorld(w2, ''), world: () => W() };
   render();
   // 存檔改放大容量的 IndexedDB：啟動時把舊版放在 localStorage 的存檔搬過去（騰出空間），搬完重畫開始畫面
   WS.Save.init().then(() => { if (S.screen === 'start') render(); }).catch(() => { /* 無法使用時維持原狀 */ });

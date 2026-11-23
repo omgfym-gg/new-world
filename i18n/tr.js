@@ -3169,6 +3169,11 @@
     "🔍 放大歐洲": "🔍 Avrupa'yı yakınlaştır",
     "{0} 個國名太擠先隱藏，點圓圈可查看": "Sıkışık {0} ad gizlendi; görmek için daireye dokunun",
     "版本 {0}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）": "Sürüm {0} (sorun bildirirken ekleyin; farklı bir sürüm tarayıcının eski dosyaları kullandığı anlamına gelir, sayfayı yenileyin)",
-    "而「{0}」本身主要受這些因素影響：{1}。": "“{0}” ise en çok şunlardan etkilendi: {1}."
+    "而「{0}」本身主要受這些因素影響：{1}。": "“{0}” ise en çok şunlardan etkilendi: {1}.",
+    "從 {0} 用同一個種子重跑到 {1} 年 {2} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。": "{0} itibarıyla aynı tohumla {2}/{1} tarihine kadar yeniden hesaplandı (iki yıldan az); yalnızca bu olay farklı, gerisini motor hesaplıyor.",
+    "分岔後隔年": "ayrılmadan sonraki yıl",
+    "{0}（{1}），第一個不同的重大事件是：": "{0} ({1}), ilk farklı büyük olay: ",
+    "；從 {0} 年起（{1}），{2}相差超過 1%": "; {0} yılından itibaren ({1}) {2} farkı %1'i aşıyor",
+    "從 {0} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。": "{0} yılından aynı tohumla yeniden hesaplanır; ancak politikaların, Tanrının Eli, dünya kuralları ve paralel dünya değişiklikleri tekrarlanmaz. Dünyanın ne zaman ve neden sona erdiğini görün."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
