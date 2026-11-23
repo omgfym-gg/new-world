@@ -532,19 +532,46 @@
     let grid = '';
     for (let lon = -180; lon <= 180; lon += 30) grid += `<line x1="${X(lon)}" y1="0" x2="${X(lon)}" y2="180" stroke="#1e3463" stroke-width=".2"/>`;
     for (let lat = -60; lat <= 80; lat += 20) grid += `<line x1="0" y1="${Y(lat)}" x2="360" y2="${Y(lat)}" stroke="#1e3463" stroke-width=".2"/>`;
+    // 國名標籤避免重疊：觀察國優先、其次人口多的；依序試放在圓圈下、上、右、左，都會蓋到別的標籤就不顯示
+    // （圓圈仍在，點一下或游標停留就看得到國名）。寬度用玩家語言的國名估算。
+    const tx = (s2) => (WS.I18n && WS.I18n.tx ? WS.I18n.tx(s2) : s2);
+    const textW = (t) => [...t].reduce((a, ch) => a + (/[\u2E80-\uFFFF]/.test(ch) ? 5 : 3.1), 0.8);
+    const placed = [];
+    const hit = (b) => placed.some((o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h);
+    const label = {};
+    const order = ids.slice().sort((a, b) => ((b === w.focus) - (a === w.focus)) || U.popTotal(w.countries[b]) - U.popTotal(w.countries[a]));
+    for (const id of order) {
+      const c = w.countries[id];
+      const r = Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5);
+      const cx = X(c.lon), cy = Y(c.lat), tw = textW(tx(c.name)), th = 5;
+      const tries = [
+        { x: cx, y: cy + r + 4.5, anchor: 'middle', box: { x: cx - tw / 2, y: cy + r + 0.6, w: tw, h: th } },
+        { x: cx, y: cy - r - 1.2, anchor: 'middle', box: { x: cx - tw / 2, y: cy - r - 5.4, w: tw, h: th } },
+        { x: cx + r + 1.2, y: cy + 1.8, anchor: 'start', box: { x: cx + r + 1.2, y: cy - 2.4, w: tw, h: th } },
+        { x: cx - r - 1.2, y: cy + 1.8, anchor: 'end', box: { x: cx - r - 1.2 - tw, y: cy - 2.4, w: tw, h: th } }
+      ];
+      // 也不蓋住別國圓圈的中心，免得國名看起來像是旁邊那一國的
+      const onOther = (b) => ids.some((o) => o !== id && X(w.countries[o].lon) > b.x && X(w.countries[o].lon) < b.x + b.w && Y(w.countries[o].lat) > b.y && Y(w.countries[o].lat) < b.y + b.h);
+      const ok = tries.find((t) => !hit(t.box) && !onOther(t.box));
+      if (ok) { placed.push(ok.box); label[id] = ok; }
+    }
     const nodes = ids.map((id) => {
       const c = w.countries[id];
       const r = Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5);
       const focus = id === w.focus && w.mode === 'country';
-      return `<g data-act="open-country" data-id="${id}" style="cursor:pointer">
+      return `<g data-act="open-country" data-id="${id}" style="cursor:pointer"><title>${esc(c.name)}</title>
         <circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r}" fill="${c.color}" fill-opacity=".35" stroke="${focus ? '#fbbf24' : c.color}" stroke-width="${focus ? 1 : 0.5}"/>
         ${c.flags.atWar ? `<circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r + 1.5}" fill="none" stroke="#f87171" stroke-width=".4"/>` : ''}
-        <text x="${X(c.lon)}" y="${Y(c.lat) + r + 4.5}" font-size="5" fill="#e6ecff" text-anchor="middle">${esc(c.name)}</text></g>`;
+        </g>`;
+    }).join('') + ids.filter((id) => label[id]).map((id) => {
+      // 國名放在所有圓圈之後畫，才不會被別國的圓圈蓋住
+      const L = label[id];
+      return `<text data-act="open-country" data-id="${id}" style="cursor:pointer" x="${L.x}" y="${L.y}" font-size="5" fill="#e6ecff" text-anchor="${L.anchor}">${esc(w.countries[id].name)}</text>`;
     }).join('');
     // 全世界劇本有南半球與太平洋的國家：改成全球視野
     const wide = ids.some((id) => w.countries[id].lat < 0 || w.countries[id].lon > 160 || w.countries[id].lon < -140);
     return `<svg class="map" viewBox="${wide ? '0 15 360 135' : '40 10 300 80'}" role="img" aria-label="世界示意地圖">${grid}${lines}${nodes}</svg>
-      <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位</span></div>`;
+      <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看</span></div>`;
   }
 
   // ---------- 觀測窗：地球＋儀表讀數 ----------
@@ -915,7 +942,8 @@
     const { res, parentName } = S.whatif;
     const R = res.report, w = W(), alt = res.world;
     const pct = (a, b) => (a ? sg(((b - a) / a) * 100, 0) + '%' : '—');
-    const diffCell = (a, b, f, rel, neutral) => `<td class="num">${f(a)}</td><td class="num">${f(b)}</td><td class="num ${neutral ? '' : cls(b - a)}">${rel ? pct(a, b) : sg(b - a, 0)}</td>`;
+    // 差值用畫面上顯示的（四捨五入後的）數字計算，玩家看到的兩個數字相減就是差值
+    const diffCell = (a, b, f, rel, neutral) => `<td class="num">${f(a)}</td><td class="num">${f(b)}</td><td class="num ${neutral ? '' : cls(b - a)}">${rel ? pct(a, b) : sg(Math.round(b) - Math.round(a), 0)}</td>`;
     const fc = R.rows.find((r) => r.id === R.focus);
     const o = fc && fc.orig, a = fc && fc.alt;
     const focusRows = o && a ? `
@@ -1250,6 +1278,7 @@
     return `<div class="card"><h3>文明進程 <span class="dim" style="font-weight:400;font-size:12px">階段目標（不照年份，全看研究）</span></h3>
       <ul class="progress-stages">${stages}</ul>
       ${nxt ? `<h3 class="dv-h" style="margin-top:10px">接下來可能的突破</h3><ul class="list-plain">${nxt}</ul>` : ''}
+      ${G.allDone ? '<p class="gold" style="margin:6px 0 0">目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。</p>' : ''}
       <p class="dim" style="margin:6px 0 0">${G.last != null ? `最近一次世界首創的發明在 ${G.last} 年（${G.since} 年前）。` : `接到近代以來還沒有新的發明（${G.since} 年）。`}</p>
       ${help}</div>`;
   }
@@ -1405,10 +1434,9 @@
       S.cf.year = sw.year;
       if (run.done()) {
         const F = sw.future;
-        const big = (x) => x.level >= 3 && x.type !== 'system';
-        const a = w.events.filter(big), b = sw.events.filter(big);
-        let firstDiff = null;
-        for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i].title !== b[i].title || a[i].y !== b[i].y) { firstDiff = `${a[i].y} 年你的世界：「${a[i].title}」／沒有你的世界：${b[i].y} 年「${b[i].title}」`; break; }
+        const d = FUT().firstDiff(w, sw);
+        const firstDiff = !d ? null : d.mine && d.other ? `${d.y} 年你的世界：「${d.mine.title}」／沒有你的世界：「${d.other.title}」`
+          : d.mine ? `${d.y} 年你的世界：「${d.mine.title}」（沒有你的世界沒有這件事）` : `${d.y} 年沒有你的世界：「${d.other.title}」（你的世界沒有這件事）`;
         S.cf = { key, done: true, year: sw.year, result: { ended: F.ended, year: sw.year, peak: F.peak, maxWarm: Math.max(F.warming, ...F.series.warming), cats: F.catastrophes.filter((c) => c.kind !== 'aiIncident').length, mars: F.mars, firstDiff } };
       }
       const el = out();

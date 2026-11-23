@@ -164,7 +164,7 @@
 
       // 失業
       const planned = Econ.isPlanned(c, w);
-      const uT = (planned ? 0.015 : e.unemploymentBase) + Math.max(0, -ec.growth) * 1.5 + (c.pol.conflict > 60 ? 0.03 : 0);
+      const uT = (planned ? 0.015 : e.unemploymentBase) + Math.max(0, -ec.growth) * e.unemploymentOkun * (1 - ec.lab.agri) + (c.pol.conflict > 60 ? 0.03 : 0);
       d.unemployment += (uT - d.unemployment) * 0.1;
 
       // 勞動力在部門間移動、城市化

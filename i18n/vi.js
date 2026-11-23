@@ -3089,6 +3089,10 @@
     "｜其他候選：": " | Ứng viên khác: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Tin chính năm {0}: {1}{2}; {3} sự kiện khác đưa vào tóm tắt năm",
     "🔇 關閉": "🔇 Tắt",
-    "🔊 開啟": "🔊 Bật"
+    "🔊 開啟": "🔊 Bật",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Kích thước vòng tròn = dân số · bản đồ minh họa, phiên bản này chỉ theo quốc gia · tên bị chồng lên nhau sẽ ẩn, chạm vào vòng tròn để xem",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "Mọi công nghệ đã hoàn thành: mọi công nghệ đã biết đều đã được phát minh, không còn gì để nghiên cứu.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} thế giới của bạn: “{1}” (không xảy ra ở thế giới không có bạn)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} thế giới không có bạn: “{1}” (không xảy ra ở thế giới của bạn)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
