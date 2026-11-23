@@ -1264,16 +1264,17 @@ test('遊戲公告與意見回饋：只送出玩家寫的內容與遊戲資訊�
   return F.send(r.data, fake).then((res) => {
     if (!F.ready()) { assert.strictEqual(res.ok, false); assert.strictEqual(call, null); }
     F.FORM.url = 'https://docs.google.com/forms/d/e/TEST/formResponse';
-    F.FORM.fields = { type: 'entry.1', text: 'entry.2', contact: 'entry.3', info: 'entry.4' };
+    F.FORM.entry = 'entry.1';
     return F.send(r.data, fake);
   }).then((res) => {
     assert.ok(res.ok && /formResponse$/.test(call.url) && call.opt.method === 'POST');
-    assert.strictEqual(call.opt.body.get('entry.2'), '希望加入 1800 年起點');
+    const sent = call.opt.body.get('entry.1');
+    assert.ok(/^【建議】\n希望加入 1800 年起點/.test(sent) && sent.includes('聯絡方式：x') && sent.includes('遊戲資訊：i'), '四項內容組成一段文字');
     return F.send(r.data, () => Promise.reject(new Error('offline')));
   }).then((res) => {
     assert.strictEqual(res.ok, false, '沒網路時回報失敗，讓畫面保留內容');
     if (saved.url) assert.ok(/^https:\/\/docs\.google\.com\/forms\/.+\/formResponse$/.test(saved.url), '正式表單網址要是 formResponse');
-    F.FORM.url = saved.url; F.FORM.fields = saved.fields;
+    F.FORM.url = saved.url; F.FORM.entry = saved.entry;
   });
 });
 

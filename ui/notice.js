@@ -3,7 +3,8 @@
 // 公告：第一次打開遊戲時自動出現「遊戲介紹」，之後可從開始畫面或「系統」頁再打開。
 //   想讓所有玩家再看到一次（例如有新消息）：在 NEWS 最上面加一則，並把 ID 改成新的日期。
 // 意見箱：玩家填寫的內容送到小黑的 Google 表單（玩家不用登入）。
-//   表單網址與各欄位代號設定在下面的 FORM；沒設定時意見箱顯示「尚未開放」。
+//   表單只有一題「意見」（段落）：類型、內容、聯絡方式、遊戲資訊組成一段文字送進那一格。
+//   表單網址與那一格的代號設定在下面的 FORM；沒設定時意見箱顯示「尚未開放」。
 (function (root) {
   const WS = (root.WS = root.WS || {});
 
@@ -25,12 +26,12 @@
   // 小黑的 Google 表單（「取得預先填入的連結」裡的網址與 entry 代號）
   F.FORM = {
     url: '', // 例：https://docs.google.com/forms/d/e/XXXX/formResponse
-    fields: { type: '', text: '', contact: '', info: '' } // 例：'entry.123456789'
+    entry: '' // 例：'entry.123456789'（「取得預先填入的連結」網址裡的 entry 代號）
   };
   // 類型：送出時用中文原文，小黑收到的都是中文
   F.TYPES = [['bug', '遇到問題'], ['idea', '建議'], ['question', '疑問'], ['other', '其他']];
   F.MAX = 3000; // 內容字數上限
-  F.ready = function () { const f = F.FORM.fields; return !!(F.FORM.url && f.type && f.text && f.contact && f.info); };
+  F.ready = function () { return !!(F.FORM.url && F.FORM.entry); };
 
   // 自動附上的遊戲資訊（幫助找出問題；不含個人資料）
   F.info = function (w, extra) {
@@ -58,14 +59,17 @@
     if (text.length < 2) return { ok: false, reason: '請先寫下你遇到的問題或建議。' };
     return { ok: true, data: { type: type[1], text, contact: String(input.contact || '').trim().slice(0, 200), info: String(input.info || '') } };
   };
+  // 組成一段文字（小黑在表單「回覆」看到的就是這段）
+  F.compose = function (d) { return `【${d.type}】\n${d.text}\n\n聯絡方式：${d.contact || '（未填）'}\n遊戲資訊：${d.info}`; };
+
   // 送出到 Google 表單。Google 不允許網頁讀取回應（no-cors），所以只能確認「有送出去」；
   // 沒網路時 fetch 會失敗，畫面會保留玩家寫的內容，請玩家連上網路再送。
   F.send = function (d, fetchFn) {
     fetchFn = fetchFn || root.fetch;
     if (!F.ready()) return Promise.resolve({ ok: false, reason: 'not-ready' });
     if (!fetchFn) return Promise.resolve({ ok: false, reason: 'offline' });
-    const f = F.FORM.fields, body = new URLSearchParams();
-    body.append(f.type, d.type); body.append(f.text, d.text); body.append(f.contact, d.contact); body.append(f.info, d.info);
+    const body = new URLSearchParams();
+    body.append(F.FORM.entry, F.compose(d));
     return fetchFn(F.FORM.url, { method: 'POST', mode: 'no-cors', body })
       .then(() => ({ ok: true }), () => ({ ok: false, reason: 'offline' }));
   };
