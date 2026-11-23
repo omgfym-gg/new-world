@@ -893,7 +893,7 @@ test('未來：暖化量級合理（8 國劇本 2020 年 0.5–1.3°C），未�
   assert.ok(ya.year !== yb.year || ya.by !== yb.by || a.world.invented.genetics.year !== b.world.invented.genetics.year, '不同種子，出現的年份或國家不同');
 });
 test('未來：相同種子 → 同樣的結局與年份；結局後世界停止推進', () => {
-  const a = runTo(makeG('f'), 2400), b = runTo(makeG('f'), 2400);
+  const a = runTo(makeG('f1'), 2400), b = runTo(makeG('f1'), 2400);
   const A = a.world.future.ended, B = b.world.future.ended;
   assert.ok(A, '2400 年前走到結局');
   assert.deepStrictEqual(A, B);
@@ -904,7 +904,7 @@ test('未來：相同種子 → 同樣的結局與年份；結局後世界停止
   assert.ok(ev && ev.type === 'ending' && ev.causes.length, '結局寫成事件並附原因');
 });
 test('未來：災難的死亡寫進因果帳；「如果？」可以阻止災難，原世界不變', () => {
-  const e = runTo(makeG('h'), 2012);
+  const e = runTo(makeG('h3'), 2012);
   const w = e.world;
   const cat = w.events.find((x) => x.type === 'catastrophe');
   assert.ok(cat, '2012 年前發生一場災難（核危機）');
@@ -1074,6 +1074,38 @@ test('文明進程：階段目標、下一個突破；多年沒有發明時列�
   for (const k in c.invented) c.invented[k].year = c.year - 40;
   const G2 = WS.Future.progress(c);
   assert.ok(G2.stalled && G2.since >= 25 && G2.why.length > 0, '停滯與原因');
+});
+test('文明進程：科技全部完成時不算停滯，也不出現無限大的研究成本', () => {
+  const e = runTo(makeG('pg2'), 1913);
+  const c = JSON.parse(e.serialize());
+  for (const t in WS.Data.techs) c.invented[t] = { year: c.year - 60, by: 'USA' };
+  const G = WS.Future.progress(c);
+  assert.ok(G.allDone && !G.stalled, '全部完成 → 不停滯');
+  assert.strictEqual(G.next.length, 0);
+  assert.ok(!G.why.some((x) => /Infinity/.test(x)), '原因裡沒有 Infinity');
+});
+test('「沒有你的世界」第一個差異：排除建立分支的紀錄，找到真正的介入', () => {
+  const base = runTo(makeG('fd'), 1912).world;
+  const b = WS.Branch.create(base, '回溯 1912', '測試');
+  const a = JSON.parse(JSON.stringify(base));
+  // 分支多了一筆「世界線分歧」，之後玩家在分支施展神之手
+  b.events.push({ id: 'x1', type: 'divine', level: 3, y: 1913, m: 3, title: '神之手：援助公共衛生（中國）', countries: ['CHN'] });
+  const d = WS.Future.firstDiff(b, a);
+  assert.ok(d && d.mine && /公共衛生/.test(d.mine.title), JSON.stringify(d));
+  assert.strictEqual(d.y, 1913);
+  assert.strictEqual(WS.Future.firstDiff(a, JSON.parse(JSON.stringify(a))), null, '一樣的世界沒有差異');
+});
+test('失業只隨受雇部門放大：旱災不會讓自耕農「失業」', () => {
+  const e = runTo(makeG('un'), 1912);
+  const w = e.world;
+  const c = w.countries.CHN;
+  c.econ.growth = -0.2; c.demo.unemployment = w.params.economy.unemploymentBase;
+  const P = w.params.economy, lab = c.econ.lab.agri;
+  WS.Economy.step(w, ['CHN'], { rng: new WS.RNG('t') });
+  // 每月向目標移動 10%：目標只含受雇部門比例 (1 − 農業) 的衰退效果
+  const maxT = P.unemploymentBase + 0.2 * P.unemploymentOkun * (1 - lab) + 0.03;
+  assert.ok(lab > 0.6, '1912 年中國是農業國');
+  assert.ok(c.demo.unemployment <= P.unemploymentBase + (maxT - P.unemploymentBase) * 0.1 + 1e-9, String(c.demo.unemployment));
 });
 test('神之手「啟發一項新發明」：只能選世界上還沒有的技術；寫入指令紀錄、加快研究、可重現', () => {
   const run = () => {

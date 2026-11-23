@@ -3089,6 +3089,10 @@
     "｜其他候選：": " | Otros candidatos: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Titulares de {0}: {1}{2}; otros {3} eventos van al resumen anual",
     "🔇 關閉": "🔇 Apagado",
-    "🔊 開啟": "🔊 Encendido"
+    "🔊 開啟": "🔊 Encendido",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Tamaño del círculo = población · mapa esquemático, solo países en esta versión · los nombres amontonados se ocultan; toca un círculo para verlo",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "Todas las tecnologías completadas: se ha inventado toda tecnología conocida y no queda nada por investigar.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} tu mundo: «{1}» (no ocurrió en el mundo sin ti)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} mundo sin ti: «{1}» (no ocurrió en tu mundo)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -3089,6 +3089,10 @@
     "｜其他候選：": " | Calon lain: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Berita utama {0}: {1}{2}; {3} peristiwa lain masuk ringkasan tahunan",
     "🔇 關閉": "🔇 Mati",
-    "🔊 開啟": "🔊 Nyala"
+    "🔊 開啟": "🔊 Nyala",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Ukuran lingkaran = populasi · peta skematis, hanya negara di versi ini · nama yang berdesakan disembunyikan, ketuk lingkaran untuk melihatnya",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "Semua teknologi selesai: setiap teknologi yang dikenal sudah ditemukan, tidak ada lagi yang perlu diteliti.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} duniamu: \"{1}\" (tidak terjadi di dunia tanpamu)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} dunia tanpamu: \"{1}\" (tidak terjadi di duniamu)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

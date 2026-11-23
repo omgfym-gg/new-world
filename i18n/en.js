@@ -3094,6 +3094,10 @@
     "｜其他候選：": " | Other candidates: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Headlines of {0}: {1}{2}; {3} other events go into the yearly summary",
     "🔇 關閉": "🔇 Off",
-    "🔊 開啟": "🔊 On"
+    "🔊 開啟": "🔊 On",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Circle size = population · schematic map, countries only in this version · crowded names are hidden, tap a circle to see it",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "All technologies are complete: every known technology has been invented, nothing left to research.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} your world: \"{1}\" (did not happen in the world without you)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} world without you: \"{1}\" (did not happen in your world)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

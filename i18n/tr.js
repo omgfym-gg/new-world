@@ -3089,6 +3089,10 @@
     "｜其他候選：": " | Diğer adaylar: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 {0} manşetleri: {1}{2}; diğer {3} olay yıllık özete girer",
     "🔇 關閉": "🔇 Kapalı",
-    "🔊 開啟": "🔊 Açık"
+    "🔊 開啟": "🔊 Açık",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Daire boyutu = nüfus · şematik harita, bu sürümde yalnızca ülkeler · üst üste binen adlar gizlenir, görmek için daireye dokunun",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "Tüm teknolojiler tamamlandı: bilinen her teknoloji icat edildi, araştırılacak bir şey kalmadı.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} senin dünyan: \"{1}\" (sensiz dünyada olmadı)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} sensiz dünya: \"{1}\" (senin dünyanda olmadı)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

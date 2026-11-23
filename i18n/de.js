@@ -3089,6 +3089,10 @@
     "｜其他候選：": " | Weitere Kandidaten: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Schlagzeilen {0}: {1}{2}; {3} weitere Ereignisse gehen in die Jahreszusammenfassung",
     "🔇 關閉": "🔇 Aus",
-    "🔊 開啟": "🔊 An"
+    "🔊 開啟": "🔊 An",
+    "圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看": "Kreisgröße = Bevölkerung · schematische Karte, in dieser Version nur Länder · zu dicht stehende Namen werden ausgeblendet, Kreis antippen zum Anzeigen",
+    "目前科技已全部完成：已知的科技都有人發明了，沒有下一項可研究。": "Alle Technologien abgeschlossen: Jede bekannte Technologie ist erfunden, es gibt nichts mehr zu erforschen.",
+    "{0} 年你的世界：「{1}」（沒有你的世界沒有這件事）": "{0} deine Welt: „{1}“ (geschah nicht in der Welt ohne dich)",
+    "{0} 年沒有你的世界：「{1}」（你的世界沒有這件事）": "{0} Welt ohne dich: „{1}“ (geschah nicht in deiner Welt)"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

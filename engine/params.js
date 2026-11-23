@@ -76,6 +76,9 @@
       urbanCar: 0.006,
       urbanMax: 0.92,
       unemploymentBase: 0.04,
+      // 經濟衰退推高失業（類似奧肯法則）。只作用在受雇部門（工業、服務業）：
+      // 自耕農在歉收年仍在田裡工作，不會「失業」，否則旱災會被放大成全面衰退、隔年再全面反彈（示意值）
+      unemploymentOkun: 1.5,
       inflationBase: 0.01,
       inflationDeficit: 0.5,
       inflationFood: 0.3,

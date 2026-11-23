@@ -633,7 +633,9 @@
     const last = years.length ? Math.max(...years) : null;
     const since = w.year - (last != null ? last : (w.startYear || w.year));
     const sv = p.stagnationYears || 25;
-    const stalled = since >= sv;
+    // 科技樹全部完成：沒有「下一項」可以研究，不算停滯
+    const allDone = Object.keys(T).every((t) => w.invented[t]);
+    const stalled = !allDone && since >= sv;
     // 停滯的原因：只看模擬裡的實際數字（研究投入、教育、政局、戰爭、經濟）
     const why = [];
     const lead = next.length && next[0].years != null ? w.countries[next[0].by] : ids.map((id) => w.countries[id]).sort((a, b) => pts(b) - pts(a) || (a.id < b.id ? -1 : 1))[0];
@@ -645,11 +647,28 @@
       if (lead.pol.stability < 40) why.push(`${lead.name}政局不穩（穩定度 ${lead.pol.stability.toFixed(0)}），研究效率打折`);
       if (lead.flags.atWar) why.push(`${lead.name}正在打仗`);
       if ((lead.econ.gdppc || 0) < 3000) why.push(`${lead.name}人均 GDP 約 ${Math.round(lead.econ.gdppc || 0).toLocaleString()} 美元，研究經費很少`);
-      why.push(`全世界研究投入每年約 ${u.fmt(ids.reduce((s2, id) => s2 + pts(w.countries[id]), 0), 2)}（${lead.name} ${u.fmt(r.pts, 2)}；最便宜的一項新技術要 ${Math.min(...Object.keys(T).filter((t) => !w.invented[t]).map((t) => T[t].cost))}）`);
+      if (!allDone) why.push(`全世界研究投入每年約 ${u.fmt(ids.reduce((s2, id) => s2 + pts(w.countries[id]), 0), 2)}（${lead.name} ${u.fmt(r.pts, 2)}；最便宜的一項新技術要 ${Math.min(...Object.keys(T).filter((t) => !w.invented[t]).map((t) => T[t].cost))}）`);
     }
     const warAll = w.wars.filter((x) => !x.ended).length;
     if (warAll >= 3) why.push(`世界上同時有 ${warAll} 場戰爭`);
-    return { stages, cur, next: next.slice(0, 4), last, since, stalled, stallYears: sv, why, lead: lead ? lead.id : null };
+    return { stages, cur, next: next.slice(0, 4), last, since, stalled, allDone, stallYears: sv, why, lead: lead ? lead.id : null };
+  };
+
+  // 兩條世界線第一個不同的重大事件（「沒有你的世界」比較用）
+  // 建立分支、系統訊息只是紀錄，不是模擬裡發生的事，比較前先排除；依時間對齊，不受其中一邊多出一筆紀錄影響
+  Future.firstDiff = function (a, b) {
+    const big = (x) => x.level >= 3 && x.type !== 'system' && x.type !== 'branch';
+    const A = a.events.filter(big), B = b.events.filter(big);
+    const key = (x) => x.y * 12 + (x.m || 1);
+    const n = Math.min(A.length, B.length);
+    for (let i = 0; i < n; i++) {
+      if (A[i].title === B[i].title && A[i].y === B[i].y) continue;
+      // 同一時間點兩邊各有一件不同的事 → 兩件都列；否則只列較早的那一邊（另一邊沒有這件事）
+      const ka = key(A[i]), kb = key(B[i]), e = ka <= kb ? A[i] : B[i];
+      return { y: e.y, m: e.m, mine: ka <= kb ? A[i] : null, other: kb <= ka ? B[i] : null };
+    }
+    if (A.length !== B.length) { const e = A.length > B.length ? A[n] : B[n]; return { y: e.y, m: e.m, mine: A.length > B.length ? e : null, other: A.length > B.length ? null : e }; }
+    return null;
   };
 
   // ---------- 「沒有你介入的世界」：從起點用同一個種子重跑，不重播玩家的政策、神之手、規則與「如果？」 ----------

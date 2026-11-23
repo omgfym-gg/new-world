@@ -136,6 +136,8 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(56, 189, 248,
 .chron b { color: var(--gold); }
 
 .map { width: 100%; height: auto; display: block; border-radius: 12px; background: radial-gradient(ellipse at center, #0b1a36, #050a16); }
+/* 國名加一圈背景色描邊，壓在別國圓圈上也讀得清楚（描邊顏色跟著時代介面的背景） */
+.map text { paint-order: stroke; stroke: var(--bg); stroke-width: 1.1px; stroke-linejoin: round; }
 .chart { width: 100%; height: auto; display: block; }
 
 .factor { margin: 8px 0; }
