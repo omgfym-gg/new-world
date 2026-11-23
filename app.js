@@ -312,7 +312,7 @@
           <button class="btn gold" data-act="ancient">遠古世界<small>《人類的黎明》：從西元前 10,000 年的狩獵採集開始</small></button>
           <button class="btn" data-act="custom-world">自訂世界<small>選起點（1911 年真實世界或遠古），修改世界制度與規則</small></button>
         </div>
-        <div class="row notice-links"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button></div>
+        <div class="row notice-links"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button>${supportBtn()}</div>
         <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
         ${langPicker()}
       </div>`;
@@ -363,6 +363,18 @@
     ta.value = d.text; ct.value = d.contact;
     ta.addEventListener('input', () => { d.text = ta.value; });
     ct.addEventListener('input', () => { d.contact = ct.value; });
+  }
+  // 支持作者：只開外部贊助頁面，遊戲不經手付款
+  function supportBtn() { return WS.Support && WS.Support.ready() ? '<button class="btn small gold" data-act="support">❤ 支持作者</button>' : ''; }
+  function supportModal() {
+    const links = WS.Support.links();
+    openModal(`<div class="support">
+      <h2>支持作者</h2>
+      <p>《創 世界》由一個人利用空閒時間製作，免費遊玩、沒有廣告。如果你喜歡這個遊戲，可以請作者喝杯咖啡，支持遊戲繼續更新。</p>
+      <div class="support-links">${links.map((l) => `<a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer"><span translate="no">${esc(l.name)}</span><small>${esc(l.note)}</small></a>`).join('')}</div>
+      <p class="dim" style="font-size:12.5px">會在新分頁打開贊助平台的網頁，付款由該平台處理，遊戲不會收到你的付款資料。贊助與否都不影響遊戲內容。</p>
+      <div class="row" style="margin-top:10px"><button class="btn" data-act="close-modal">關閉</button></div>
+    </div>`);
   }
   function feedbackSend(btn) {
     const F = WS.Feedback, d = S.fb || {};
@@ -1568,7 +1580,7 @@
   }
   function helpCard() {
     return `<div class="card"><h3>說明與回饋</h3><p class="dim" style="margin-top:0">再看一次遊戲介紹，或把遇到的問題、建議告訴我們。</p>
-      <div class="row"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button></div></div>`;
+      <div class="row"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button>${supportBtn()}</div></div>`;
   }
   function paramsEditor(params) {
     let out = '';
@@ -2190,6 +2202,7 @@
       case 'intro': case 'feedback': S.resumeAuto = false; if (S.auto) { stopAuto(); render(); } if (a === 'intro') introModal(); else feedbackModal(); break;
       case 'fb-type': if (S.fb) S.fb.type = v; t.parentNode.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); break;
       case 'fb-send': feedbackSend(t); break;
+      case 'support': S.resumeAuto = false; if (S.auto) { stopAuto(); render(); } supportModal(); break;
       case 'home': stopAuto(); S.screen = 'start'; render(); break;
       case 'new-world': S.setup = newSetup('country'); S.nl = ''; S.nlResult = null; S.screen = 'setup'; render(); break;
       case 'custom-world': S.setup = Object.assign(newSetup('global'), { depth: 'custom', civil: 'custom' }); S.screen = 'setup'; render(); break;

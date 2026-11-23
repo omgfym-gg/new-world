@@ -1297,6 +1297,20 @@ test('遊戲公告與意見回饋：只送出玩家寫的內容與遊戲資訊�
   });
 });
 
+test('支持作者：只顯示 https 贊助連結，不改世界', () => {
+  require('vm').runInThisContext(require('fs').readFileSync(require('path').join(__dirname, '../ui/notice.js'), 'utf8'));
+  const P = WS.Support;
+  const saved = P.LINKS.map((l) => l.url);
+  assert.ok(P.LINKS.length >= 2 && P.LINKS.every((l) => l.name && l.note));
+  P.LINKS.forEach((l) => { l.url = ''; });
+  assert.strictEqual(P.ready(), false, '沒有網址時不顯示按鈕');
+  P.LINKS[0].url = 'javascript:alert(1)';
+  P.LINKS[1].url = 'https://ko-fi.com/test';
+  assert.deepStrictEqual(P.links().map((l) => l.id), ['kofi'], '只接受 https 網址');
+  P.LINKS.forEach((l, i) => { l.url = saved[i]; });
+  P.links().forEach((l) => assert.ok(/^https:\/\//.test(l.url)));
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;
