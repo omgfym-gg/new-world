@@ -1263,6 +1263,40 @@ test('多國語言：新增的 13 種語言都翻完英文字典裡的句子，�
   I.setLang('zh-TW');
 });
 
+test('遊戲公告與意見回饋：只送出玩家寫的內容與遊戲資訊，不改世界', () => {
+  require('vm').runInThisContext(require('fs').readFileSync(require('path').join(__dirname, '../ui/notice.js'), 'utf8'));
+  const F = WS.Feedback, N = WS.Notice;
+  assert.ok(N.ID && N.NEWS.length >= 1 && N.NEWS.every((n) => n.date && n.text));
+  assert.strictEqual(F.build({ type: 'bug', text: ' ' }).ok, false, '空白內容不能送出');
+  const r = F.build({ type: 'idea', text: '  希望加入 1800 年起點  ', contact: 'x', info: 'i' });
+  assert.ok(r.ok && r.data.type === '建議' && r.data.text === '希望加入 1800 年起點', '類型用中文原文');
+  assert.strictEqual(F.build({ type: 'bug', text: 'a'.repeat(F.MAX + 50) }).data.text.length, F.MAX, '內容有字數上限');
+  const e = makeG('fb');
+  const before = e.serialize();
+  const info = F.info(e.world, '分頁 overview');
+  assert.ok(info.includes('年份 ' + e.world.year) && info.includes('種子 ' + e.world.seed));
+  assert.strictEqual(e.serialize(), before, '收集遊戲資訊不會改變世界');
+  // 送出：表單設定好才送，送到 formResponse，四個欄位都帶上
+  const saved = JSON.parse(JSON.stringify(F.FORM));
+  let call = null;
+  const fake = (url, opt) => { call = { url, opt }; return Promise.resolve({}); };
+  return F.send(r.data, fake).then((res) => {
+    if (!F.ready()) { assert.strictEqual(res.ok, false); assert.strictEqual(call, null); }
+    F.FORM.url = 'https://docs.google.com/forms/d/e/TEST/formResponse';
+    F.FORM.entry = 'entry.1';
+    return F.send(r.data, fake);
+  }).then((res) => {
+    assert.ok(res.ok && /formResponse$/.test(call.url) && call.opt.method === 'POST');
+    const sent = call.opt.body.get('entry.1');
+    assert.ok(/^【建議】\n希望加入 1800 年起點/.test(sent) && sent.includes('聯絡方式：x') && sent.includes('遊戲資訊：i'), '四項內容組成一段文字');
+    return F.send(r.data, () => Promise.reject(new Error('offline')));
+  }).then((res) => {
+    assert.strictEqual(res.ok, false, '沒網路時回報失敗，讓畫面保留內容');
+    if (saved.url) assert.ok(/^https:\/\/docs\.google\.com\/forms\/.+\/formResponse$/.test(saved.url), '正式表單網址要是 formResponse');
+    F.FORM.url = saved.url; F.FORM.entry = saved.entry;
+  });
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;
