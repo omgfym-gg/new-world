@@ -729,3 +729,6 @@ html:not([lang^="zh"]):not([lang="ja"]) body[data-ui="paper"] .sys-id::after { c
 .notice-steps b { display: block; }
 .notice-steps span { color: var(--muted); }
 .feedback .fb-type { flex-wrap: wrap; }
+.support-links { display: grid; gap: 8px; margin: 12px 0; }
+.support-links .btn { text-decoration: none; text-align: left; color: inherit; }
+.support-links .btn small { display: block; color: var(--muted); font-size: 12px; }

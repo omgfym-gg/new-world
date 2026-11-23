@@ -5,6 +5,7 @@
 // 意見箱：玩家填寫的內容送到小黑的 Google 表單（玩家不用登入）。
 //   表單只有一題「意見」（段落）：類型、內容、聯絡方式、遊戲資訊組成一段文字送進那一格。
 //   表單網址與那一格的代號設定在下面的 FORM；沒設定時意見箱顯示「尚未開放」。
+// 支持作者：贊助連結（小黑自己的帳號），設定在下面的 Support.LINKS；都沒填網址時不顯示按鈕。
 (function (root) {
   const WS = (root.WS = root.WS || {});
 
@@ -75,4 +76,17 @@
     return fetchFn(F.FORM.url, { method: 'POST', mode: 'no-cors', body })
       .then(() => ({ ok: true }), () => ({ ok: false, reason: 'offline' }));
   };
+
+  // ---------------- 支持作者 ----------------
+  // 只是打開外部贊助頁面（新分頁），遊戲不經手任何付款資料，也不記錄誰有贊助。
+  const P = (WS.Support = {});
+  P.LINKS = [
+    // 台灣玩家：新台幣付款
+    { id: 'portaly', name: 'Portaly', url: '', note: '適合台灣玩家（新台幣付款）' },
+    // 國外玩家：信用卡、PayPal
+    { id: 'kofi', name: 'Ko-fi', url: '', note: '適合國外玩家（信用卡、PayPal）' }
+  ];
+  // 只接受 https 網址，避免填錯時變成可執行的連結
+  P.links = function () { return P.LINKS.filter((l) => /^https:\/\/[^\s"'<>]+$/.test(l.url || '')); };
+  P.ready = function () { return P.links().length > 0; };
 })(typeof window !== 'undefined' ? window : globalThis);
