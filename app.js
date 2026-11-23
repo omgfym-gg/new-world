@@ -312,9 +312,74 @@
           <button class="btn gold" data-act="ancient">遠古世界<small>《人類的黎明》：從西元前 10,000 年的狩獵採集開始</small></button>
           <button class="btn" data-act="custom-world">自訂世界<small>選起點（1911 年真實世界或遠古），修改世界制度與規則</small></button>
         </div>
+        <div class="row notice-links"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button></div>
         <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
         ${langPicker()}
       </div>`;
+    // 第一次打開遊戲（或公告更新後）自動顯示遊戲介紹
+    if (WS.Notice && !WS.Notice.seen() && modal.hidden) setTimeout(() => { if (S.screen === 'start' && modal.hidden) introModal(); }, 400);
+  }
+
+  // ======================= 遊戲介紹與意見回饋 =======================
+  function introModal() {
+    WS.Notice.markSeen();
+    openModal(`<div class="notice">
+      <h2>歡迎來到《創 世界》</h2>
+      <p>這是一個「世界會自己運作」的歷史模擬遊戲。你選一個起點，人口、經濟、政治、科技、外交與戰爭會由模擬器一步一步推進；你可以只是觀察，偶爾介入，或改變世界的根本規則。</p>
+      <h3>怎麼玩</h3>
+      <ol class="list-plain notice-steps">
+        <li><b>開始新世界</b><span>選一個國家來觀察，或用全球模式看整個世界；也可以從西元前 10,000 年的遠古世界開始。</span></li>
+        <li><b>推進時間</b><span>按「＋」前進，或按「▶ 自動」讓歷史自己發生；遇到重大危機時會停下來讓你決定。</span></li>
+        <li><b>追查原因</b><span>按數字旁的問號，可以一路追查「為什麼會這樣」。</span></li>
+        <li><b>平行世界</b><span>按事件旁的「如果」按鈕改寫那件事，比較兩個世界的差別。</span></li>
+        <li><b>神之手</b><span>用神力改變世界的條件，但結果不一定照你想的發生。</span></li>
+      </ol>
+      <h3>小提醒</h3>
+      <ul class="list-plain">
+        <li>這是第一版原型，所有數值都是還在調整的示意值，不是對真實世界的預測。</li>
+        <li>存檔放在這台裝置的瀏覽器裡；換裝置或清除瀏覽器資料之前，請先到「系統」頁備份存檔。</li>
+      </ul>
+      <h3>最新消息</h3>
+      <ul class="list-plain notice-news">${WS.Notice.NEWS.map((n) => `<li><span class="dim num">${esc(n.date)}</span> ${esc(n.text)}</li>`).join('')}</ul>
+      <p class="dim">遇到問題或有建議？按「意見回饋」告訴我們，每一則都會看。</p>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="close-modal">開始探索</button><button class="btn" data-act="feedback">💬 意見回饋</button></div>
+    </div>`);
+  }
+  function feedbackModal() {
+    const F = WS.Feedback;
+    if (!F.ready()) { openModal(`<h2>意見回饋</h2><p>意見箱還在準備中，很快就會開放，謝謝你的耐心。</p><button class="btn" data-act="close-modal">關閉</button>`); return; }
+    const d = S.fb || (S.fb = { type: 'bug', text: '', contact: '' });
+    openModal(`<div class="feedback">
+      <h2>意見回饋</h2>
+      <p class="dim">遇到問題、有建議或疑問，都可以寫在這裡，會直接送給開發者。</p>
+      <div class="field"><label>類型</label><div class="seg fb-type">${F.TYPES.map(([k, l]) => `<button data-act="fb-type" data-v="${k}" class="${d.type === k ? 'on' : ''}" aria-pressed="${d.type === k}">${l}</button>`).join('')}</div></div>
+      <div class="field"><label for="fb-text">內容</label><textarea id="fb-text" rows="6" maxlength="${F.MAX}" placeholder="例如：玩到 1950 年時畫面卡住；或希望加入某個功能…"></textarea></div>
+      <div class="field"><label for="fb-contact">聯絡方式（選填）</label><input type="text" id="fb-contact" maxlength="200" placeholder="想收到回覆的話，留下 Email 或其他聯絡方式"></div>
+      <p class="dim" style="font-size:12.5px">送出時會一併附上：遊戲版本、語言、目前世界的年份與種子、裝置類型（不含個人資料），方便找出問題。</p>
+      <div class="row" style="margin-top:10px"><button class="btn primary" data-act="fb-send" id="fb-send">送出</button><button class="btn" data-act="close-modal">取消</button></div>
+    </div>`);
+    // 玩家寫的內容用 value 放回去（不經過畫面翻譯）
+    const ta = document.getElementById('fb-text'), ct = document.getElementById('fb-contact');
+    ta.value = d.text; ct.value = d.contact;
+    ta.addEventListener('input', () => { d.text = ta.value; });
+    ct.addEventListener('input', () => { d.contact = ct.value; });
+  }
+  function feedbackSend(btn) {
+    const F = WS.Feedback, d = S.fb || {};
+    const w = S.screen === 'start' ? null : W();
+    const r = F.build({ type: d.type, text: d.text, contact: d.contact, info: F.info(w, S.screen === 'start' ? '' : '分頁 ' + S.tab) });
+    if (!r.ok) { toast(r.reason); return; }
+    if (S.fbSentAt && Date.now() - S.fbSentAt < 20000) { toast('剛剛已經送出一則了，請稍等一下再送。'); return; }
+    btn.disabled = true; btn.textContent = '送出中…';
+    F.send(r.data).then((res) => {
+      if (res.ok) {
+        S.fb = null; S.fbSentAt = Date.now();
+        openModal(`<h2>已送出，謝謝你！</h2><p>你的意見已經送到開發者手上。${r.data.contact ? '如果需要進一步了解，會用你留下的聯絡方式回覆。' : ''}</p><button class="btn primary" data-act="close-modal">回到遊戲</button>`);
+      } else {
+        btn.disabled = false; btn.textContent = '送出';
+        toast('送不出去：請確認網路連線後再試一次（你寫的內容還在）。', 5000);
+      }
+    });
   }
   // 語言（只改畫面文字，不影響世界）：開始畫面的小選單用各語言自己的名稱，不翻譯
   function setLanguage(v) {
@@ -1492,6 +1557,7 @@
           ${themeSetting()}
           ${verText() ? `<p class="dim" style="margin:8px 0 0">版本 ${verText()}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）</p>` : ''}
         </div>
+        ${helpCard()}
         <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary>
           <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
           <h4>數值驗證</h4><p class="dim">已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個問題（自動修正並記錄）。</p>
@@ -1499,6 +1565,10 @@
           <h4>每期固定計算順序</h4><ol class="list-plain">${WS.STEP_ORDER.map((s) => `<li>${esc(s.replace(/^\d+ /, ''))}</li>`).join('')}</ol></details>
         ${adv ? `<div class="card"><h3>模型參數（進階）</h3><p class="dim">所有係數皆為待校準的示意值。修改後會記錄在事件中，只影響這條世界線。</p>${paramsEditor(w.params)}</div>` : ''}
       </div>`;
+  }
+  function helpCard() {
+    return `<div class="card"><h3>說明與回饋</h3><p class="dim" style="margin-top:0">再看一次遊戲介紹，或把遇到的問題、建議告訴我們。</p>
+      <div class="row"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button></div></div>`;
   }
   function paramsEditor(params) {
     let out = '';
@@ -1853,6 +1923,7 @@
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
       <div class="card"><h3>介面</h3>${langSetting()}${themeSetting()}</div>
+      ${helpCard()}
       <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary><p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・已檢查 ${w.validation.checks} 期，發現 ${w.validation.issues.length} 個數值問題。</p>
 </details>`;
   }
@@ -2116,6 +2187,9 @@
     const a = t.dataset.act, v = t.dataset.v;
     switch (a) {
       case 'close-modal': closeModal(); break;
+      case 'intro': case 'feedback': S.resumeAuto = false; if (S.auto) { stopAuto(); render(); } if (a === 'intro') introModal(); else feedbackModal(); break;
+      case 'fb-type': if (S.fb) S.fb.type = v; t.parentNode.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); break;
+      case 'fb-send': feedbackSend(t); break;
       case 'home': stopAuto(); S.screen = 'start'; render(); break;
       case 'new-world': S.setup = newSetup('country'); S.nl = ''; S.nlResult = null; S.screen = 'setup'; render(); break;
       case 'custom-world': S.setup = Object.assign(newSetup('global'), { depth: 'custom', civil: 'custom' }); S.screen = 'setup'; render(); break;

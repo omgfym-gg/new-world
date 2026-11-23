@@ -16,7 +16,7 @@ const FILES = [
   'systems/policy-system.js', 'systems/agent-system.js', 'systems/event-system.js', 'systems/rule-system.js',
   'systems/history-system.js', 'systems/explain-system.js', 'systems/save-system.js', 'systems/whatif-system.js',
   'systems/divine-system.js', 'systems/headline-system.js',
-  'ui/globe.js', 'ui/warcam.js', 'ui/scenecam.js', 'ui/lifecam.js', 'ui/music.js', 'ui/era-theme.js', 'ui/territory.js'
+  'ui/globe.js', 'ui/warcam.js', 'ui/scenecam.js', 'ui/lifecam.js', 'ui/music.js', 'ui/era-theme.js', 'ui/territory.js', 'ui/notice.js'
 ];
 const HAN = /[㐀-鿿]/;
 
