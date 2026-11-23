@@ -287,6 +287,8 @@
       const segs = core.split(/(\s{2,})/), outS = segs.map((x, i) => (i % 2 ? x : trShape(x, depth + 1))).join('');
       if (!HAN.test(outS)) return lead + outS + tail;
     }
+    // 很短的「數字＋單字」（例如「2119 年」）：先用短樣板（「{0} 年」→ 2119），不要逐字翻成「2119 year」
+    if (/^[^\u3400-\u9fff]*\d[^\u3400-\u9fff]*[\u3400-\u9fff]$/.test(core)) { const rw = lookupLoose(core, depth, true); if (rw != null) return lead + rw + tail; }
     // 數字、符號隔開的詞逐一查（例如「穩定度 27 < 35」）；全部查得到才用，否則再試短樣板
     const words = core.split(/([^\u3400-\u9fff\uf900-\ufaff「」『』（）]+)/);
     const byWord = words.length > 1 ? tidy(words.map((x, i) => (i % 2 ? x : x && (lookupLoose(x, depth + 1, true) ?? punct(x)))).join('')) : null;
@@ -470,7 +472,9 @@
 
   // 載入字典：同步寫入 <script>（啟動時，讓第一個畫面就是對的語言），之後切換時用動態載入
   const base = (() => { const s = doc.currentScript && doc.currentScript.src; return s ? s.replace(/[^/]*$/, '') : 'i18n/'; })();
-  const files = (lang) => [I.LANGS[lang].fb, lang].filter((l) => l && l !== I.SOURCE && !I.DATA[l]).map((l) => base + I.LANGS[l].file + '.js');
+  // 字典檔的網址也帶上版本號（index.html 裡 i18n.js?v=…），更新後瀏覽器才不會用舊的暫存檔
+  const ver = (() => { const s = doc.currentScript && doc.currentScript.src; const m = s && s.match(/\?v=[\w-]+/); return m ? m[0] : ''; })();
+  const files = (lang) => [I.LANGS[lang].fb, lang].filter((l) => l && l !== I.SOURCE && !I.DATA[l]).map((l) => base + I.LANGS[l].file + '.js' + ver);
   I.load = function (lang, cb) {
     const todo = files(lang);
     if (!todo.length) { cb && cb(I.ready(lang)); return; }
