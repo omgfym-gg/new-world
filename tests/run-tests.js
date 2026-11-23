@@ -1089,10 +1089,10 @@ test('「沒有你的世界」第一個差異：排除建立分支的紀錄，�
   const b = WS.Branch.create(base, '回溯 1912', '測試');
   const a = JSON.parse(JSON.stringify(base));
   // 分支多了一筆「世界線分歧」，之後玩家在分支施展神之手
-  b.events.push({ id: 'x1', type: 'divine', level: 3, y: 1913, m: 3, title: '神之手：援助公共衛生（中國）', countries: ['CHN'] });
+  b.events.push({ id: 'x1', type: 'divine', level: 3, y: b.year, m: b.month, title: '神之手：援助公共衛生（中國）', countries: ['CHN'] });
   const d = WS.Future.firstDiff(b, a);
   assert.ok(d && d.mine && /公共衛生/.test(d.mine.title), JSON.stringify(d));
-  assert.strictEqual(d.y, 1913);
+  assert.strictEqual(d.y, b.year);
   assert.strictEqual(WS.Future.firstDiff(a, JSON.parse(JSON.stringify(a))), null, '一樣的世界沒有差異');
 });
 test('失業只隨受雇部門放大：旱災不會讓自耕農「失業」', () => {
@@ -1106,6 +1106,25 @@ test('失業只隨受雇部門放大：旱災不會讓自耕農「失業」', ()
   const maxT = P.unemploymentBase + 0.2 * P.unemploymentOkun * (1 - lab) + 0.03;
   assert.ok(lab > 0.6, '1912 年中國是農業國');
   assert.ok(c.demo.unemployment <= P.unemploymentBase + (maxT - P.unemploymentBase) * 0.1 + 1e-9, String(c.demo.unemployment));
+});
+test('版本號：index.html 的檔案網址帶著目前內容的版本（更新後瀏覽器不會用舊檔案）', () => {
+  const { version, stamped } = require('../tools/stamp-version.js');
+  const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.ok(html.includes(`content="${version()}"`), '請執行 node tools/stamp-version.js');
+  assert.strictEqual(stamped(version()), html);
+});
+test('「沒有你的世界」第一個差異：舊事件被刪掉時只比較兩邊都有紀錄的期間', () => {
+  const e = runTo(makeG('fd2'), 1914);
+  const a = JSON.parse(e.serialize()), b = JSON.parse(e.serialize());
+  // 重跑的世界刪掉了 1913 年以前的紀錄：不能把「另一邊沒有」當成差異
+  b.events = b.events.filter((x) => x.y >= 1913);
+  assert.strictEqual(WS.Future.firstDiff(a, b), null, JSON.stringify(WS.Future.firstDiff(a, b)));
+  // 重跑時另外收好的完整紀錄：可以找到更早的差異
+  const full = a.events.slice();
+  full.push({ id: 'X', type: 'divine', level: 3, y: 1912, m: 5, title: '神之手：測試', countries: [] });
+  full.sort((x, y) => x.y - y.y || x.m - y.m);
+  const d = WS.Future.firstDiff(a, b, null, full);
+  assert.ok(d && d.other && d.other.title === '神之手：測試', JSON.stringify(d));
 });
 test('神之手「啟發一項新發明」：只能選世界上還沒有的技術；寫入指令紀錄、加快研究、可重現', () => {
   const run = () => {

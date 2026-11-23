@@ -37,7 +37,8 @@
   // 自動附上的遊戲資訊（幫助找出問題；不含個人資料）
   F.info = function (w, extra) {
     const out = [];
-    if (WS.VERSION) out.push('遊戲版本 ' + WS.VERSION);
+    const vm = root.document && root.document.querySelector && root.document.querySelector('meta[name="ws-version"]');
+    if (vm) out.push('遊戲版本 ' + vm.getAttribute('content'));
     if (WS.I18n) out.push('語言 ' + WS.I18n.lang);
     if (w) {
       out.push('劇本 ' + (w.scenario || '?'));

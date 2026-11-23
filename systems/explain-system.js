@@ -98,7 +98,7 @@
       const worst = neg[0];
       if (worst && worst.link) {
         const d = Explain.metric(w, cid, worst.link, 'last');
-        if (d && d.factors.length) deeper = `而「${worst.name}」本身主要受到${d.factors.slice(0, 2).map((f) => `「${f.name}」`).join('、')}影響。`;
+        if (d && d.factors.length) deeper = `而「${worst.name}」本身主要受這些因素影響：${d.factors.slice(0, 2).map((f) => `「${f.name}」`).join('、')}。`;
       }
       qs.push({
         q: `為什麼${c.name}的政治${st.total >= 0 ? '趨於穩定' : '越來越不穩'}？`,
