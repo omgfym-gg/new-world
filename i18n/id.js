@@ -3161,6 +3161,11 @@
     "🔍 放大歐洲": "🔍 Perbesar Eropa",
     "{0} 個國名太擠先隱藏，點圓圈可查看": "{0} nama disembunyikan karena berdesakan; ketuk lingkaran untuk melihatnya",
     "版本 {0}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）": "Versi {0} (sertakan saat melaporkan masalah; versi berbeda berarti peramban masih memakai berkas lama, muat ulang halaman)",
-    "而「{0}」本身主要受這些因素影響：{1}。": "Dan “{0}” sendiri terutama dipengaruhi oleh: {1}."
+    "而「{0}」本身主要受這些因素影響：{1}。": "Dan “{0}” sendiri terutama dipengaruhi oleh: {1}.",
+    "從 {0} 用同一個種子重跑到 {1} 年 {2} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。": "Dihitung ulang dari {0} sampai {2}/{1} dengan benih yang sama (kurang dari dua tahun); hanya peristiwa ini yang berbeda, sisanya dihitung mesin.",
+    "分岔後隔年": "tahun setelah percabangan",
+    "{0}（{1}），第一個不同的重大事件是：": "{0} ({1}), peristiwa besar pertama yang berbeda: ",
+    "；從 {0} 年起（{1}），{2}相差超過 1%": "; sejak {0} ({1}), {2} berbeda lebih dari 1%",
+    "從 {0} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。": "Dihitung ulang dari {0} dengan benih yang sama, tetapi tanpa mengulang kebijakanmu, Tangan Tuhan, aturan dunia, dan perubahan di dunia paralel, untuk melihat kapan dan mengapa dunia berakhir."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

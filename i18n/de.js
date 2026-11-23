@@ -3161,6 +3161,11 @@
     "🔍 放大歐洲": "🔍 Europa vergrößern",
     "{0} 個國名太擠先隱藏，點圓圈可查看": "{0} Namen wegen Platzmangel ausgeblendet; Kreis antippen zum Anzeigen",
     "版本 {0}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）": "Version {0} (bei Fehlermeldungen bitte angeben; eine andere Version bedeutet, dass der Browser alte Dateien nutzt – Seite neu laden)",
-    "而「{0}」本身主要受這些因素影響：{1}。": "Und „{0}“ selbst hing vor allem ab von: {1}."
+    "而「{0}」本身主要受這些因素影響：{1}。": "Und „{0}“ selbst hing vor allem ab von: {1}.",
+    "從 {0} 用同一個種子重跑到 {1} 年 {2} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。": "Ab {0} mit demselben Seed bis {2}/{1} neu berechnet (weniger als zwei Jahre); nur dieses Ereignis ist anders, alles andere berechnet die Engine.",
+    "分岔後隔年": "im Jahr nach der Abspaltung",
+    "{0}（{1}），第一個不同的重大事件是：": "{0} ({1}), das erste abweichende große Ereignis: ",
+    "；從 {0} 年起（{1}），{2}相差超過 1%": "; ab {0} ({1}) weicht das {2} um mehr als 1 % ab",
+    "從 {0} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。": "Ab {0} mit demselben Seed neu berechnet, aber ohne deine Politik, die Hand Gottes, Weltregeln und Umschreibungen in Parallelwelten, um zu sehen, wann und warum die Welt endet."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
