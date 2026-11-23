@@ -91,7 +91,7 @@
   - **新增或修改畫面文字時**：照舊寫中文，然後執行 `node tools/i18n-extract.js en`（與 `ja`）找出還沒翻譯的句子，補進 `i18n/en.js`、`i18n/ja.js`（其他 13 種語言能補就補，沒補的會先顯示英文；`tests/run-tests.js` 要求每種語言至少翻完英文字典的 99%）；`node tools/i18n-check.js` 會實際跑世界，檢查引擎產生的文字是否都翻得到。不想被翻譯的區塊加 `translate="no"`。
 - 自動測試 119 項：`node tests/run-tests.js`。
 - **版本號**（2026-11-23）：`node tools/stamp-version.js` 依程式與字典內容算出版本代碼，寫進 `index.html`（`<meta name="ws-version">` 與每個檔案網址的 `?v=`），內容一改網址就變，瀏覽器不會再用舊的暫存檔；系統頁顯示版本。**每次改完程式、合併前都要執行**（測試會檢查）。Claude 可玩版本用 `--strip` 輸出沒有 `?v=` 的 index.html 發布。
-- **畫面多語言檢查**：`node tools/i18n-ui-check.js [語言…]`（需要 Playwright）用無頭瀏覽器載入走到結局的世界，逐頁打開，列出畫面上還留著中文或英文文法錯誤（「2119 year」「1 events」）的句子。拼接出來的句子要寫成一整句樣板，名稱的位置不要緊貼另一個 {n} 或中文字後面接清單。
+- **畫面多語言檢查**：`node tools/i18n-ui-check.js [語言…] [--cf=en,es]`（需要 Playwright；不指定語言＝全部 16 種）用無頭瀏覽器打開「如果？」比較頁、走到星際結局的世界各分頁與地圖、核子寒冬結局與「沒有你的世界」，列出畫面上還留著中文、年份直譯（「1911 año」「2119 year」）或單複數錯誤（「1 events」）的句子。GDP 在各語言顯示當地縮寫（PIB、BIP、ВВП…，`I.LANGS[語言].gdp`）。拼接出來的句子要寫成一整句樣板，名稱的位置不要緊貼另一個 {n} 或中文字後面接清單。
 - 歷史回測工具：`node tools/backtest.js`，產生 `reports/backtest-1911.md`。分兩種模式：
   - **AI 自主決策**：各國 AI 自己決定，用來檢查世界能不能合理地自我演化。
   - **史實政策重播**：AI 決策＋在史實時間點執行重大政策（`data/history-policies-1911.js`，經引擎指令寫入 commandLog），用來校準係數。

@@ -3119,6 +3119,11 @@
     "🔍 放大歐洲": "🔍 Zoom in on Europe",
     "{0} 個國名太擠先隱藏，點圓圈可查看": "{0} crowded names hidden; tap a circle to see it",
     "版本 {0}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）": "Version {0} (include it when reporting a problem; a different version means the browser is still using old files, so reload the page)",
-    "而「{0}」本身主要受這些因素影響：{1}。": "And “{0}” itself was mainly driven by: {1}."
+    "而「{0}」本身主要受這些因素影響：{1}。": "And “{0}” itself was mainly driven by: {1}.",
+    "從 {0} 用同一個種子重跑到 {1} 年 {2} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。": "Replayed from {0} to {2}/{1} with the same seed (less than two years); only this one event differs, everything else is calculated by the engine.",
+    "分岔後隔年": "the year after the split",
+    "{0}（{1}），第一個不同的重大事件是：": "{0} ({1}), the first different major event: ",
+    "；從 {0} 年起（{1}），{2}相差超過 1%": "; from {0} ({1}), {2} differs by more than 1%",
+    "從 {0} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。": "Replayed from {0} with the same seed, but without replaying your policies, Hand of God, world rules or parallel-world rewrites, to see when and why the world ends."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

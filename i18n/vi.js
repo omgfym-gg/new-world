@@ -3114,6 +3114,11 @@
     "🔍 放大歐洲": "🔍 Phóng to châu Âu",
     "{0} 個國名太擠先隱藏，點圓圈可查看": "Ẩn {0} tên bị chồng lên nhau; chạm vào vòng tròn để xem",
     "版本 {0}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）": "Phiên bản {0} (ghi kèm khi báo lỗi; phiên bản khác nghĩa là trình duyệt vẫn dùng tệp cũ, hãy tải lại trang)",
-    "而「{0}」本身主要受這些因素影響：{1}。": "Còn “{0}” chủ yếu chịu ảnh hưởng của: {1}."
+    "而「{0}」本身主要受這些因素影響：{1}。": "Còn “{0}” chủ yếu chịu ảnh hưởng của: {1}.",
+    "從 {0} 用同一個種子重跑到 {1} 年 {2} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。": "Tính lại từ {0} đến {2}/{1} với cùng hạt giống (chưa đến hai năm); chỉ sự kiện này khác, còn lại do bộ máy tính toán.",
+    "分岔後隔年": "năm sau khi rẽ nhánh",
+    "{0}（{1}），第一個不同的重大事件是：": "{0} ({1}), sự kiện lớn đầu tiên khác biệt: ",
+    "；從 {0} 年起（{1}），{2}相差超過 1%": "; từ năm {0} ({1}), {2} chênh lệch hơn 1%",
+    "從 {0} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。": "Tính lại từ năm {0} với cùng hạt giống, nhưng không lặp lại chính sách của bạn, Bàn tay Thượng đế, luật thế giới và các thay đổi ở thế giới song song, để xem thế giới kết thúc khi nào và vì sao."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
