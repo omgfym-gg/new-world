@@ -521,58 +521,73 @@
     const w = W();
     const ids = U.ids(w);
     const X = (lon) => lon + 180, Y = (lat) => 90 - lat;
+    // 全世界劇本有南半球與太平洋的國家：改成全球視野；歐洲國家很密，可以放大歐洲看
+    const wide = ids.some((id) => w.countries[id].lat < 0 || w.countries[id].lon > 160 || w.countries[id].lon < -140);
+    const zoom = wide && S.mapZoom === 'europe';
+    const VB = zoom ? [162, 18, 78, 39] : wide ? [0, 15, 360, 135] : [40, 10, 300, 80];
+    const k = VB[2] / (wide ? 360 : 300);              // 放大時圓圈、文字、線條一起縮小，畫面上看起來一樣大
+    const R = (c) => Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5) * k;
     let lines = '';
-    for (const k of Object.keys(w.relations)) {
-      const r = w.relations[k];
+    for (const key of Object.keys(w.relations)) {
+      const r = w.relations[key];
       const A = w.countries[r.a], B = w.countries[r.b];
       if (!A.alive || !B.alive) continue;
-      if (r.war) lines += `<line x1="${X(A.lon)}" y1="${Y(A.lat)}" x2="${X(B.lon)}" y2="${Y(B.lat)}" stroke="#f87171" stroke-width=".9" stroke-dasharray="2 1.2"/>`;
-      else if (r.alliance) lines += `<line x1="${X(A.lon)}" y1="${Y(A.lat)}" x2="${X(B.lon)}" y2="${Y(B.lat)}" stroke="#38bdf8" stroke-width=".5" opacity=".7"/>`;
+      if (r.war) lines += `<line x1="${X(A.lon)}" y1="${Y(A.lat)}" x2="${X(B.lon)}" y2="${Y(B.lat)}" stroke="#f87171" stroke-width="${0.9 * k}" stroke-dasharray="${2 * k} ${1.2 * k}"/>`;
+      else if (r.alliance) lines += `<line x1="${X(A.lon)}" y1="${Y(A.lat)}" x2="${X(B.lon)}" y2="${Y(B.lat)}" stroke="#38bdf8" stroke-width="${0.5 * k}" opacity=".7"/>`;
     }
     let grid = '';
-    for (let lon = -180; lon <= 180; lon += 30) grid += `<line x1="${X(lon)}" y1="0" x2="${X(lon)}" y2="180" stroke="#1e3463" stroke-width=".2"/>`;
-    for (let lat = -60; lat <= 80; lat += 20) grid += `<line x1="0" y1="${Y(lat)}" x2="360" y2="${Y(lat)}" stroke="#1e3463" stroke-width=".2"/>`;
-    // 國名標籤避免重疊：觀察國優先、其次人口多的；依序試放在圓圈下、上、右、左，都會蓋到別的標籤就不顯示
-    // （圓圈仍在，點一下或游標停留就看得到國名）。寬度用玩家語言的國名估算。
+    const gs = zoom ? 10 : 30;
+    for (let lon = -180; lon <= 180; lon += gs) grid += `<line x1="${X(lon)}" y1="0" x2="${X(lon)}" y2="180" stroke="#1e3463" stroke-width="${0.2 * k}"/>`;
+    for (let lat = -60; lat <= 80; lat += (zoom ? 10 : 20)) grid += `<line x1="0" y1="${Y(lat)}" x2="360" y2="${Y(lat)}" stroke="#1e3463" stroke-width="${0.2 * k}"/>`;
+    // 國名標籤避免重疊：觀察國優先、其次人口多的；依序試放在圓圈下、上、右、左。
+    // 會蓋到別的國名、壓到別國的圓圈或超出地圖邊界就不顯示（圓圈仍在，點一下就看得到國名；歐洲可以放大看）。寬度用玩家語言的國名估算。
     const tx = (s2) => (WS.I18n && WS.I18n.tx ? WS.I18n.tx(s2) : s2);
-    const textW = (t) => [...t].reduce((a, ch) => a + (/[\u2E80-\uFFFF]/.test(ch) ? 5 : 3.1), 0.8);
+    const fs = 5 * k;
+    const textW = (t) => [...t].reduce((a, ch) => a + (/[\u2E80-\uFFFF]/.test(ch) ? 5 : 3.1), 0.8) * k;
     const placed = [];
     const hit = (b) => placed.some((o) => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h);
+    const inside = (b) => b.x >= VB[0] && b.x + b.w <= VB[0] + VB[2] && b.y >= VB[1] && b.y + b.h <= VB[1] + VB[3];
     const label = {};
     const order = ids.slice().sort((a, b) => ((b === w.focus) - (a === w.focus)) || U.popTotal(w.countries[b]) - U.popTotal(w.countries[a]));
     for (const id of order) {
       const c = w.countries[id];
-      const r = Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5);
-      const cx = X(c.lon), cy = Y(c.lat), tw = textW(tx(c.name)), th = 5;
+      const r = R(c);
+      const cx = X(c.lon), cy = Y(c.lat), tw = textW(tx(c.name)), th = fs, g = 1.2 * k;
       const tries = [
-        { x: cx, y: cy + r + 4.5, anchor: 'middle', box: { x: cx - tw / 2, y: cy + r + 0.6, w: tw, h: th } },
-        { x: cx, y: cy - r - 1.2, anchor: 'middle', box: { x: cx - tw / 2, y: cy - r - 5.4, w: tw, h: th } },
-        { x: cx + r + 1.2, y: cy + 1.8, anchor: 'start', box: { x: cx + r + 1.2, y: cy - 2.4, w: tw, h: th } },
-        { x: cx - r - 1.2, y: cy + 1.8, anchor: 'end', box: { x: cx - r - 1.2 - tw, y: cy - 2.4, w: tw, h: th } }
+        { x: cx, y: cy + r + 0.9 * fs, anchor: 'middle', box: { x: cx - tw / 2, y: cy + r + 0.12 * fs, w: tw, h: th } },
+        { x: cx, y: cy - r - g, anchor: 'middle', box: { x: cx - tw / 2, y: cy - r - g - 0.84 * fs, w: tw, h: th } },
+        { x: cx + r + g, y: cy + 0.36 * fs, anchor: 'start', box: { x: cx + r + g, y: cy - 0.48 * fs, w: tw, h: th } },
+        { x: cx - r - g, y: cy + 0.36 * fs, anchor: 'end', box: { x: cx - r - g - tw, y: cy - 0.48 * fs, w: tw, h: th } }
       ];
-      // 也不蓋住別國圓圈的中心，免得國名看起來像是旁邊那一國的
-      const onOther = (b) => ids.some((o) => o !== id && X(w.countries[o].lon) > b.x && X(w.countries[o].lon) < b.x + b.w && Y(w.countries[o].lat) > b.y && Y(w.countries[o].lat) < b.y + b.h);
-      const ok = tries.find((t) => !hit(t.box) && !onOther(t.box));
+      // 不壓在別國的圓圈上（容許碰到邊緣），免得國名看起來像是旁邊那一國的
+      const onOther = (b) => ids.some((o) => {
+        if (o === id) return false;
+        const C = w.countries[o], ox = X(C.lon), oy = Y(C.lat), rr = R(C) * 0.7;
+        const dx = ox - U.clamp(ox, b.x, b.x + b.w), dy = oy - U.clamp(oy, b.y, b.y + b.h);
+        return dx * dx + dy * dy < rr * rr;
+      });
+      const ok = tries.find((t) => inside(t.box) && !hit(t.box) && !onOther(t.box));
       if (ok) { placed.push(ok.box); label[id] = ok; }
     }
     const nodes = ids.map((id) => {
       const c = w.countries[id];
-      const r = Math.max(2.8, Math.sqrt(U.popTotal(c)) * 0.5);
+      const r = R(c);
       const focus = id === w.focus && w.mode === 'country';
       return `<g data-act="open-country" data-id="${id}" style="cursor:pointer"><title>${esc(c.name)}</title>
-        <circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r}" fill="${c.color}" fill-opacity=".35" stroke="${focus ? '#fbbf24' : c.color}" stroke-width="${focus ? 1 : 0.5}"/>
-        ${c.flags.atWar ? `<circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r + 1.5}" fill="none" stroke="#f87171" stroke-width=".4"/>` : ''}
+        <circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r}" fill="${c.color}" fill-opacity=".35" stroke="${focus ? '#fbbf24' : c.color}" stroke-width="${(focus ? 1 : 0.5) * k}"/>
+        ${c.flags.atWar ? `<circle cx="${X(c.lon)}" cy="${Y(c.lat)}" r="${r + 1.5 * k}" fill="none" stroke="#f87171" stroke-width="${0.4 * k}"/>` : ''}
         </g>`;
     }).join('') + ids.filter((id) => label[id]).map((id) => {
       // 國名放在所有圓圈之後畫，才不會被別國的圓圈蓋住
       const L = label[id];
-      return `<text data-act="open-country" data-id="${id}" style="cursor:pointer" x="${L.x}" y="${L.y}" font-size="5" fill="#e6ecff" text-anchor="${L.anchor}">${esc(w.countries[id].name)}</text>`;
+      return `<text data-act="open-country" data-id="${id}" style="cursor:pointer;stroke-width:${1.1 * k}px" x="${L.x}" y="${L.y}" font-size="${fs}" fill="#e6ecff" text-anchor="${L.anchor}">${esc(w.countries[id].name)}</text>`;
     }).join('');
-    // 全世界劇本有南半球與太平洋的國家：改成全球視野
-    const wide = ids.some((id) => w.countries[id].lat < 0 || w.countries[id].lon > 160 || w.countries[id].lon < -140);
-    return `<svg class="map" viewBox="${wide ? '0 15 360 135' : '40 10 300 80'}" role="img" aria-label="世界示意地圖">${grid}${lines}${nodes}</svg>
-      <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位・擠在一起的國名會先隱藏，點圓圈可查看</span></div>`;
+    const hidden = ids.length - Object.keys(label).length;
+    const zbtn = wide ? `<button class="btn small" data-act="map-zoom" data-v="${zoom ? '' : 'europe'}">${zoom ? '看全世界' : '🔍 放大歐洲'}</button>` : '';
+    return `<svg class="map" viewBox="${VB.join(' ')}" role="img" aria-label="世界示意地圖">${grid}${lines}${nodes}</svg>
+      <div class="legend" style="margin-top:6px"><span><i style="background:#38bdf8"></i>同盟</span><span><i style="background:#f87171"></i>戰爭</span><span>圓圈大小＝人口・示意地圖，第一版以國家為單位</span>${hidden ? `<span>${hidden} 個國名太擠先隱藏，點圓圈可查看</span>` : ''}${zbtn}</div>`;
   }
+
 
   // ---------- 觀測窗：地球＋儀表讀數 ----------
   function observatory() {
@@ -1082,7 +1097,7 @@
   function headlinesCard() {
     const w = W();
     const L = WS.Headlines.latest(w);
-    return `<div class="card"><h3>世界頭條${L.year ? `・${L.year} 年` : ''} ${(w.headlines || []).length > L.items.length ? '<button class="link" data-act="headlines-all">往年頭條</button>' : ''}</h3>
+    return `<div class="card"><h3>世界頭條${L.year ? `<span class="num">・${L.year}</span>` : ''} ${(w.headlines || []).length > L.items.length ? '<button class="link" data-act="headlines-all">往年頭條</button>' : ''}</h3>
       ${L.items.length ? `<div class="headlines">${L.items.map(headlineItem).join('')}</div>` : '<p class="dim">世界出現重大變化時（戰爭、革命、災難、人口或經濟劇變……），這裡會刊出當年影響最大的最多 3 則頭條，每一則都能點開追查原因；其餘的事收進下方的年度摘要。</p>'}</div>`;
   }
   // ---------- 年度摘要：沒有上頭條的事件依類別收在這裡（每件都能點開追查原因） ----------
@@ -1240,7 +1255,7 @@
         <div class="meter risk"><span>崩潰進度</span><div class="bar"><i style="width:${(fall * 100).toFixed(1)}%"></i></div><span class="num">${(fall * 100).toFixed(0)}%</span></div>
         <p class="dim">目前地球人口是高峰的 ${(ratio * 100).toFixed(0)}%。人口跌到高峰（${fPeople2(peak)}，${F.peak.y || w.year} 年）的 ${(p.endFrac * 100).toFixed(0)}% 以下，文明就會崩潰；結局名稱取最近 40 年死亡最多的原因。超級智慧失控則直接結束。</p></div>
       <div class="eg-row"><div class="eg-h good">✧ 走向星際</div>
-        <ul class="eg-steps">${steps.map(([t, ok], i) => `<li class="${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${esc(t)}${i === 3 && F.voyage ? `（${(voyage * 100).toFixed(0)}%，預計 ${F.voyage.arrive} 年）` : ''}</li>`).join('')}</ul></div>
+        <ul class="eg-steps">${steps.map(([t, ok], i) => `<li class="${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${esc(t)}${i === 3 && F.voyage ? ` <span>（航程 ${(voyage * 100).toFixed(0)}%，預計 ${F.voyage.arrive} 年抵達）</span>` : ''}</li>`).join('')}</ul></div>
       <p class="dim" style="margin:6px 0 0">兩種終點都不會在固定年份發生，全看這個世界怎麼演變。<button class="link" data-act="future-info">結局怎麼判定、報告會有什麼？</button></p>
     </div>`;
   }
@@ -1417,7 +1432,9 @@
       <tr><td>災難次數</td><td class="num">${R.catastrophes.filter((c) => c.kind !== 'aiIncident').length}</td><td class="num">${A.cats}</td></tr>
       <tr><td>火星</td><td>${R.mars ? fPeople2(R.mars.pop) : '—'}</td><td>${A.mars ? fPeople2(A.mars.pop) : '—'}</td></tr></table>
       <p><b>${esc(verdict)}</b></p>
-      ${A.firstDiff ? `<p class="dim">兩個世界第一個不同的重大事件：${esc(A.firstDiff)}</p>` : ''}`;
+      ${R.player.length ? `<p class="dim">你的第一次介入：${R.player[0].y} 年 ${esc(R.player[0].text)}</p>` : ''}
+      ${A.firstDiff ? `<p class="dim">兩個世界第一個不同的重大事件：${esc(A.firstDiff)}</p>` : ''}
+      ${A.diffFrom ? `<p class="dim">事件紀錄只保留最近 3000 件，比較從 ${A.diffFrom} 年開始。</p>` : ''}`;
   }
   function cfRun() {
     const w = W();
@@ -1434,10 +1451,11 @@
       S.cf.year = sw.year;
       if (run.done()) {
         const F = sw.future;
-        const d = FUT().firstDiff(w, sw);
+        const d = FUT().firstDiff(w, sw, null, run.events);
         const firstDiff = !d ? null : d.mine && d.other ? `${d.y} 年你的世界：「${d.mine.title}」／沒有你的世界：「${d.other.title}」`
           : d.mine ? `${d.y} 年你的世界：「${d.mine.title}」（沒有你的世界沒有這件事）` : `${d.y} 年沒有你的世界：「${d.other.title}」（你的世界沒有這件事）`;
-        S.cf = { key, done: true, year: sw.year, result: { ended: F.ended, year: sw.year, peak: F.peak, maxWarm: Math.max(F.warming, ...F.series.warming), cats: F.catastrophes.filter((c) => c.kind !== 'aiIncident').length, mars: F.mars, firstDiff } };
+        const diffFrom = d && d.from ? d.from : null;
+        S.cf = { key, done: true, year: sw.year, result: { ended: F.ended, year: sw.year, peak: F.peak, maxWarm: Math.max(F.warming, ...F.series.warming), cats: F.catastrophes.filter((c) => c.kind !== 'aiIncident').length, mars: F.mars, firstDiff, diffFrom } };
       }
       const el = out();
       if (el) el.innerHTML = cfHtml(S.cf, R);
@@ -1448,6 +1466,8 @@
     setTimeout(tick, 30);
   }
 
+  // 版本號（tools/stamp-version.js 寫在 index.html 裡）
+  function verText() { const m = document.querySelector('meta[name="ws-version"]'); return m ? m.getAttribute('content') : ''; }
   function systemTab() {
     const w = W();
     const saves = WS.Save.list();
@@ -1468,6 +1488,7 @@
           ${pauseSetting(false)}
           ${langSetting()}
           ${themeSetting()}
+          ${verText() ? `<p class="dim" style="margin:8px 0 0">版本 ${verText()}（回報問題時請一起附上；版本不同代表瀏覽器還在用舊檔案，請重新整理）</p>` : ''}
         </div>
         <details class="card dev-info"><summary>開發者資訊（一般玩家不需要看）</summary>
           <p class="dim">世界 ID：${esc(w.world_id)}・種子：${esc(w.seed)}・模擬版本 ${esc(w.simulation_version)}・參數 ${esc(w.paramsVersion)}</p>
@@ -2136,6 +2157,7 @@
       case 'view': S.view = v; render(); break;
       case 'wc-mode': if (cam) { cam.mode = v; t.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === t)); } break;
       case 'map-view': S.mapView = v; render(); break;
+      case 'map-zoom': S.mapZoom = v || null; render(); break;
       case 'open-country': S.view = t.dataset.id; S.tab = 'country'; render(); window.scrollTo(0, 0); break;
       case 'why': whyModal(t.dataset.c, t.dataset.m, t.dataset.s); break;
       case 'why-rel': relModal(t.dataset.a, t.dataset.b); break;
@@ -2266,6 +2288,8 @@
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
+  // 給檢查工具（tools/i18n-ui-check.js）用：直接載入一個世界。和玩家按「載入存檔」走同一條路，不改模擬
+  WS.App = { load: (w2) => switchWorld(w2, '') };
   render();
   // 存檔改放大容量的 IndexedDB：啟動時把舊版放在 localStorage 的存檔搬過去（騰出空間），搬完重畫開始畫面
   WS.Save.init().then(() => { if (S.screen === 'start') render(); }).catch(() => { /* 無法使用時維持原狀 */ });

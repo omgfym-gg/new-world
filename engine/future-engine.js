@@ -562,20 +562,25 @@
     // 各原因的累計死亡；舊存檔沒有整段紀錄時，改用最近 60 年的逐年紀錄
     let T = F.tollAll || {}, partial = false;
     if (!Object.keys(T).length && F.toll) { T = {}; partial = true; for (const y in F.toll) for (const k in F.toll[y]) T[k] = (T[k] || 0) + F.toll[y][k]; }
-    const span = partial ? '最近 60 年' : '累計';
     const yearOf = (t) => { const i = S.warming.findIndex((x) => x >= t); return i >= 0 ? S.y[i] : null; };
     if (E.kind === 'climate' || maxW >= p.climateDeathFrom) {
       const fossil = p.warmingPerFossil * F.co2;
-      out.push({ k: 'cause', t: `化石燃料累積使用造成升溫 ${fossil.toFixed(2)}°C` + (F.warming0 >= 0.005 ? `（起點已有 ${F.warming0.toFixed(2)}°C）` : '') });
-      if (tips.length) out.push({ k: 'tip', t: `暖化超過 ${p.tippingFrom}°C 後觸發 ${tips.length} 次氣候臨界點（${tips.map((c) => c.y).join('、')} 年），額外升溫 ${tipAdd.toFixed(2)}°C，無法逆轉` });
-      out.push({ k: 'warm', t: `全球暖化最高 +${maxW.toFixed(1)}°C` + [[p.harvestLossFrom, '收成開始下降'], [p.climateDeathFrom, '氣候災害開始致死'], [p.tippingFrom, '可能觸發臨界點']].map(([t, l]) => (yearOf(t) ? `；${yearOf(t)} 年超過 ${t}°C（${l}）` : '')).join('') });
+      // 每一行都是完整的一句（不要把句子拼成好幾段），畫面翻譯時才找得到對應的樣板
+      out.push({ k: 'cause', t: F.warming0 >= 0.005 ? `化石燃料累積使用造成升溫 ${fossil.toFixed(2)}°C（起點時已經升溫 ${F.warming0.toFixed(2)}°C）` : `化石燃料累積使用造成升溫 ${fossil.toFixed(2)}°C` });
+      if (tips.length === 1) out.push({ k: 'tip', t: `暖化超過 ${p.tippingFrom}°C 後在 ${tips[0].y} 年觸發一次氣候臨界點，額外升溫 ${tipAdd.toFixed(2)}°C，無法逆轉` });
+      else if (tips.length) out.push({ k: 'tip', t: `暖化超過 ${p.tippingFrom}°C 後觸發 ${tips.length} 次氣候臨界點（${tips.map((c) => c.y).join('、')} 年），額外升溫 ${tipAdd.toFixed(2)}°C，無法逆轉` });
+      out.push({ k: 'warm', t: `全球暖化最高 +${maxW.toFixed(1)}°C` });
+      for (const [t, l] of [[p.harvestLossFrom, '收成開始下降'], [p.climateDeathFrom, '氣候災害開始致死'], [p.tippingFrom, '可能觸發臨界點']]) if (yearOf(t)) out.push({ k: 'warm', t: `${yearOf(t)} 年暖化超過 ${t}°C：${l}` });
       if (minH != null && minH < 99.5) out.push({ k: 'harvest', t: `全球平均收成最低只剩正常的 ${minH.toFixed(0)}%（${minHy} 年），低緯度地區最嚴重` });
-      if (T.climate) out.push({ k: 'death', t: `熱浪、洪水、風災${span}死亡約 ${fmtPeople(T.climate)}` });
+      if (T.climate) out.push({ k: 'death', t: partial ? `熱浪、洪水、風災最近 60 年死亡約 ${fmtPeople(T.climate)}` : `熱浪、洪水、風災累計死亡約 ${fmtPeople(T.climate)}` });
       if (tipLater > 0.01) out.push({ k: 'death', t: `其中因為臨界點的額外升溫而多出的死亡（氣候災害＋饑荒）約 ${fmtPeople(tipLater)}，依公式拆分` });
       if (F.food && F.food.climate > 0.01) out.push({ k: 'death', t: `收成減少造成的糧食短缺死亡約 ${fmtPeople(F.food.climate)}（依糧食缺口中暖化所占比例估算）` });
     }
     const other = Object.entries(T).filter(([k, v]) => k !== 'climate' && v > 0).sort((a, b) => b[1] - a[1]);
-    for (const [k, v] of other) out.push({ k: 'death', t: `${(Future.KINDS[k] || { name: k === 'ai' ? 'AI 事故' : k }).name}${span}死亡約 ${fmtPeople(v)}` });
+    for (const [k, v] of other) {
+      const nm = (Future.KINDS[k] || { name: k === 'ai' ? 'AI 事故' : k }).name;
+      out.push({ k: 'death', t: partial ? `最近 60 年因「${nm}」死亡約 ${fmtPeople(v)}` : `因「${nm}」累計死亡約 ${fmtPeople(v)}` });
+    }
     if (E.kind === 'ai') out.push({ k: 'end', t: '超級智慧失控，世界直接結束（不看人口）' });
     else if (E.kind === 'stars') out.push({ k: 'end', t: '星際移民船抵達鄰近恆星' });
     else out.push({ k: 'end', t: `地球人口從高峰 ${fmtPeople(F.peak.pop)}（${F.peak.y} 年）跌到 ${fmtPeople(E.earthPop)}，低於高峰的 ${(p.endFrac * 100).toFixed(0)}% → 文明崩潰（${E.y} 年）` });
@@ -655,19 +660,27 @@
   };
 
   // 兩條世界線第一個不同的重大事件（「沒有你的世界」比較用）
-  // 建立分支、系統訊息只是紀錄，不是模擬裡發生的事，比較前先排除；依時間對齊，不受其中一邊多出一筆紀錄影響
-  Future.firstDiff = function (a, b) {
-    const big = (x) => x.level >= 3 && x.type !== 'system' && x.type !== 'branch';
-    const A = a.events.filter(big), B = b.events.filter(big);
-    const key = (x) => x.y * 12 + (x.m || 1);
+  // - 建立分支、系統訊息只是紀錄，不是模擬裡發生的事，比較前先排除
+  // - 事件紀錄最多保留 3000 件，太舊的會被刪掉：只比較兩邊都還有紀錄的期間（from 起、到兩邊都推進到的時間為止），
+  //   否則一邊有、一邊已刪掉的舊事件會被誤認成差異。aEvents／bEvents 可傳入另外收集、沒有被刪的完整事件
+  Future.firstDiff = function (a, b, aEvents, bEvents) {
+    const key = (x) => x.y * 12 + ((x.m || 1) - 1);
+    const EA = aEvents || a.events, EB = bEvents || b.events;
+    const from = Math.max(EA.length ? key(EA[0]) : 0, EB.length ? key(EB[0]) : 0);
+    const to = Math.min(a.year * 12 + a.month - 1, b.year * 12 + b.month - 1);
+    const big = (x) => x.level >= 3 && x.type !== 'system' && x.type !== 'branch' && !/^世界線分歧/.test(x.title) && key(x) >= from && key(x) <= to;
+    const A = EA.filter(big), B = EB.filter(big);
+    const start = Math.min(a.startYear || 0, b.startYear || 0);
+    const fromYear = Math.floor(from / 12);
+    const out = (o) => Object.assign(o, { from: fromYear > start ? fromYear : null });
     const n = Math.min(A.length, B.length);
     for (let i = 0; i < n; i++) {
       if (A[i].title === B[i].title && A[i].y === B[i].y) continue;
       // 同一時間點兩邊各有一件不同的事 → 兩件都列；否則只列較早的那一邊（另一邊沒有這件事）
       const ka = key(A[i]), kb = key(B[i]), e = ka <= kb ? A[i] : B[i];
-      return { y: e.y, m: e.m, mine: ka <= kb ? A[i] : null, other: kb <= ka ? B[i] : null };
+      return out({ y: e.y, m: e.m, mine: ka <= kb ? A[i] : null, other: kb <= ka ? B[i] : null });
     }
-    if (A.length !== B.length) { const e = A.length > B.length ? A[n] : B[n]; return { y: e.y, m: e.m, mine: A.length > B.length ? e : null, other: A.length > B.length ? null : e }; }
+    if (A.length !== B.length) { const e = A.length > B.length ? A[n] : B[n]; return out({ y: e.y, m: e.m, mine: A.length > B.length ? e : null, other: A.length > B.length ? null : e }); }
     return null;
   };
 
@@ -683,8 +696,20 @@
     let i = 0;
     const limit = (maxYears != null ? maxYears : 0);
     const endYear = Math.max(w.year, w.startYear) + limit;
+    // 重跑的世界比較久，事件紀錄（最多 3000 件）會刪掉舊的；重大事件每一步都另外收好，比較時才不會缺頭
+    const big = [];
+    let lastId = 0;
+    const collect = () => {
+      const ev = sim.w.events;
+      let k = ev.length - 1;
+      while (k >= 0 && +ev[k].id.slice(1) > lastId) k--;
+      for (k++; k < ev.length; k++) if (ev[k].level >= 3) big.push(ev[k]);
+      if (ev.length) lastId = +ev[ev.length - 1].id.slice(1);
+    };
+    collect();
     return {
       sim,
+      events: big,
       done: () => !!(sim.w.future && sim.w.future.ended) || sim.w.year >= endYear,
       endYear,
       run(years) {
@@ -692,6 +717,7 @@
         while (sim.w.year < target && !(sim.w.future && sim.w.future.ended)) {
           while (i < keep.length && keep[i].tick <= sim.w.tick) { sim.exec(keep[i]); i++; }
           sim.step();
+          collect();
         }
         sim.w.pendingDecision = null;
         return sim.w;
