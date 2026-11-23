@@ -720,3 +720,12 @@ body[data-ui="stone"] .card h3::before, body[data-ui="scroll"] .card h3::before 
 .lang-pick select { width: auto; min-width: 160px; }
 /* 報紙風格的報頭：中文與日文寫「日報」，其他語言寫 DAILY */
 html:not([lang^="zh"]):not([lang="ja"]) body[data-ui="paper"] .sys-id::after { content: ' DAILY'; }
+
+/* 遊戲介紹與意見回饋 */
+.notice-links { justify-content: center; }
+.notice h3 { margin: 14px 0 6px; }
+.notice-steps li, .notice-news li { margin: 4px 0; line-height: 1.55; }
+.notice-steps { padding-left: 1.4em; list-style: decimal; }
+.notice-steps b { display: block; }
+.notice-steps span { color: var(--muted); }
+.feedback .fb-type { flex-wrap: wrap; }
