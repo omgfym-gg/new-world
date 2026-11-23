@@ -25,8 +25,9 @@
   const F = (WS.Feedback = {});
   // 小黑的 Google 表單（「取得預先填入的連結」裡的網址與 entry 代號）
   F.FORM = {
-    url: '', // 例：https://docs.google.com/forms/d/e/XXXX/formResponse
-    entry: '' // 例：'entry.123456789'（「取得預先填入的連結」網址裡的 entry 代號）
+    // 小黑的「創 世界 玩家意見」表單（2026-11-23 建立；回覆在表單的「回覆」分頁）
+    url: 'https://docs.google.com/forms/d/e/1FAIpQLScA5_i93MVkOibENrabbGUtlpvTu0OjgT-E16vf2dMkFo8ghA/formResponse',
+    entry: 'entry.212002591' // 唯一一題「意見」的代號
   };
   // 類型：送出時用中文原文，小黑收到的都是中文
   F.TYPES = [['bug', '遇到問題'], ['idea', '建議'], ['question', '疑問'], ['other', '其他']];
