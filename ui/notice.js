@@ -83,8 +83,8 @@
   P.LINKS = [
     // 台灣玩家：新台幣付款
     { id: 'portaly', name: 'Portaly', url: 'https://portaly.cc/omgfym/support', note: '適合台灣玩家（新台幣付款）' },
-    // 國外玩家：信用卡、PayPal（ko-fi.com/genesisworld 已建立，等小黑接上 PayPal 收款後再填網址）
-    { id: 'kofi', name: 'Ko-fi', url: '', note: '適合國外玩家（信用卡、PayPal）' }
+    // 國外玩家：信用卡、PayPal（2026-11-24 已接上 PayPal）
+    { id: 'kofi', name: 'Ko-fi', url: 'https://ko-fi.com/genesisworld', note: '適合國外玩家（信用卡、PayPal）' }
   ];
   // 只接受 https 網址，避免填錯時變成可執行的連結
   P.links = function () { return P.LINKS.filter((l) => /^https:\/\/[^\s"'<>]+$/.test(l.url || '')); };
