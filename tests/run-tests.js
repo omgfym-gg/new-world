@@ -1297,6 +1297,17 @@ test('遊戲公告與意見回饋：只送出玩家寫的內容與遊戲資訊�
   });
 });
 
+test('遊戲介紹：瀏覽器不讓存資料時仍會出現一次（不會誤以為看過）', () => {
+  const vm = require('vm'), src = require('fs').readFileSync(require('path').join(__dirname, '../ui/notice.js'), 'utf8');
+  const blocked = {};
+  Object.defineProperty(blocked, 'localStorage', { get() { throw new Error('SecurityError'); } });
+  vm.runInNewContext(src, { window: blocked, globalThis: blocked });
+  const N = blocked.WS.Notice;
+  assert.strictEqual(N.seen(), false, '存不了資料時要顯示介紹');
+  N.markSeen();
+  assert.strictEqual(N.seen(), true, '這次開啟期間看過就不再跳出');
+});
+
 test('支持作者：只顯示 https 贊助連結，不改世界', () => {
   require('vm').runInThisContext(require('fs').readFileSync(require('path').join(__dirname, '../ui/notice.js'), 'utf8'));
   const P = WS.Support;

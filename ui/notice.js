@@ -19,8 +19,14 @@
     { date: '2026-11-18', text: '新增未來時代與世界結局：世界會一路演進到文明崩潰或走向星際。' }
   ];
   const SEEN_KEY = 'ws.noticeSeen';
-  N.seen = function () { try { return root.localStorage && root.localStorage.getItem(SEEN_KEY) === N.ID; } catch (e) { return true; } };
-  N.markSeen = function () { try { if (root.localStorage) root.localStorage.setItem(SEEN_KEY, N.ID); } catch (e) { /* 只在這次有效 */ } };
+  // 瀏覽器不讓網頁存資料時（例如 itch.io 這類嵌在別人網頁裡、又封鎖第三方資料的手機瀏覽器），
+  // 讀取會出錯：這時改記在這次開啟期間，至少每次打開遊戲都會看到一次介紹，不會從來看不到。
+  let seenNow = false;
+  N.seen = function () {
+    if (seenNow) return true;
+    try { return !!root.localStorage && root.localStorage.getItem(SEEN_KEY) === N.ID; } catch (e) { return false; }
+  };
+  N.markSeen = function () { seenNow = true; try { if (root.localStorage) root.localStorage.setItem(SEEN_KEY, N.ID); } catch (e) { /* 只在這次有效 */ } };
 
   // ---------------- 意見箱 ----------------
   const F = (WS.Feedback = {});
