@@ -210,7 +210,8 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(56, 189, 248,
 .wi-table small { color: var(--muted); font-weight: 400; }
 .wi-chain { gap: 2px; }
 .wi-chain li { cursor: default; }
-.wi-chain li.wi-step.start { border-left-color: var(--violet); }
+.wi-chain li.wi-step.start { border-left-color: var(--violet); min-height: 0; display: block; }
+/* 注意：開始畫面也有 .start（min-height: 100vh），這裡要蓋掉，不然「分岔點」會被撐成一整個螢幕高 */
 .wi-chain li.wi-step.gone { border-left-color: var(--dim); }
 .wi-chain li.wi-step.gone b { text-decoration: line-through; text-decoration-color: var(--muted); }
 .wi-chain li.wi-step.new { border-left-color: var(--gold); }
