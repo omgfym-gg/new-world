@@ -1552,7 +1552,7 @@
     return `
       <div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + w.year)}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
-        <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
+        <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year}.${s.month}・${s.mode === 'country' ? '國家模式' : '全球模式'}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
@@ -1926,7 +1926,7 @@
     const w = W(), saves = WS.Save.list();
     return `<div class="card"><h3>存檔</h3>
         <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + yShort(w.year))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
-        <div id="save-usage" style="margin-top:8px"><p class="dim" style="margin:0">計算存檔空間中…</p></div>${(setTimeout(fillSaveUsage, 0), '')}
+        <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
         <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
@@ -2165,9 +2165,13 @@
       <div class="row"><a class="btn primary" href="${S.exportUrl}" download="${esc(name)}">沒看到下載？再下載一次</a><button class="btn" data-act="close-modal">關閉</button></div>`);
   }
   // 系統頁：存檔空間使用量（非同步填入）
-  function fillSaveUsage() {
+  // 自動播放時每個月都會重畫系統頁：沿用上一次的結果（不再閃回「計算中」讓畫面跳動），自動播放中最多每 3 秒重算一次
+  let saveUsageHtml = '', saveUsageAt = 0;
+  function fillSaveUsage(force) {
     const el = document.getElementById('save-usage');
     if (!el) return;
+    if (!force && S.auto && saveUsageHtml && Date.now() - saveUsageAt < 3000) return;
+    saveUsageAt = Date.now();
     let cur = 0;
     try { cur = engine.serialize().length; } catch (e) { /* 略過 */ }
     WS.Save.usage().then((u) => {
@@ -2175,8 +2179,8 @@
       if (!el2) return;
       const mb = WS.Save.mb;
       const la = WS.Save.lastAuto;
-      el2.innerHTML = `<p class="dim" style="margin:0 0 4px">目前這個世界約 <b class="num">${mb(cur)}</b>。已存：手動存檔 ${u.count - u.autoCount} 個（${mb(u.saves)}）、自動保存 ${u.autoCount} 個（${mb(u.autoSaves)}，最多保留 ${WS.Save.keepAuto} 個，越舊的越先清掉）、「繼續遊戲」${mb(u.autosave)}。</p>
-        ${u.quota ? `<div class="meter"><span>儲存空間</span><div class="bar"><i style="width:${Math.min(100, (u.used / u.quota) * 100).toFixed(1)}%"></i></div><span class="num">${mb(u.used || 0)}／${mb(u.quota)}</span></div>` : ''}
+      el2.innerHTML = saveUsageHtml = `<p class="dim" style="margin:0 0 4px">目前這個世界約 <b class="num">${mb(cur)}</b>。已存：手動存檔 ${u.count - u.autoCount} 個（${mb(u.saves)}）、自動保存 ${u.autoCount} 個（${mb(u.autoSaves)}，最多保留 ${WS.Save.keepAuto} 個，越舊的越先清掉）、「繼續遊戲」${mb(u.autosave)}。</p>
+        ${u.quota ? `<div class="meter save-meter"><span>儲存空間</span><div class="bar"><i style="width:${Math.min(100, (u.used / u.quota) * 100).toFixed(1)}%"></i></div><span class="num">${mb(u.used || 0)}／${mb(u.quota)}</span></div>` : ''}
         ${u.backend === 'local' ? '<p class="gold" style="margin:4px 0 0">這個瀏覽器只能用較小的儲存空間（約 5 MB），玩到後期的大世界可能存不下；建議定期按「備份存檔」保存到裝置。</p>' : ''}
         ${la && la.ok === false ? `<p class="bad" style="margin:4px 0 0">最近一次自動存檔失敗：${esc(la.reason)}</p>` : la && la.compact ? '<p class="dim" style="margin:4px 0 0">最近一次自動存檔空間不足，改存精簡版（只留最近 5 年的詳細原因，模擬結果不變）。</p>' : ''}
         ${u.autoCount ? `<button class="btn small" data-act="clear-auto" style="margin-top:6px">清除全部自動保存（${u.autoCount} 個）</button>` : ''}`;

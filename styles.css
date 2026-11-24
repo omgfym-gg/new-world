@@ -732,3 +732,5 @@ html:not([lang^="zh"]):not([lang="ja"]) body[data-ui="paper"] .sys-id::after { c
 .support-links { display: grid; gap: 8px; margin: 12px 0; }
 .support-links .btn { text-decoration: none; text-align: left; color: inherit; }
 .support-links .btn small { display: block; color: var(--muted); font-size: 12px; }
+.meter.save-meter { grid-template-columns: 72px 1fr auto; }
+.meter.save-meter .num { white-space: nowrap; }
