@@ -313,7 +313,6 @@
           <button class="btn" data-act="custom-world">自訂世界<small>選起點（1911 年真實世界或遠古），修改世界制度與規則</small></button>
         </div>
         <div class="row notice-links"><button class="btn small" data-act="intro">📢 遊戲介紹</button><button class="btn small" data-act="feedback">💬 意見回饋</button>${supportBtn()}</div>
-        <p class="dim" style="text-align:center">第一版原型・不需連網、不需 AI・所有係數為待校準的示意值</p>
         ${langPicker()}
       </div>`;
     // 第一次打開遊戲（或公告更新後）自動顯示遊戲介紹
@@ -336,7 +335,6 @@
       </ol>
       <h3>小提醒</h3>
       <ul class="list-plain">
-        <li>這是第一版原型，所有數值都是還在調整的示意值，不是對真實世界的預測。</li>
         <li>存檔放在這台裝置的瀏覽器裡；換裝置或清除瀏覽器資料之前，請先到「系統」頁備份存檔。</li>
       </ul>
       <h3>最新消息</h3>
