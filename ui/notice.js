@@ -32,7 +32,7 @@
   const F = (WS.Feedback = {});
   // 小黑的 Google 表單（「取得預先填入的連結」裡的網址與 entry 代號）
   F.FORM = {
-    // 小黑的「創•世界 玩家意見」表單（2026-11-23 建立；回覆在表單的「回覆」分頁）
+    // 小黑的「維度世界 玩家意見」表單（2026-11-23 建立；回覆在表單的「回覆」分頁）
     url: 'https://docs.google.com/forms/d/e/1FAIpQLScA5_i93MVkOibENrabbGUtlpvTu0OjgT-E16vf2dMkFo8ghA/formResponse',
     entry: 'entry.212002591' // 唯一一題「意見」的代號
   };

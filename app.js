@@ -302,7 +302,7 @@
         <div class="globe-slot hero" id="globe-slot"><div class="hud-tag tl">TERRA-3 · 觀測中</div><div class="hud-tag br">文明調整台 v1</div></div>
         <div class="brand">
           <div class="en">GENESIS · WORLD SIMULATOR</div>
-          <h1>創•世界</h1>
+          <h1>維度世界</h1>
           <p>玩家設定世界，模擬器創造歷史，玩家觀察並改變歷史。</p>
         </div>
         <div class="menu">
@@ -323,7 +323,7 @@
   function introModal() {
     WS.Notice.markSeen();
     openModal(`<div class="notice">
-      <h2>歡迎來到《創•世界》</h2>
+      <h2>歡迎來到《維度世界》</h2>
       <p>這是一個「世界會自己運作」的歷史模擬遊戲。你選一個起點，人口、經濟、政治、科技、外交與戰爭會由模擬器一步一步推進；你可以只是觀察，偶爾介入，或改變世界的根本規則。</p>
       <h3>怎麼玩</h3>
       <ol class="list-plain notice-steps">
@@ -368,7 +368,7 @@
     const links = WS.Support.links();
     openModal(`<div class="support">
       <h2>支持作者</h2>
-      <p>《創•世界》由一個人利用空閒時間製作，免費遊玩、沒有廣告。如果你喜歡這個遊戲，可以請作者喝杯咖啡，支持遊戲繼續更新。</p>
+      <p>《維度世界》由一個人利用空閒時間製作，免費遊玩、沒有廣告。如果你喜歡這個遊戲，可以請作者喝杯咖啡，支持遊戲繼續更新。</p>
       <div class="support-links">${links.map((l) => `<a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer"><span translate="no">${esc(l.name)}</span><small>${esc(l.note)}</small></a>`).join('')}</div>
       <p class="dim" style="font-size:12.5px">會在新分頁打開贊助平台的網頁，付款由該平台處理，遊戲不會收到你的付款資料。贊助與否都不影響遊戲內容。</p>
       <div class="row" style="margin-top:10px"><button class="btn" data-act="close-modal">關閉</button></div>
