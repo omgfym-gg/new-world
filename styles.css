@@ -172,7 +172,7 @@ tr.click { cursor: pointer; } tr.click:hover td { background: rgba(56, 189, 248,
 .modal-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--line2); color: var(--text); cursor: pointer; font-size: 20px; }
 .modal h2 { font-size: 18px; margin-bottom: 4px; padding-right: 40px; }
 
-.toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 30; background: var(--panel2); border: 1px solid var(--blue); border-radius: 12px; padding: 10px 14px; max-width: 90vw; }
+.toast { pointer-events: none; position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 30; background: var(--panel2); border: 1px solid var(--blue); border-radius: 12px; padding: 10px 14px; max-width: 90vw; }
 .toast[hidden] { display: none; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
