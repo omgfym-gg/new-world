@@ -2,3 +2,14 @@ node_modules/
 .DS_Store
 *.log
 dist/
+
+# 機密檔案：密碼、金鑰、登入資料一律不放進程式庫（網站公開後會被機器人掃走）
+.env
+.env.*
+*.pem
+*.key
+*.p12
+secrets.json
+credentials.json
+.aws/
+.claude/settings.local.json
