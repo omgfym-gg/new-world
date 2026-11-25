@@ -3214,6 +3214,7 @@
     "人口快速增加，之後要面對糧食與能源是否足夠": "The population grows fast, and then faces whether there is enough food and energy",
     "宗教": "Religion",
     "社會": "Society",
+    "語言": "Language",
     "依歷史": "As in history",
     "沒有宗教": "No religion",
     "政教合一": "Theocracy",

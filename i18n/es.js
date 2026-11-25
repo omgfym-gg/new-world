@@ -3209,6 +3209,7 @@
     "人口快速增加，之後要面對糧食與能源是否足夠": "La población crece rápido y luego debe ver si alcanzan la comida y la energía",
     "宗教": "Religión",
     "社會": "Sociedad",
+    "語言": "Idioma",
     "依歷史": "Como en la historia",
     "沒有宗教": "Sin religión",
     "政教合一": "Teocracia",

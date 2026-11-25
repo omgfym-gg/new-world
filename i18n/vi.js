@@ -3209,6 +3209,7 @@
     "人口快速增加，之後要面對糧食與能源是否足夠": "Dân số tăng nhanh, rồi phải đối mặt với việc lương thực và năng lượng có đủ không",
     "宗教": "Tôn giáo",
     "社會": "Xã hội",
+    "語言": "Ngôn ngữ",
     "依歷史": "Như lịch sử",
     "沒有宗教": "Không có tôn giáo",
     "政教合一": "Thần quyền",
