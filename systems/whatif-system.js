@@ -97,7 +97,7 @@
   WhatIf.logDivergence = function (w, ctx, o, countries, original) {
     const ev = WS.Events.log(w, ctx, {
       type: 'whatif', title: o.label, countries, level: 3,
-      text: '這是平行世界的分岔點：只有這一件事被改寫，其他一切照同一個種子由引擎計算。',
+      text: '這是平行世界的分岔點：只有這一件事被改寫，其他一切由引擎計算。',
       causes: ['玩家的「如果」設定（平行世界）'].concat(original || []),
       trigger: `在 ${w.year} 年 ${w.month} 月攔截`
     });
@@ -120,7 +120,7 @@
     }
     if (w.genesis) {
       const src = w.era === 'ancient' ? WS.Ancient.createWorld(w.genesis) : WS.State.createWorld(w.genesis);
-      return { world: src, tick: 0, cmdStart: 0, from: '世界建立時的設定（同一個種子）' };
+      return { world: src, tick: 0, cmdStart: 0, from: '世界建立時的設定' };
     }
     return null;
   };
@@ -252,7 +252,7 @@
     const onlyAlt = unmatched(ae, oe);
 
     // 擴散鏈：分岔點 → 依時間排列的差異事件，每一步附上紀錄中的原因與當年兩邊的數值
-    const chain = [{ y: info.y, m: info.m, kind: 'start', title: info.label, why: [`從 ${info.from} 用同一個種子重跑，只改寫這件事`] }];
+    const chain = [{ y: info.y, m: info.m, kind: 'start', title: info.label, why: [`從 ${info.from} 重跑，只改寫這件事`] }];
     const merged = onlyOrig.map((e) => ({ e, side: 'orig' })).concat(onlyAlt.map((e) => ({ e, side: 'alt' })))
       .sort((x, y) => x.e.y - y.e.y || x.e.m - y.e.m || (x.side === 'orig' ? -1 : 1));
     const seen = new Set();
@@ -407,7 +407,7 @@
     const oe = after(orig).filter((e) => e.id !== info.eventId);
     const ae = after(alt).filter((e) => e.type !== 'whatif');
     const onlyOrig = unmatched(oe, ae), onlyAlt = unmatched(ae, oe);
-    const chain = [{ y: info.y, m: 1, kind: 'start', title: info.label, why: [`從${info.from}用同一個種子重跑，只改寫這件事`] }];
+    const chain = [{ y: info.y, m: 1, kind: 'start', title: info.label, why: [`從${info.from}重跑，只改寫這件事`] }];
     const merged = onlyOrig.map((e) => ({ e, side: 'orig' })).concat(onlyAlt.map((e) => ({ e, side: 'alt' }))).sort((x, y) => T(x.e) - T(y.e) || (x.side === 'orig' ? -1 : 1));
     for (const { e, side } of merged) {
       if (chain.length >= 8) break;

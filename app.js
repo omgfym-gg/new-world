@@ -477,7 +477,7 @@
         </div>` : ''}
         ${showRules ? `<div class="card"><h3>世界規則</h3>${rulesEditor(s.rules)}</div>` : ''}
         ${s.depth === 'advanced' ? `<div class="card"><h3>進階：隨機種子</h3>
-          <div class="field"><label>相同設定與相同種子會得到完全相同的歷史</label><input type="text" id="seed" value="${esc(s.seed)}" placeholder="留空＝使用預設種子"></div></div>` : ''}
+          <div class="field"><label>隨機種子（想重玩某一局時才需要填）</label><input type="text" id="seed" value="${esc(s.seed)}" placeholder="留空＝隨機，每局都不一樣"></div></div>` : ''}
         ${conflicts.map((c) => `<div class="conflict"><b>規則衝突</b><p>${esc(c.text)}</p><div class="row">${c.options.map((o, i) => `<button class="btn small" data-act="resolve-conflict" data-id="${c.id}" data-i="${i}">${esc(o.label)}</button>`).join('')}</div></div>`).join('')}
         <div class="card summary"><h3>設定摘要</h3><ul class="list-plain">${summary.map((x) => `<li>${x}</li>`).join('')}</ul></div>
         <button class="btn primary" data-act="start-sim" ${conflicts.length ? 'disabled' : ''}>確認並開始模擬</button>
@@ -1014,7 +1014,7 @@
     if (!av.ok) return `<p class="dim" style="margin-top:12px">「如果」平行世界：${esc(av.reason)}。</p>`;
     const w = W();
     return `<div class="wi-box"><h3>如果……？</h3>
-      <p class="dim">系統會回到${isAnc() ? esc(yl(e.y)) : ` ${e.y} 年 ${e.m} 月`}之前，用同一個種子重跑到現在（${isAnc() ? esc(yl(w.year)) : `${w.year} 年 ${w.month} 月`}），只改寫這一件事，再把兩個世界並排比較。目前的世界不會被改動。</p>
+      <p class="dim">系統會回到${isAnc() ? esc(yl(e.y)) : ` ${e.y} 年 ${e.m} 月`}之前，重跑到現在（${isAnc() ? esc(yl(w.year)) : `${w.year} 年 ${w.month} 月`}），只改寫這一件事，再把兩個世界並排比較。目前的世界不會被改動。</p>
       <div class="row">${av.opts.map((o) => `<button class="btn gold" data-act="whatif-run" data-id="${o.target.eventId}" data-k="${o.key}">${esc(o.label)}</button>`).join('')}</div></div>`;
   }
   function whatifModal(id) {
@@ -1025,7 +1025,7 @@
   }
   function whatifRun(id, key) {
     stopAuto();
-    openModal('<h2>正在推演平行世界…</h2><p class="dim">從事件之前的快照，用同一個種子逐月重算。</p>');
+    openModal('<h2>正在推演平行世界…</h2><p class="dim">從事件之前的快照逐月重算。</p>');
     setTimeout(() => {
       const parentName = W().branch.name;
       const res = engine.whatIf(id, key);
@@ -1071,7 +1071,7 @@
       </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
     const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${e.y}.${String(e.m).padStart(2, '0')}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
     openModal(`<h2>平行世界：${esc(R.label)}</h2>
-      <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。${R.years > 1 ? `從 ${esc(R.from)} 用同一個種子重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。` : `從 ${esc(R.from)} 用同一個種子重跑到 ${R.now.y} 年 ${R.now.m} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。`}</p>
+      <p class="dim">分岔於 ${R.y} 年 ${R.m} 月。${R.years > 1 ? `從 ${esc(R.from)} 重跑 ${R.years} 年到 ${R.now.y} 年 ${R.now.m} 月，只有這一件事不同，其他全部由引擎計算。` : `從 ${esc(R.from)} 重跑到 ${R.now.y} 年 ${R.now.m} 月（不到兩年），只有這一件事不同，其他全部由引擎計算。`}</p>
       ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
       ${wiSummaryHtml(R, false)}
       <div class="table-wrap"><table class="wi-table">
@@ -1441,7 +1441,7 @@
         <li>結局是怎麼發生的：從排放、暖化、臨界點、收成到各原因的死亡，一步一步串起來</li>
         <li>每場災難的嚴重度、直接死亡、之後每年多造成的死亡、升溫與收成變化</li>
         <li>你的每一次介入（政策、神之手、世界規則、「如果？」）</li>
-        <li>「沒有你的世界」：同一個種子、不重播你的介入重跑一次，比較哪個世界先毀滅</li>
+        <li>「沒有你的世界」：不重播你的介入重跑一次，比較哪個世界先毀滅</li>
       </ul>
       <p class="dim">所有死亡都寫在各國的因果帳裡（「?」可以追查），每場災難都是事件，可以用「如果？」改寫它沒有發生。係數在 engine/params.js 的 future 區塊。</p>`);
   }
@@ -1492,7 +1492,7 @@
       <h3 class="dv-h">你的介入（${nPlayer} 次）</h3>
       ${nPlayer ? `<ul class="list-plain">${R.player.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> ${esc(x.text)}</li>`).join('')}${R.whatifs.map((x) => `<li><span class="dim num">${x.y}.${String(x.m).padStart(2, '0')}</span> 平行世界改寫：${esc(x.label)}</li>`).join('')}</ul>` : '<p class="dim">這一次你完全沒有介入，世界自己走到了這一步。</p>'}
       <div class="wi-box"><h3>沒有你的世界會怎樣？</h3>
-        <p class="dim">從 ${R.start} 年用同一個種子重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。最多再多跑 200 年。目前的世界不會被改動。</p>
+        <p class="dim">從 ${R.start} 年重跑，但不重播你的政策、神之手、世界規則與平行世界的改寫，看看世界會在什麼時候、因為什麼終結。最多再多跑 200 年。目前的世界不會被改動。</p>
         <div id="cf-out">${cf ? cfHtml(cf, R) : `<button class="btn gold" data-act="cf-run" ${nPlayer ? '' : 'disabled'}>${nPlayer ? '開始重跑' : '你沒有介入，兩個世界會完全一樣'}</button>`}</div></div>
       <div class="row" style="margin-top:14px"><button class="btn" data-act="tab" data-v="history">回到過去的年份重來</button><button class="btn" data-act="close-modal">關閉</button></div>`);
     mountMedia();
@@ -1964,7 +1964,7 @@
       </li>${i < R.chain.length - 1 ? '<li class="wi-arrow" aria-hidden="true">↓</li>' : ''}`).join('');
     const evList = (list) => list.slice(0, 30).map((e) => `<li><span class="dim">${esc(yl(e.y))}</span> ${esc(e.title)}</li>`).join('') || '<li class="dim">沒有</li>';
     openModal(`<h2>平行世界：${esc(R.label)}</h2>
-      <p class="dim">分岔於${esc(yl(R.y))}。從${esc(R.from)}用同一個種子重跑 ${R.years.toLocaleString()} 年到${esc(yl(R.now.y))}，只有這一件事不同，其他全部由引擎計算。</p>
+      <p class="dim">分岔於${esc(yl(R.y))}。從${esc(R.from)}重跑 ${R.years.toLocaleString()} 年到${esc(yl(R.now.y))}，只有這一件事不同，其他全部由引擎計算。</p>
       ${R.applied ? '' : '<p class="bad">注意：重跑時沒有遇到這個事件，兩個世界沒有分岔。</p>'}
       ${wiSummaryHtml(R, true)}
       <div class="table-wrap"><table class="wi-table">
@@ -2094,7 +2094,8 @@
     const rules = Object.assign({}, s.rules);
     engine.create({
       mode: s.mode, difficulty: s.depth, focus: s.focus, scenario: s.scenario, intervention: s.intervention,
-      direction: s.direction, speed: s.speed, rules, seed: s.seed
+      // 種子留空＝每局都是新的世界（種子仍記錄在世界裡，「如果？」與存檔照樣可重跑）
+      direction: s.direction, speed: s.speed, rules, seed: s.seed || ('世界-' + Date.now().toString(36))
     });
     S.speed = s.speed; S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null;
     autosave();
