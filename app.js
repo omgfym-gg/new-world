@@ -510,15 +510,48 @@
 
   // ======================= 遊戲畫面 =======================
   function render() {
+    const open = S.screen === 'game' ? detailsState() : null;
     if (S.screen === 'start') renderStart();
     else if (S.screen === 'setup') renderSetup();
     else if (isAnc()) renderAncientGame();
     else renderGame();
+    if (open) restoreDetails(open);
     applyTheme();
     mountGlobe();
     mountLife();
     if (WS.Music && S.screen === 'game' && engine.world) WS.Music.setEra(musicEra(W()));
   }
+
+  // 自動播放時畫面每 0.16 秒重畫一次：記住玩家打開／收起的折疊問答，重畫後照原樣，不會一點開就被收回去
+  function detailsKey(d) {
+    if (d.dataset.k) return S.tab + '|' + d.dataset.k; // 問題用指標當代號：「趨於穩定／越來越不穩」換字也認得
+    const s = d.querySelector('summary');
+    return S.tab + '|' + (s ? s.textContent.replace(/[\d.,%+\-−]+/g, '#').trim() : '');
+  }
+  function detailsState() {
+    const m = new Map();
+    app.querySelectorAll('details').forEach((d) => {
+      const s = d.querySelector('summary');
+      if (s && s.dataset.act) return; // 由狀態控制的折疊（例如「更多世界規則」）不用記
+      m.set(detailsKey(d), d.open);
+    });
+    return m;
+  }
+  function restoreDetails(m) {
+    if (!m.size) return;
+    app.querySelectorAll('details').forEach((d) => {
+      const k = detailsKey(d);
+      if (m.has(k)) d.open = m.get(k);
+    });
+  }
+  // 玩家正在點、正在捲動時，自動播放先不重畫，免得按鈕在手指底下被換掉而點不到
+  const touch = { down: false, until: 0 };
+  document.addEventListener('pointerdown', () => { touch.down = true; }, true);
+  const touchUp = () => { touch.down = false; touch.until = Date.now() + 400; };
+  document.addEventListener('pointerup', touchUp, true);
+  document.addEventListener('pointercancel', touchUp, true);
+  window.addEventListener('scroll', () => { touch.until = Math.max(touch.until, Date.now() + 250); }, { passive: true });
+  function userBusy() { return touch.down || Date.now() < touch.until; }
 
   // 背景音樂與介面風格的時代：看世界上已經出現的最先進科技（只讀取，不改任何數值）
   function musicEra(w) { return WS.EraTheme.age(w); }
@@ -934,7 +967,7 @@
       ${countryPicker(w, ids, id)}
       <div class="card"><h3>世界解釋系統</h3>
         <p class="dim">答案全部取自實際模擬紀錄（因果帳、事件、決策紀錄），不是事先寫好的劇情。</p>
-        ${qs.map((q, i) => `<details class="qa" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
+        ${qs.map((q, i) => `<details class="qa" data-k="${esc(id + ':' + (q.metric || q.q))}" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
           ${q.metric ? `<p><button class="link" data-act="why" data-c="${id}" data-m="${q.metric}" data-s="${q.scope}">展開完整原因 ›</button></p>` : ''}
           ${q.eventId ? `<p><button class="link" data-act="event" data-id="${q.eventId}">查看事件 ›</button></p>` : ''}</div></details>`).join('')}
       </div>
@@ -1924,7 +1957,7 @@
     return `<div class="field"><select data-act="view-select" aria-label="選擇地區">${A.ids(w).map((x) => `<option value="${x}" ${x === id ? 'selected' : ''}>${esc(w.ancient.regions[x].name)}</option>`).join('')}</select></div>
       <div class="card"><h3>世界解釋系統・${esc(w.ancient.regions[id].name)}</h3>
         <p class="dim">答案全部取自實際模擬紀錄與引擎條件，不是事先寫好的劇情。</p>
-        ${qs.map((q, i) => `<details class="qa" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
+        ${qs.map((q, i) => `<details class="qa" data-k="${esc(id + ':' + (q.metric || q.q))}" ${i === 0 ? 'open' : ''}><summary>${esc(q.q)}</summary><div>${esc(q.a)}
           ${q.metric ? `<p><button class="link" data-act="why" data-c="${id}" data-m="${q.metric}" data-s="${q.scope}">展開完整原因 ›</button></p>` : ''}
           ${q.eventId ? `<p><button class="link" data-act="event" data-id="${q.eventId}">查看事件 ›</button></p>` : ''}</div></details>`).join('')}
       </div>
@@ -2131,7 +2164,7 @@
       if (res.stopped) { stopAuto(); S.resumeAuto = true; render(); decisionModal(res.events); return; }
       // 遠古世界走到近代門檻：暫停，問玩家要不要進入近代（只問一次）
       if (bridgeDue()) { stopAuto(); render(); bridgeModal(); return; }
-      if (modal.hidden) render();
+      if (modal.hidden && !userBusy()) render();
     }, 160);
     render();
   }
