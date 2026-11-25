@@ -421,12 +421,20 @@
       `<button data-act="set" data-k="${name}" data-v="${esc(v)}" class="${String(value) === String(v) ? 'on' : ''}" aria-pressed="${String(value) === String(v)}">${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div>`;
   }
 
+  // 常用的世界規則直接列出；其他收在「更多世界規則」裡，畫面不會太擠（改過的規則會自動展開）
+  const CORE_RULES = ['currency', 'capitalism', 'states', 'war', 'work'];
   function rulesEditor(rules, act = 'rule') {
-    return Object.entries(WS.Data.rules).map(([k, d]) => {
+    const one = ([k, d]) => {
       const opts = d.type === 'bool' ? [[true, d.on], [false, d.off]] : d.choices.map(([v, l]) => [v, l]);
       return `<div class="field"><label>${esc(d.category)}・${esc(d.name)}</label>
         <div class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-k="${k}" data-v="${JSON.stringify(v)}" class="${rules[k] === v ? 'on' : ''}">${esc(l)}</button>`).join('')}</div></div>`;
-    }).join('');
+    };
+    const all = Object.entries(WS.Data.rules);
+    const more = all.filter(([k]) => !CORE_RULES.includes(k));
+    const changed = more.filter(([k, d]) => rules[k] !== undefined && rules[k] !== d.default).length;
+    const open = S.moreRules || changed > 0;
+    return all.filter(([k]) => CORE_RULES.includes(k)).map(one).join('') +
+      `<details class="more-rules" ${open ? 'open' : ''}><summary data-act="more-rules"><span>更多世界規則：石油、壽命、宗教、語言、生育、核武…</span>${changed ? ` <b class="gold">已改 ${changed} 項</b>` : ''}</summary>${more.map(one).join('')}</details>`;
   }
 
   function renderSetup() {
@@ -463,7 +471,7 @@
         </div>
         ${!country ? `<div class="card">
           <h3>用一句話描述你想要的世界</h3>
-          <textarea id="nl" placeholder="例如：建立沒有國家、沒有貨幣、資源由人類共同管理的世界。">${esc(S.nl)}</textarea>
+          <textarea id="nl" placeholder="例如：如果沒有資本主義、沒有貨幣、人們不需要工作，而且人類不會變老。">${esc(S.nl)}</textarea>
           <div class="row" style="margin-top:8px"><button class="btn small" data-act="nl-parse">轉換成世界規則</button><span class="dim">第一版用關鍵字轉換，不呼叫外部 AI</span></div>
           ${S.nlResult ? `<div style="margin-top:10px">${S.nlResult.matched.length ? `<div>辨識到的規則：</div><ul class="list-plain">${S.nlResult.matched.map((m) => `<li>${esc(m)}</li>`).join('')}</ul><span class="dim">已套用到下方規則，請確認。沒有辨識到的部分不會影響模擬。</span>` : '<span class="bad">沒有辨識到可執行的規則。請改用下方規則選項。</span>'}</div>` : ''}
         </div>` : ''}
@@ -1233,7 +1241,7 @@
     const w = W();
     const st = S.divine;
     // 未來時代的神之手只列出符合條件的國家（擁核國、已普及 AI 的國家）
-    const elig = { calm: (c) => WS.Future.isNuke(c, w), aisafety: (c) => U.adopt(c, 'ai') >= 0.3 }[st.kind];
+    const elig = { calm: (c) => WS.Future.isNuke(c, w) || !!(c.atom && c.atom.done), aisafety: (c) => U.adopt(c, 'ai') >= 0.3 }[st.kind];
     const all = U.ids(w), fit = elig ? all.filter((id) => elig(w.countries[id])) : all;
     const ids = fit.length ? fit : all;
     if (!w.countries[st.cid] || !w.countries[st.cid].alive || !ids.includes(st.cid)) st.cid = ids[0];
@@ -1270,7 +1278,7 @@
   // 未來時代的神之手：世界上出現相關科技（AI、核武、再生能源）之後才顯示
   function divineKinds(w) {
     const F = w.future;
-    const on = { aisafety: !!w.invented.ai, calm: !!(F && F.nukes && F.nukes.length), green: !!w.invented.renewables };
+    const on = { aisafety: !!w.invented.ai, calm: !!(F && F.nukes && F.nukes.length) || !!w.atomFirst, green: !!w.invented.renewables };
     return Object.entries(WS.Divine.KINDS).filter(([k, d]) => !d.future || on[k]);
   }
   function divineCast() {
@@ -2201,6 +2209,7 @@
     const a = t.dataset.act, v = t.dataset.v;
     switch (a) {
       case 'close-modal': closeModal(); break;
+      case 'more-rules': ev.preventDefault(); S.moreRules = !S.moreRules; if (S.screen === 'setup') renderSetup(); else render(); break;
       case 'intro': case 'feedback': S.resumeAuto = false; if (S.auto) { stopAuto(); render(); } if (a === 'intro') introModal(); else feedbackModal(); break;
       case 'fb-type': if (S.fb) S.fb.type = v; t.parentNode.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b === t); b.setAttribute('aria-pressed', b === t); }); break;
       case 'fb-send': feedbackSend(t); break;

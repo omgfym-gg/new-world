@@ -75,8 +75,11 @@
       // 潔淨能源（再生能源、核融合）：不受化石燃料儲量限制，也不排放；沒有這些科技時 rs = 0，計算與舊版相同
       const rs = WS.Future ? WS.Future.renewShare(c, w) : 0;
       const capAll = r.energyCap * (1 + U.adopt(c, 'nuclear') * 0.3);
+      const noFossil = w.rules.fossil === false;
       let cap = capAll * (1 - rs);
-      cap *= Math.min(1, reserves / Math.max(1e-6, r.energyCap * p.reserveDepletionYears));
+      // 地球沒有石油與煤：只剩水力、木材等（不會耗盡，也不算化石排放）
+      if (noFossil) cap *= w.params.rules.noFossilEnergy;
+      else cap *= Math.min(1, reserves / Math.max(1e-6, r.energyCap * p.reserveDepletionYears));
       const fossilCap = cap;
       if (rs > 0) cap += capAll * rs;
       const domestic = Math.min(cap, demand);
@@ -84,12 +87,13 @@
       const eb = w.params.economy.energyImportBase;
       let cover = (eb + (1 - eb) * c.econ.openness) * (c.flags.atWar ? 0.6 : 1) * (w.rules.currency === false ? 0.6 : 1);
       if (w.rules.resourceSharing) cover = Math.max(cover, 0.8);
+      if (noFossil) cover = 0;   // 世界上沒有化石燃料，國際市場也買不到
       const supplied = domestic + (demand - domestic) * cover;
       const prevRatio = r.energyRatio;
       r.energyRatio = demand > 0 ? Math.min(1, supplied / demand) : 1;
       if (Math.abs(r.energyRatio - prevRatio) > 1e-9)
-        U.cause(c, 'energy', domestic < demand ? '國內能源不足，依賴進口' : '國內能源充足', r.energyRatio - prevRatio, reserves < r.energyCap * p.reserveDepletionYears ? '儲量下降' : null);
-      const extraction = (rs > 0 ? domestic * fossilCap / Math.max(1e-9, cap) : domestic) * dt;
+        U.cause(c, 'energy', noFossil ? '地球沒有石油與煤（只剩水力、木材等）' : domestic < demand ? '國內能源不足，依賴進口' : '國內能源充足', r.energyRatio - prevRatio, noFossil ? (rs > 0 ? '潔淨能源補上一部分' : null) : reserves < r.energyCap * p.reserveDepletionYears ? '儲量下降' : null);
+      const extraction = noFossil ? 0 : (rs > 0 ? domestic * fossilCap / Math.max(1e-9, cap) : domestic) * dt;
       // 排放：國內化石能源＋進口能源（進口能源來自模擬範圍外，視為化石能源）
       if (WS.Future) WS.Future.addFossil(w, extraction + (supplied - domestic) * dt);
       const oilShare = r.oil > 0 ? p.oilShareMax * oilUsable : 0;

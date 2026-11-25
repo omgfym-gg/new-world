@@ -19,6 +19,23 @@
     }
   };
 
+  // 世界規則對民眾支持目標的影響（基本收入、不需要工作、一胎化；預設為 0）
+  Pol.ruleSupport = function (w) {
+    const r = w.params.rules;
+    let s = 0;
+    if (w.rules.work === 'ubi') s += r.ubiSupport;
+    if (w.rules.work === 'postwork') s += r.postworkSupport;
+    if (w.rules.birth === 'one') s += r.birthOneSupport;
+    return s;
+  };
+  // 宗教規則對合法性的影響：[每年變化, 原因]，沒有影響時為 null
+  Pol.religionLegitimacy = function (c, w) {
+    const r = w.params.rules;
+    if (w.rules.religion === 'theocracy') return [r.theocracyLegitimacy, '政教合一：宗教權威支持政府'];
+    if (w.rules.religion === 'none' && c.regime === 'monarchy') return [r.noReligionMonarchy, '沒有宗教：君權神授不再成立'];
+    return null;
+  };
+
   Pol.step = function (w, ids, ctx) {
     const U = WS.util, pp = w.params.politics;
     for (const id of ids) {
@@ -54,7 +71,7 @@
 
       // ---- 民眾支持 ----
       const supT = U.clamp(50 + 300 * ec.growth - 40 * c.res.shortage - 200 * Math.max(0, ec.inflation - 0.05)
-        + 100 * (f.budget.welfare - 0.1) - 0.5 * (c.demo.unemployment * 100 - 5) - 0.2 * pol.exhaustion, 5, 95);
+        + 100 * (f.budget.welfare - 0.1) - 0.5 * (c.demo.unemployment * 100 - 5) - 0.2 * pol.exhaustion + Pol.ruleSupport(w), 5, 95);
       pol.support += (supT - pol.support) * pp.supportAdjust * dt;
 
       // ---- 合法性 ----
@@ -65,6 +82,8 @@
         '領導人能力': (c.leader.comp - 0.5) * 4,
         '長期回歸': -pp.legitimacyReversion * (pol.legitimacy - 50)
       };
+      const rel = Pol.religionLegitimacy(c, w);
+      if (rel) legParts[rel[1]] = rel[0];
       let dl = 0;
       for (const k in legParts) { dl += legParts[k]; U.cause(c, 'legitimacy', k, legParts[k] * dt, k === '制度因素' ? rtWhy : k === '領導人能力' ? c.leader.name : null); }
       pol.legitimacy = U.clamp(pol.legitimacy + dl * dt, 0, 100);
@@ -80,6 +99,7 @@
         '失業': 0.2 * (c.demo.unemployment * 100 - 5),
         '衝突自然消退': -pp.conflictReversion * (pol.conflict - 40)
       };
+      if (w.rules.religion === 'theocracy') cParts['教育普及與宗教權威的摩擦'] = w.params.rules.theocracyConflictEdu * Math.max(0, c.demo.edu - 30);
       if (fatigue > 0) cParts['長期動亂後的厭戰情緒'] = -pp.fatigueConflict * fatigue;
       let dc = 0;
       for (const k in cParts) { dc += cParts[k]; U.cause(c, 'conflict', k, cParts[k] * dt); }

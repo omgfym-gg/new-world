@@ -131,6 +131,38 @@
       fatigueStability: 3,            // 疲乏最大時，每年對穩定度的正向推力
       fatigueConflict: 4              // 疲乏最大時，每年對社會衝突的降低
     },
+    // 世界規則（2026-11-25 新增，全部是示意值，未校準）：玩家改變世界根本規則時的效果大小
+    rules: {
+      workShiftRate: 0.25,            // 勞動參與每年向新目標靠近的比例（規則改變不是一夕之間）
+      ubiParticipation: 0.95,         // 全民基本收入：勞動參與倍數
+      ubiInequality: 12,              // 貧富差距目標下降
+      ubiSupport: 8,                  // 民眾支持目標上升
+      ubiSavings: 0.9,                // 儲蓄率倍數（基本收入多用在消費）
+      postworkParticipation: 0.1,     // 人們不需要工作：仍然自願工作的比例
+      postworkHungerReturn: 3,        // 糧食供應每短缺 1%，就有 3% 的人回去工作（直到全部回去）
+      postworkInequality: 15,
+      postworkSupport: 5,
+      postworkLearning: 1.3,          // 空閒時間：教育推廣與知識累積倍數
+      // 機器能補上多少空出來的工作（各科技普及 100% 時的貢獻，加總上限 1）
+      machines: {
+        agri: { tractor: 0.25, green: 0.15, ai: 0.2, agi: 0.3, asi: 0.4 },
+        ind: { assembly: 0.1, automation: 0.35, ai: 0.2, agi: 0.3, asi: 0.4 },
+        serv: { computing: 0.15, internet: 0.15, ai: 0.25, agi: 0.35, asi: 0.4 }
+      },
+      noFossilEnergy: 0.25,           // 沒有石油與煤：水力、木材等可用的能源產能比例
+      longMortality: [1, 1, 0.75, 0.5],     // 長壽：各年齡層死亡率倍數（0–14, 15–24, 25–64, 65+）
+      agelessMortality: [1, 0.7, 0.4, 0.4], // 不會變老
+      agelessAging: 0.05,             // 不會變老：25–64 歲進入老年的速度倍數
+      noReligionFert: 0.9, noReligionEdu: 1.1, noReligionMonarchy: -1,
+      theocracyFert: 1.12, theocracyEdu: 0.8, theocracyResearch: 0.8, theocracyLegitimacy: 1, theocracyConflictEdu: 0.015,
+      languageCatchUp: 0.3,           // 共同語言：追趕吸收能力基礎值增加
+      languageMed: 1.5,               // 醫療知識擴散倍數
+      languageTrade: 1.3,             // 貿易量倍數
+      languageRelation: 8,            // 各國關係目標增加
+      languageSpillover: 1.5,         // 科技經貿易擴散倍數
+      genderParticipation: 1.15, genderEdu: 1.15, genderFert: 0.92,
+      birthOne: 0.55, birthOneSupport: -10, birthMore: 1.2
+    },
     technology: {
       privateResearchShare: 0.002,
       diffusionDiscount: 0.5,         // 他國已發明時的研究成本折扣
@@ -309,7 +341,18 @@
       independenceMovementEdu: 20,     // 教育超過此值，民族運動不必等宗主國衰退也能成功
       independenceWave: 0.4,           // 民族自決風潮：每多一個前殖民地獨立，其他殖民地機率乘上 (1 + 此值)，最多 3 倍
       independenceWaveMax: 3,
-      independenceDominion: 0.003
+      independenceDominion: 0.003,
+      // 原子彈（2026-11-25，示意值）：戰時的大國可能推動原子彈計畫；做出來後，可能對沒有原子彈的敵國使用
+      atomCost: 20,                   // 原子彈計畫的研究量（同科技研究點數；1940 年代研究最強的國家戰時約 3–5 年完成）
+      atomMinWarMonths: 12,           // 開戰滿這麼久才會開始計畫
+      atomResearchShare: 0.5,         // 戰時投入計畫的研究比例（另外撥出，不影響一般科技研究）
+      atomPrereq: ['electrification', 'radio'],
+      atomMinEdu: 35,
+      atomUseChance: 0.12,            // 每月動用機率（敵方沒有原子彈時）
+      atomDeath: 0.003,               // 目標國人口死亡比例
+      atomScore: 35,                  // 戰局分數往使用方移動
+      atomExhaustion: 35,             // 目標國戰爭疲憊增加
+      atomRelation: -20               // 其他國家對使用國的觀感
     }
   };
 

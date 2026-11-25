@@ -40,7 +40,8 @@
     const talent = Math.pow(Math.max(1, c.demo.edu) / 50, 0.8);
     const inst = 0.6 + 0.4 * c.pol.stability / 100;
     const facility = 1 + c.econ.sec.ind.Y / Math.max(1e-6, c.econ.gdp);
-    return { pts: budget * talent * inst * facility * w.rules.techSpeed, budget, talent, inst, facility };
+    const rule = w.rules.religion === 'theocracy' ? w.params.rules.theocracyResearch : 1;
+    return { pts: budget * talent * inst * facility * w.rules.techSpeed * rule, budget, talent, inst, facility, rule };
   };
 
   Tech.step = function (w, ids, ctx) {
@@ -76,7 +77,7 @@
           if (oa > 0.5 && rel.trade > best) { best = rel.trade; from = o; }
         }
         if (from) {
-          const add = WS.Data.techs[t].cost * tp.spilloverRate * best;
+          const add = WS.Data.techs[t].cost * tp.spilloverRate * best * (w.rules.language === true ? w.params.rules.languageSpillover : 1);
           c.tech[t].progress += add;
           U.cause(c, 'research', WS.Data.techs[t].name, add, '經由與' + w.countries[from].name + '的貿易擴散');
         }
@@ -103,7 +104,7 @@
           const first = !w.invented[t];
           if (first) w.invented[t] = { by: id, year: w.year };
           WS.Events.log(w, ctx, {
-            type: 'tech', title: first ? `${c.name}率先完成「${def.name}」` : `${c.name}掌握「${def.name}」`,
+            type: 'tech', techId: t, first, title: first ? `${c.name}率先完成「${def.name}」` : `${c.name}掌握「${def.name}」`,
             countries: [id], level: first ? 2 : 1, major: first && id === w.focus,
             text: first ? '世界首次出現這項技術，其他國家之後可用較低成本引進。' : '技術進入實際應用階段，接下來需要時間普及。',
             causes: [

@@ -55,7 +55,7 @@
     return s > 0 ? Math.min(0.98, s) : 0;
   };
 
-  Future.isNuke = (c, w) => U().adopt(c, 'nuclear') >= P(w).nukeAdoption && U().adopt(c, 'rocketry') >= P(w).nukeAdoption;
+  Future.isNuke = (c, w) => w.rules.nukes !== false && U().adopt(c, 'nuclear') >= P(w).nukeAdoption && U().adopt(c, 'rocketry') >= P(w).nukeAdoption;
 
   // 收成乘數：暖化與核子寒冬（暖化未過門檻、沒有寒冬時為 1）
   Future.harvestParts = function (c, w) {

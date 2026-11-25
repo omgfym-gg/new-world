@@ -142,7 +142,7 @@
     const leader = ids.map((x) => [x, WS.Technology.researchPoints(w.countries[x], w).pts]).sort((a, b) => b[1] - a[1])[0];
     qs.push({
       q: `為什麼${c.name}的科技發展${r.pts >= leader[1] * 0.5 ? '較快' : '較慢'}？`,
-      a: `目前每年研究產出約 ${r.pts.toFixed(2)}（世界最高為${w.countries[leader[0]].name} ${leader[1].toFixed(2)}）。拆解：科研投入 ${r.budget.toFixed(2)} × 人才倍率 ${r.talent.toFixed(2)}（教育 ${c.demo.edu.toFixed(0)}）× 制度倍率 ${r.inst.toFixed(2)}（穩定度 ${c.pol.stability.toFixed(0)}）× 設施倍率 ${r.facility.toFixed(2)}（工業比重）× 世界科技速度 ${w.rules.techSpeed}。` +
+      a: `目前每年研究產出約 ${r.pts.toFixed(2)}（世界最高為${w.countries[leader[0]].name} ${leader[1].toFixed(2)}）。拆解：科研投入 ${r.budget.toFixed(2)} × 人才倍率 ${r.talent.toFixed(2)}（教育 ${c.demo.edu.toFixed(0)}）× 制度倍率 ${r.inst.toFixed(2)}（穩定度 ${c.pol.stability.toFixed(0)}）× 設施倍率 ${r.facility.toFixed(2)}（工業比重）× 世界科技速度 ${w.rules.techSpeed}${r.rule !== 1 ? ` × 政教合一 ${r.rule}` : ''}。` +
         `${r.talent < 0.6 ? '教育水準偏低是最大瓶頸。' : ''}${r.inst < 0.8 ? '政治不穩也拖慢研究。' : ''}`
     });
 

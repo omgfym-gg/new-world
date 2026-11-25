@@ -55,6 +55,8 @@
       w.tick++;
       // 神之手：恢復神力、結束到期的干預（不使用亂數）
       WS.Divine.step(w, ids, ctx);
+      // 「如果？」平行世界：在這個月改變世界規則（例如「如果這時地球上沒有石油」）
+      WS.WhatIf.applyRule(w, ctx);
       // 3–10. 各系統，順序固定
       WS.Population.step(w, ids, ctx);
       WS.Environment.step(w, ids, ctx);

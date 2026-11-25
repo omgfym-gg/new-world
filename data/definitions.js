@@ -127,6 +127,104 @@
       name: '移民', category: '人口', type: 'choice', default: 1,
       choices: [[0, '禁止移民'], [1, '一般'], [2, '自由移民']],
       affects: ['人口']
+    },
+    // ===== 2026-11-25 新增：讓玩家把世界變成想要的模樣（效果都經公式計算，係數在 params.rules，示意值）=====
+    work: {
+      name: '工作', category: '經濟', type: 'choice', default: 'work',
+      choices: [['work', '人人工作謀生'], ['ubi', '全民基本收入'], ['postwork', '人們不需要工作']],
+      affects: ['經濟', '人口', '政治'],
+      conversion: {
+        work: ['人們回到原本的工作方式，勞動參與逐年恢復'],
+        ubi: [
+          '每個人都領到基本收入，不工作也能生活',
+          '工作的人略減（勞動參與 ×0.95），儲蓄率略降',
+          '貧富差距目標下降、民眾支持上升',
+          '變化逐年發生，不是一夕之間'
+        ],
+        postwork: [
+          '人們不再需要工作：大部分人離開工作崗位（勞動參與逐年降到約一成）',
+          '空出來的工作只能由機器補上：補得了多少取決於農業機械、自動化、電腦、AI 普及程度',
+          '機器不夠時產出會下降；糧食不足時，人們會被迫回到田裡',
+          '空閒時間讓教育與知識累積加快，貧富差距縮小'
+        ]
+      }
+    },
+    fossil: {
+      name: '石油與煤', category: '資源', type: 'bool', default: true,
+      on: '地底有石油與煤', off: '地球沒有石油與煤',
+      affects: ['資源', '經濟', '氣候'],
+      offConversion: [
+        '地底下的石油與煤全部消失，已開採的存量也一起消失',
+        '能源只剩水力、木材等（約原本產能的四分之一），國際上也買不到化石燃料',
+        '工業與服務業因能源不足而減產',
+        '不再排放化石燃料的溫室氣體；再生能源、核能出現後能源才會恢復'
+      ],
+      onConversion: ['石油與煤重新出現（回到消失前的儲量）']
+    },
+    lifespan: {
+      name: '壽命', category: '人口', type: 'choice', default: 'normal',
+      choices: [['normal', '一般壽命'], ['long', '長壽'], ['ageless', '人類不會變老']],
+      affects: ['人口', '經濟'],
+      conversion: {
+        normal: ['死亡率回到一般水準'],
+        long: ['中老年死亡率降低（25–64 歲 ×0.75、65 歲以上 ×0.5）', '老年人口比例上升'],
+        ageless: [
+          '人不再衰老：成年人幾乎不會進入老年，死亡率降到原本的四成',
+          '仍在生育年齡的人口與勞動力持續增加',
+          '人口快速增加，之後要面對糧食與能源是否足夠'
+        ]
+      }
+    },
+    religion: {
+      name: '宗教', category: '社會', type: 'choice', default: 'natural',
+      choices: [['natural', '依歷史'], ['none', '沒有宗教'], ['theocracy', '政教合一']],
+      affects: ['人口', '政治', '科技'],
+      conversion: {
+        natural: ['宗教回到各地原本的樣子'],
+        none: ['生育率略降（×0.9）', '教育推廣略快（×1.1）', '君主專制失去「君權神授」，合法性逐年下降'],
+        theocracy: ['宗教權威支持政府，各國合法性逐年上升', '生育率略升（×1.12）', '教育與研究受限（×0.8）', '教育越普及，人民與宗教權威的摩擦越大']
+      }
+    },
+    language: {
+      name: '語言', category: '社會', type: 'bool', default: false,
+      on: '全世界說同一種語言', off: '各說各的語言',
+      affects: ['外交', '科技', '經濟'],
+      onConversion: ['各國之間的關係多了「共同語言」的好感', '貿易量增加（×1.3）', '追趕先進國家、引進他國醫療與科技都更快'],
+      offConversion: ['各國回到各自的語言']
+    },
+    gender: {
+      name: '性別平等', category: '社會', type: 'bool', default: false,
+      on: '女性從一開始就與男性平等', off: '依歷史',
+      affects: ['經濟', '人口'],
+      onConversion: ['女性和男性一樣工作、受教育：勞動參與逐年提高（×1.15）', '教育推廣加快（×1.15）', '生育率略降（×0.92）'],
+      offConversion: ['勞動參與與教育回到歷史樣態']
+    },
+    birth: {
+      name: '生育', category: '人口', type: 'choice', default: 'natural',
+      choices: [['natural', '自然生育'], ['one', '全球一胎化'], ['more', '鼓勵生育']],
+      affects: ['人口', '政治'],
+      conversion: {
+        natural: ['生育回到自然狀態'],
+        one: ['全世界每個家庭只能生一個孩子（出生數 ×0.55）', '強制政策降低民眾支持', '幾十年後勞動力減少、人口老化'],
+        more: ['各國鼓勵生育（出生數 ×1.2）', '人口增加，糧食壓力也增加']
+      }
+    },
+    nukes: {
+      name: '核武', category: '軍事', type: 'bool', default: true,
+      on: '可以製造核武', off: '核武從未出現',
+      affects: ['軍事', '未來'],
+      offConversion: ['沒有國家能製造原子彈或核彈', '戰爭中不會出現原子彈轟炸，未來也不會有核子戰爭與核子寒冬'],
+      onConversion: ['各國之後可以研發原子彈（只在戰時、有足夠科研能力時）']
+    },
+    government: {
+      name: '各國政體', category: '政治', type: 'choice', default: 'natural',
+      choices: [['natural', '依歷史'], ['democracy', '全部改為民主共和'], ['monarchy', '全部改為君主專制']],
+      affects: ['政治', '外交'],
+      conversion: {
+        natural: ['各國維持現在的政體，之後照常演變'],
+        democracy: ['所有獨立國家改為民主共和（殖民地仍由宗主國統治）', '之後仍可能因政變、革命再改變'],
+        monarchy: ['所有獨立國家改為君主專制（殖民地仍由宗主國統治）', '之後仍可能因革命、民主化再改變']
+      }
     }
   };
 
@@ -149,6 +247,15 @@
         { label: '同時禁止戰爭', set: { war: false } },
         { label: '恢復國家制度', set: { states: true } }
       ]
+    },
+    {
+      id: 'states_government',
+      test: (r) => r.states === false && r.government != null && r.government !== 'natural',
+      text: '「沒有國家」與「各國政體」互相衝突：沒有國家時就沒有民主或君主政府。',
+      options: [
+        { label: '政體改回依歷史', set: { government: 'natural' } },
+        { label: '恢復國家制度', set: { states: true } }
+      ]
     }
   ];
 
@@ -162,6 +269,20 @@
     { re: /科技.{0,4}(加速|快速|提前|飛躍)/, set: { techSpeed: 1.5 }, text: '科技發展 → 加速' },
     { re: /科技.{0,4}(停滯|緩慢|減慢)/, set: { techSpeed: 0.5 }, text: '科技發展 → 緩慢' },
     { re: /(自由|開放)移民/, set: { migration: 2 }, text: '移民 → 自由' },
-    { re: /(禁止|封閉)移民/, set: { migration: 0 }, text: '移民 → 禁止' }
+    { re: /(禁止|封閉)移民/, set: { migration: 0 }, text: '移民 → 禁止' },
+    { re: /(不需要|不用|不必|免於)(工作|上班|勞動)|後工作|機器.{0,6}(代替|取代).{0,4}(人|工作)/, set: { work: 'postwork' }, text: '工作 → 人們不需要工作' },
+    { re: /基本收入|UBI/i, set: { work: 'ubi' }, text: '工作 → 全民基本收入' },
+    { re: /(沒有|無|不存在|沒了)(石油|煤|化石燃料)/, set: { fossil: false }, text: '石油與煤 → 地球沒有石油與煤' },
+    { re: /(不會|不再|永不)(變老|衰老|老)|長生不老|永保青春/, set: { lifespan: 'ageless' }, text: '壽命 → 人類不會變老' },
+    { re: /長壽|活到\s*\d{3}/, set: { lifespan: 'long' }, text: '壽命 → 長壽' },
+    { re: /(沒有|無|取消|廢除|不存在)宗教/, set: { religion: 'none' }, text: '宗教 → 沒有宗教' },
+    { re: /政教合一|神權/, set: { religion: 'theocracy' }, text: '宗教 → 政教合一' },
+    { re: /(同|一)(一)?種語言|共同語言|語言.{0,2}(相同|統一)/, set: { language: true }, text: '語言 → 全世界說同一種語言' },
+    { re: /性別平等|男女平等|女性.{0,6}(平等|一樣)/, set: { gender: true }, text: '性別平等 → 女性從一開始就與男性平等' },
+    { re: /一胎/, set: { birth: 'one' }, text: '生育 → 全球一胎化' },
+    { re: /鼓勵生育|多生/, set: { birth: 'more' }, text: '生育 → 鼓勵生育' },
+    { re: /(沒有|無|禁止|不存在)(核武|核彈|原子彈)|無核|(核武|核彈|原子彈).{0,2}(從未|沒有)(出現|發明)/, set: { nukes: false }, text: '核武 → 核武從未出現' },
+    { re: /(全|都)(是|為|改為)?民主|民主.{0,2}世界/, set: { government: 'democracy' }, text: '各國政體 → 全部改為民主共和' },
+    { re: /(全|都)(是|為|改為)?(君主|帝制|王國)/, set: { government: 'monarchy' }, text: '各國政體 → 全部改為君主專制' }
   ];
 })(typeof window !== 'undefined' ? window : globalThis);

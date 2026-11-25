@@ -207,6 +207,148 @@ test('模擬中改變規則會記錄制度轉換', () => {
   assert.strictEqual(bad.ok, false, '會與資本主義衝突');
 });
 
+// ---------- 新世界規則（2026-11-25）----------
+const worldSum = (w, f) => WS.util.ids(w).reduce((s, id) => s + f(w.countries[id]), 0);
+const runRules = (rules, years = 25) => { const e = make({ mode: 'global', seed: 'rules', rules }); e.advance(12 * years, { stopOnMajor: false }); return e.world; };
+test('新世界規則：預設值與舊版完全相同（不影響沒改規則的世界）', () => {
+  const a = make({ mode: 'global', seed: 'same' });
+  const defaults = {};
+  for (const k of ['work', 'fossil', 'lifespan', 'religion', 'language', 'gender', 'birth', 'nukes', 'government']) defaults[k] = WS.Data.rules[k].default;
+  const b = make({ mode: 'global', seed: 'same', rules: defaults });
+  a.advance(120, { stopOnMajor: false }); b.advance(120, { stopOnMajor: false });
+  assert.strictEqual(JSON.stringify(a.world.countries), JSON.stringify(b.world.countries));
+  assert.strictEqual(JSON.stringify(a.world.events), JSON.stringify(b.world.events));
+});
+test('人們不需要工作：沒有機器時產出下降，原因寫進因果帳；同種子結果相同', () => {
+  const base = runRules({}), pw = runRules({ work: 'postwork' });
+  assert.ok(worldSum(pw, (c) => c.econ.gdp) < worldSum(base, (c) => c.econ.gdp) * 0.8, '1911 年沒有自動化，人們不工作時產出應明顯下降');
+  const c = pw.countries.USA;
+  assert.ok(c.econ.workMult < 0.5);
+  const e = make({ mode: 'global', seed: 'rules', rules: { work: 'postwork' } }); e.advance(2, { stopOnMajor: false });
+  assert.ok(Object.values(e.world.countries.USA.causes.cur.gdp).some((f) => Object.keys(f.sub).some((k) => /人們不需要工作/.test(k))), '產出變化的原因要寫明');
+  assert.strictEqual(JSON.stringify(runRules({ work: 'postwork' }, 5)), JSON.stringify(runRules({ work: 'postwork' }, 5)));
+});
+test('人們不需要工作：機器（自動化、AI）普及時能補上空出來的工作', () => {
+  const w = runRules({ work: 'postwork' }, 1);
+  const c = w.countries.USA;
+  const before = WS.Economy.computeSectors(c, w).ind.L;
+  for (const t of ['assembly', 'automation', 'ai', 'agi']) c.tech[t] = { progress: 1e9, adoption: 1, done: true };
+  const after = WS.Economy.computeSectors(c, w).ind.L;
+  assert.ok(after > before * 1.2, '機器普及後有效勞動應增加');
+  assert.ok(WS.Economy.machineLevel(c, w, 'ind') > 0.9);
+});
+test('全民基本收入：貧富差距下降、民眾支持上升', () => {
+  const base = runRules({}), ubi = runRules({ work: 'ubi' });
+  const avg = (w, f) => worldSum(w, f) / WS.util.ids(w).length;
+  assert.ok(avg(ubi, (c) => c.pol.inequality) < avg(base, (c) => c.pol.inequality) - 3);
+  assert.ok(avg(ubi, (c) => c.pol.support) > avg(base, (c) => c.pol.support));
+});
+test('地球沒有石油與煤：儲量消失、能源不足、恢復規則時儲量回來', () => {
+  const e = make({ mode: 'global', seed: 'fossil', rules: { fossil: false } });
+  const w = e.world;
+  for (const id of WS.util.ids(w)) assert.strictEqual(w.countries[id].res.coal + w.countries[id].res.oil, 0);
+  e.advance(1, { stopOnMajor: false });
+  assert.ok(Object.keys(w.countries.USA.causes.cur.energy).some((k) => /沒有石油與煤/.test(k)));
+  e.advance(23, { stopOnMajor: false });
+  assert.ok(w.countries.USA.res.energyRatio < 0.5);
+  assert.ok(e.changeRule('fossil', true).ok);
+  assert.ok(w.countries.USA.res.coal > 0);
+});
+test('人類不會變老、全球一胎化：人口走向相反', () => {
+  const base = worldSum(runRules({}), WS.util.popTotal);
+  assert.ok(worldSum(runRules({ lifespan: 'ageless' }), WS.util.popTotal) > base * 1.2);
+  assert.ok(worldSum(runRules({ birth: 'one' }), WS.util.popTotal) < base * 0.85);
+});
+test('宗教、語言、性別平等規則都會改變世界，且出生的改變記在因果帳', () => {
+  const base = runRules({}, 15);
+  for (const r of [{ religion: 'none' }, { religion: 'theocracy' }, { language: true }, { gender: true }]) {
+    const w = runRules(r, 15);
+    assert.notStrictEqual(worldSum(w, WS.util.popTotal).toFixed(3), worldSum(base, WS.util.popTotal).toFixed(3), JSON.stringify(r));
+  }
+  const e = make({ mode: 'global', seed: 'rules', rules: { birth: 'one' } }); e.advance(2, { stopOnMajor: false });
+  assert.ok(e.world.countries.CHN.causes.cur.population['世界規則改變生育'].v < 0);
+});
+test('各國政體：全部改為民主共和（殖民地不變）；與「沒有國家」衝突', () => {
+  const e = new WS.WorldEngine(); e.create({ mode: 'global', scenario: '1911w', seed: 'gov', rules: { government: 'democracy' } });
+  const w = e.world;
+  for (const id of WS.util.ids(w)) { const c = w.countries[id]; if (!c.overlord) assert.strictEqual(c.regime, 'republic', c.name); else assert.notStrictEqual(c.regime, 'republic'); }
+  assert.strictEqual(WS.Rules.conflicts({ states: false, war: false, government: 'democracy' }).length, 1);
+});
+test('自然語言：「沒有資本主義、人們不需要工作、人類不會變老」轉成規則', () => {
+  const r = WS.Rules.parseNL('如果沒有資本主義、沒有貨幣、人們不需要工作、人類不會變老、全世界說同一種語言、地球沒有石油、核武從未出現');
+  assert.deepStrictEqual(r.set, { currency: false, capitalism: false, work: 'postwork', lifespan: 'ageless', language: true, fossil: false, nukes: false });
+});
+test('原子彈：戰時計畫完成後可能投下，「如果？」可以阻止；核武從未出現時不會有', () => {
+  const setup = (rules) => {
+    const e = make({ mode: 'global', seed: 'atom', rules });
+    const w = e.world;
+    const war = WS.Military.declareWar(w, 'USA', 'JPN', { rng: new WS.RNG(1), major: [] }, ['測試']);
+    if (war) war.months = 30;
+    return e;
+  };
+  const e = setup({});
+  const w = e.world;
+  w.countries.USA.atom = { progress: 999, done: true, started: 1911 };
+  w.params.events.atomUseChance = 1;
+  e.advance(1, { stopOnMajor: false });
+  const ev = w.events.find((x) => x.defId === 'atomicbomb');
+  assert.ok(ev, '應該投下原子彈');
+  assert.ok(/投下原子彈/.test(ev.title) && ev.countries.includes('JPN'));
+  const opts = WS.WhatIf.options(w, ev);
+  assert.ok(opts.some((o) => /沒有投下原子彈/.test(o.label)));
+  const e2 = setup({ nukes: false });
+  e2.world.countries.USA.atom = { progress: 999, done: true, started: 1911 };
+  e2.world.params.events.atomUseChance = 1;
+  e2.advance(1, { stopOnMajor: false });
+  assert.ok(!e2.world.events.some((x) => x.defId === 'atomicbomb'));
+});
+test('原子彈計畫：只在戰爭打滿一年後推進，記在因果帳', () => {
+  const e = make({ mode: 'global', seed: 'atom2' });
+  const w = e.world;
+  WS.Military.declareWar(w, 'USA', 'JPN', { rng: new WS.RNG(1), major: [] }, ['測試']);
+  for (const t of ['electrification', 'radio']) w.countries.USA.tech[t] = { progress: 1e9, adoption: 1, done: true };
+  e.advance(6, { stopOnMajor: false });
+  assert.ok(!w.countries.USA.atom, '開戰未滿一年不會開始');
+  const war = w.wars.find((x) => !x.ended);
+  if (war) { war.months = 20; e.advance(1, { stopOnMajor: false }); assert.ok(w.countries.USA.atom && w.countries.USA.atom.progress > 0); }
+});
+test('關鍵發明那一刻的「如果？」：發明石油化工時改成「地球上沒有石油與煤」，只影響平行世界', () => {
+  const e = make({ mode: 'global', seed: 'moment' });
+  let ev = null;
+  for (let i = 0; i < 80 && !ev; i++) { e.advance(12, { stopOnMajor: false }); ev = e.world.events.find((x) => x.type === 'tech' && x.first && x.techId === 'petrochem'); }
+  assert.ok(ev, '應該有人率先完成石油化工');
+  const opts = WS.WhatIf.options(e.world, ev);
+  const o = opts.find((x) => x.target.kind === 'rule' && x.target.key === 'fossil');
+  assert.ok(o && /沒有石油與煤/.test(o.label));
+  const before = e.serialize();
+  const r = WS.WhatIf.run(e, ev.id, o.key);
+  assert.ok(r.ok, r.reason);
+  assert.strictEqual(e.serialize(), before, '原世界不受影響');
+  assert.strictEqual(r.world.rules.fossil, false);
+  assert.strictEqual(e.world.rules.fossil, true);
+  assert.ok(r.world.events.some((x) => x.type === 'whatif'));
+});
+test('神之手「化解核危機」可以用在有原子彈的國家，降低投彈機率', () => {
+  const e = make({ mode: 'global', seed: 'calm' });
+  const w = e.world;
+  WS.Military.declareWar(w, 'USA', 'JPN', { rng: new WS.RNG(1), major: [] }, ['測試']);
+  w.countries.USA.atom = { progress: 999, done: true, started: 1911 };
+  w.atomFirst = { by: 'USA', year: 1911 };
+  w.divine.energy = 100;
+  const r = e.divine('calm', 'USA');
+  assert.ok(r.ok, r.reason || JSON.stringify(r));
+  const def = WS.Events.defs.find((d) => d.id === 'atomicbomb');
+  assert.ok(def.prob(w, w.countries.USA) < w.params.events.atomUseChance);
+});
+test('舊存檔沒有新規則：載入時補上預設值', () => {
+  const e = make();
+  const obj = JSON.parse(e.serialize());
+  delete obj.rules.work; delete obj.rules.nukes;
+  const w = WS.Save.migrate(obj);
+  assert.strictEqual(w.rules.work, 'work');
+  assert.strictEqual(w.rules.nukes, true);
+});
+
 // ---------- 分支與存檔 ----------
 test('分支完全隔離：修改分支不影響原世界', () => {
   const e = make(); e.advance(60);
