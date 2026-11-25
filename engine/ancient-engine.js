@@ -355,7 +355,7 @@
     if (!o) return false;
     const ev = WS.Events.log(w, ctx, {
       type: 'whatif', title: o.label, countries: o.region ? [o.region] : o.countries || [], level: 3,
-      text: '這是平行世界的分岔點：只有這一件事被改寫，其他一切照同一個種子由引擎計算。',
+      text: '這是平行世界的分岔點：只有這一件事被改寫，其他一切由引擎計算。',
       causes: ['玩家的「如果」設定（平行世界）'], trigger: `在${A.yearLabel(w.year)}攔截`
     });
     o.eventId = ev.id;
