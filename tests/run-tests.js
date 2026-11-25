@@ -1464,6 +1464,31 @@ test('支持作者：只顯示 https 贊助連結，不改世界', () => {
   P.links().forEach((l) => assert.ok(/^https:\/\//.test(l.url)));
 });
 
+test('資安：程式庫與 itch 壓縮檔沒有密碼、金鑰或機密設定檔', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const cp = require('child_process');
+  const root = path.join(__dirname, '..');
+  let files;
+  try { files = cp.execSync('git ls-files', { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean); } catch (e) { return; } // 不是 git 目錄時略過
+  // 1. 不能有常見的機密檔名（機器人上線一分鐘內就會來找這些）
+  const badName = /(^|\/)(\.env(\..*)?|\.aws\/.*|\.claude\/settings(\.local)?\.json|secrets?\.json|credentials(\.json)?|id_rsa|.*\.(pem|key|p12|pfx))$/i;
+  assert.deepStrictEqual(files.filter((f) => badName.test(f)), [], '這些檔案不該放進程式庫');
+  // 2. 檔案內容不能有常見的 API 金鑰格式
+  const keyRe = /(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[abpr]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----)/;
+  const hits = [];
+  for (const f of files) {
+    if (/\.(png|jpe?g|gif|mp3|ogg|wav|mp4|webm|zip|woff2?)$/i.test(f)) continue;
+    const txt = fs.readFileSync(path.join(root, f), 'utf8');
+    if (keyRe.test(txt)) hits.push(f);
+  }
+  assert.deepStrictEqual(hits, [], '這些檔案看起來含有 API 金鑰');
+  // 3. itch 壓縮檔只放遊戲檔案（不含說明書、測試、工具、隱藏檔）
+  const pack = fs.readFileSync(path.join(root, 'tools/pack-itch.sh'), 'utf8');
+  const line = pack.split('\n').find((l) => /^zip /.test(l));
+  assert.ok(line && !/AGENTS|CLAUDE|README|tests|tools|docs|reports|\s\.\s|\s\.[a-z]/i.test(line), 'itch 壓縮檔只能列出遊戲需要的檔案');
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;
