@@ -301,7 +301,7 @@
       <div class="start">
         <div class="globe-slot hero" id="globe-slot"><div class="hud-tag tl">TERRA-3 · 觀測中</div><div class="hud-tag br">文明調整台 v1</div></div>
         <div class="brand">
-          <div class="en">GENESIS · WORLD SIMULATOR</div>
+          <div class="en">DIMENSION EARTH · WORLD SIMULATOR</div>
           <h1>維度世界</h1>
           <p>玩家設定世界，模擬器創造歷史，玩家觀察並改變歷史。</p>
         </div>
@@ -427,7 +427,7 @@
     const one = ([k, d]) => {
       const opts = d.type === 'bool' ? [[true, d.on], [false, d.off]] : d.choices.map(([v, l]) => [v, l]);
       return `<div class="field"><label>${esc(d.category)}・${esc(d.name)}</label>
-        <div class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-k="${k}" data-v="${JSON.stringify(v)}" class="${rules[k] === v ? 'on' : ''}">${esc(l)}</button>`).join('')}</div></div>`;
+        <div class="seg">${opts.map(([v, l]) => `<button data-act="${act}" data-k="${k}" data-v="${esc(JSON.stringify(v))}" class="${rules[k] === v ? 'on' : ''}">${esc(l)}</button>`).join('')}</div></div>`;
     };
     const all = Object.entries(WS.Data.rules);
     const more = all.filter(([k]) => !CORE_RULES.includes(k));
