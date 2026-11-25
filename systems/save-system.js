@@ -24,6 +24,9 @@
     // 神之手與世界頭條（舊存檔補上）
     if (!w.divine) w.divine = { energy: w.params.divine.energyStart, log: [], counter: 0 };
     w.headlines = w.headlines || [];
+    // 新增的世界規則（舊存檔補上預設值；預設值的效果與舊版相同）
+    w.rules = w.rules || {};
+    for (const k in WS.Data.rules) if (!(k in w.rules)) w.rules[k] = WS.Data.rules[k].default;
     return w;
   };
 

@@ -8,8 +8,39 @@
 
   Econ.isPlanned = (c, w) => w.rules.capitalism === false || !!(WS.util.regime(w, c.regime) || {}).planned;
 
-  Econ.workforce = function (c, w) {
+  // 勞動人口（不含世界規則造成的改變）
+  Econ.workforceBase = function (c, w) {
     return (c.pop.c1 * 0.75 + c.pop.c2 * 0.92 + c.pop.c3 * 0.15) * w.params.economy.participation;
+  };
+  // 實際工作的人：世界規則（基本收入、不需要工作、性別平等）讓勞動參與逐年改變（c.econ.workMult，預設 1）
+  Econ.workforce = function (c, w) {
+    return Econ.workforceBase(c, w) * (c.econ.workMult ?? 1);
+  };
+
+  // 勞動參與的目標倍數與原因
+  Econ.workTarget = function (c, w) {
+    const r = w.params.rules;
+    let t = 1;
+    const why = [];
+    if (w.rules.work === 'ubi') { t *= r.ubiParticipation; why.push('全民基本收入'); }
+    if (w.rules.work === 'postwork') {
+      // 糧食不夠時，人們被迫回到工作（機器越能代替農業，越不需要回去）
+      const fe = c.res.foodEff ?? 1;
+      const back = WS.util.clamp((1 - fe) * r.postworkHungerReturn, 0, 1) * (1 - Econ.machineLevel(c, w, 'agri'));
+      t *= r.postworkParticipation + (1 - r.postworkParticipation) * back;
+      why.push('人們不需要工作');
+      if (back > 0.01) why.push('糧食不足時部分人回去工作');
+    }
+    if (w.rules.gender === true) { t *= r.genderParticipation; why.push('女性與男性平等工作'); }
+    return { t, why: why.join('、') };
+  };
+
+  // 機器能補上多少空出來的工作（0–1）：依農業機械、自動化、電腦、AI 的普及程度
+  Econ.machineLevel = function (c, w, s) {
+    const m = w.params.rules.machines[s] || {};
+    let v = 0;
+    for (const t in m) v += WS.util.adopt(c, t) * m[t];
+    return Math.min(1, v);
   };
 
   Econ.techMult = function (c, s) {
@@ -73,13 +104,17 @@
   Econ.computeSectors = function (c, w) {
     const e = w.params.economy;
     const workers = Econ.workforce(c, w) * (1 - c.demo.unemployment);
+    // 人們不需要工作：空出來的工作由機器補上（補得了多少取決於科技）
+    const gap = w.rules.work === 'postwork' ? Math.max(0, 1 - (c.econ.workMult ?? 1)) * Econ.workforceBase(c, w) * (1 - c.demo.unemployment) : 0;
     const out = {};
     for (const s of SECTORS) {
       const sec = c.econ.sec[s], sp = e.sectors[s];
-      const L = Math.max(1e-6, workers * c.econ.lab[s]);
+      const M = gap ? gap * c.econ.lab[s] * Econ.machineLevel(c, w, s) : 0;
+      const L = Math.max(1e-6, workers * c.econ.lab[s] + M);
       const T = Econ.techMult(c, s), R = Econ.resMult(c, w, s), I = Econ.instMult(c, w, s);
       const Y = sec.A * Math.pow(L, sp.alpha) * Math.pow(Math.max(1e-6, sec.K), sp.beta) * T * R * I;
       out[s] = { L, T, R, I, Y };
+      if (gap) out[s].M = M;
     }
     return out;
   };
@@ -138,7 +173,8 @@
   Econ.absorb = function (c, w) {
     const e = w.params.economy;
     const market = (c.econ.market ?? 0.6) * (Econ.isPlanned(c, w) ? e.plannedMarketMult : 1);
-    return Math.sqrt(c.demo.edu / 100) * (c.pol.stability / 100) * market * (e.catchUpOpenBase + (1 - e.catchUpOpenBase) * c.econ.openness);
+    const ob = Math.min(1, e.catchUpOpenBase + (w.rules.language === true ? w.params.rules.languageCatchUp : 0));
+    return Math.sqrt(c.demo.edu / 100) * (c.pol.stability / 100) * market * (ob + (1 - ob) * c.econ.openness);
   };
 
   // 每年生產力成長率（回傳 { know, catch }）
@@ -149,7 +185,7 @@
     for (const id of U.ids(w)) lead = Math.max(lead, w.countries[id].econ.gdppc || 0);
     const edu = c.demo.edu / 100, stab = c.pol.stability / 100;
     const rShare = (c.fiscal.amounts.research || 0) / Math.max(1e-6, c.econ.gdp);
-    const know = e.tfpKnowledge * edu * (0.5 + 0.5 * stab) * (1 + rShare / e.tfpResearchRef);
+    const know = e.tfpKnowledge * edu * (0.5 + 0.5 * stab) * (1 + rShare / e.tfpResearchRef) * (w.rules.work === 'postwork' ? w.params.rules.postworkLearning : 1);
     const gap = lead > 0 && c.econ.gdppc > 0 ? Math.min(e.catchUpMaxGap, Math.max(0, Math.log(lead / c.econ.gdppc))) : 0;
     const ctch = e.catchUpRate * gap * Econ.absorb(c, w);
     return { know, catch: ctch };
@@ -161,6 +197,14 @@
       const c = w.countries[id];
       const ec = c.econ, d = c.demo;
       const P = U.popTotal(c);
+
+      // 世界規則：勞動參與逐年向目標移動
+      const wt = Econ.workTarget(c, w);
+      const wm = ec.workMult ?? 1;
+      if (Math.abs(wt.t - wm) > 1e-9) {
+        ec.workMult = wm + (wt.t - wm) * w.params.rules.workShiftRate * dt;
+        ec.workWhy = wt.why || '回到原本的工作方式';
+      }
 
       // 失業
       const planned = Econ.isPlanned(c, w);
@@ -196,7 +240,7 @@
         const sec = ec.sec[s], o = out[s], sp = e.sectors[s];
         const dY = o.Y - sec.Y;
         const terms = {
-          '勞動力': sp.alpha * Math.log(o.L / sec.L),
+          [ec.workMult != null && ec.workMult !== 1 ? `勞動力（${(o.M ? ['機器代替人力'] : []).concat(ec.workWhy.split('、')).join('、')}）` : '勞動力']: sp.alpha * Math.log(o.L / sec.L),
           [sec.K < (sec.Kprev || sec.K) && c.flags.warDamage ? '戰爭破壞' : '資本投資']: sp.beta * Math.log(sec.K / (sec.Kprev || sec.K)),
           '技術進步': Math.log(o.T / sec.T),
           [s === 'agri' ? (WS.Divine && WS.Divine.harvestMult(c, w) < 1 ? '收成與氣候（含神之手旱災）' : '收成與氣候') : '能源供應']: Math.log(o.R / sec.R),
@@ -225,7 +269,7 @@
       const f = c.fiscal;
 
       // 投資與資本累積
-      const savings = planned ? e.plannedSavings : ec.savings;
+      const savings = (planned ? e.plannedSavings : ec.savings) * (w.rules.work === 'ubi' ? w.params.rules.ubiSavings : 1);
       const inv = gdp * savings + (f.amounts.infrastructure || 0);
       const Kind0 = ec.sec.ind.K;
       for (const s of SECTORS) {
@@ -248,6 +292,8 @@
       let ineqT = c.econ.inequality0 + 25 * (indShare - 0.2) * (planned ? 0.3 : 1) - (welfareShare - 0.1) * 50;
       if (planned) ineqT -= 15;
       if (w.rules.currency === false) ineqT -= 10;
+      if (w.rules.work === 'ubi') ineqT -= w.params.rules.ubiInequality;
+      if (w.rules.work === 'postwork') ineqT -= w.params.rules.postworkInequality;
       ineqT = U.clamp(ineqT, 15, 85);
       const dI = (ineqT - c.pol.inequality) * w.params.politics.inequalityAdjust * dt;
       c.pol.inequality += dI;

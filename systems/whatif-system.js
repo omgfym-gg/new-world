@@ -36,6 +36,12 @@
       add('block', `如果「${defOf(e.defId).name}」沒有發生`, { kind: 'event', defId: e.defId, country: cid });
     } else if (e.type === 'historical-missed' && e.defId) {
       add('force', `如果「${defOf(e.defId).name}」被強制發生（即使當時條件不成立）`, { kind: 'event', defId: e.defId, country: cid });
+    } else if (e.type === 'tech' && e.first && MOMENTS[e.techId]) {
+      // 關鍵發明的那一刻：從這個月起改變世界的一條根本規則（只在平行世界）
+      for (const [k, v, label] of MOMENTS[e.techId]) {
+        if (w.rules[k] === v) continue;
+        add('rule-' + k + '-' + v, label, { kind: 'rule', key: k, value: v });
+      }
     } else if (e.type === 'catastrophe' && e.fk) {
       add('block', `如果沒有發生「${e.title}」`, { kind: 'future', fk: e.fk });
     } else if (e.type === 'conditional' && e.defId && defOf(e.defId)) {
@@ -45,10 +51,35 @@
         add(won ? 'fail' : 'success', won ? `如果${cn}革命失敗` : `如果${cn}革命成功`, { kind: 'event', defId: e.defId, country: cid });
         if (won) add('block', `如果${cn}沒有爆發革命`, { kind: 'event', defId: e.defId, country: cid });
       } else {
-        add('block', `如果${cn}沒有發生${d.name}`, { kind: 'event', defId: e.defId, country: cid });
+        add('block', e.defId === 'atomicbomb' ? `如果${cn}沒有投下原子彈` : `如果${cn}沒有發生${d.name}`, { kind: 'event', defId: e.defId, country: cid });
       }
     }
     return out;
+  };
+
+  // 關鍵發明 → 可以在那一刻改寫的世界規則
+  const MOMENTS = WhatIf.MOMENTS = {
+    ice: [['fossil', false, '如果這時地球上沒有石油與煤']],
+    petrochem: [['fossil', false, '如果這時地球上沒有石油與煤']],
+    automobile: [['fossil', false, '如果這時地球上沒有石油與煤']],
+    atom: [['nukes', false, '如果原子彈從此不再被製造（核武從未出現）']],
+    nuclear: [['nukes', false, '如果核武從未出現']],
+    automation: [['work', 'ubi', '如果從這時起發放全民基本收入'], ['work', 'postwork', '如果從這時起人們不需要工作']],
+    ai: [['work', 'postwork', '如果從這時起人們不需要工作'], ['work', 'ubi', '如果從這時起發放全民基本收入']],
+    agi: [['work', 'postwork', '如果從這時起人們不需要工作']],
+    antibiotics: [['lifespan', 'long', '如果從這時起人類變得長壽']],
+    genetics: [['lifespan', 'ageless', '如果從這時起人類不會變老']],
+    internet: [['language', true, '如果從這時起全世界說同一種語言']]
+  };
+
+  // 引擎掛鉤：平行世界在指定月份改變世界規則（每月開始時，在其他系統之前）
+  WhatIf.applyRule = function (w, ctx) {
+    const o = WhatIf.take(w, (x) => x.kind === 'rule');
+    if (!o) return;
+    const old = w.rules[o.key];
+    const ev = WhatIf.logDivergence(w, ctx, o, [], [`原世界線中的規則：${WS.Data.rules[o.key].name}「${WS.Rules.describe(o.key, old)}」`]);
+    const r = WS.Rules.change(w, ctx, o.key, o.value);
+    ev.effects = r.ok ? [`${WS.Data.rules[o.key].name}改為「${WS.Rules.describe(o.key, o.value)}」`].concat(r.steps || []) : ['規則衝突，沒有改變'];
   };
 
   // ---------- 2. 引擎掛鉤：在指定的月份攔截一件事 ----------

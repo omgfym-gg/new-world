@@ -271,6 +271,78 @@
     }
   ];
 
+  // ---- 原子彈（2026-11-25）----
+  // 戰時、有足夠科研能力的國家可能推動原子彈計畫（另外撥出的研究，不影響一般科技研究、不用亂數）；
+  // 做出來後，對沒有原子彈的敵國可能動用。這是條件事件，不照史實年份或國家強制發生，可用「如果？」阻止。
+  const atomEnemies = (w, c) => {
+    const out = [];
+    for (const war of w.wars) {
+      if (war.ended) continue;
+      const side = war.attackers.includes(c.id) ? war.defenders : war.defenders.includes(c.id) ? war.attackers : null;
+      if (!side) continue;
+      for (const x of side) { const X = w.countries[x]; if (X && X.alive && !(X.atom && X.atom.done)) out.push([x, war]); }
+    }
+    return out;
+  };
+  Events.atomProgram = function (w, c, ctx) {
+    const p = w.params.events, u = U();
+    if (w.rules.nukes === false || w.rules.war === false || w.rules.states === false) return;
+    if (c.atom && c.atom.done) return;
+    const war = w.wars.find((x) => !x.ended && (x.attackers.includes(c.id) || x.defenders.includes(c.id)) && x.months >= p.atomMinWarMonths);
+    if (!war || c.overlord || c.demo.edu < p.atomMinEdu || !p.atomPrereq.every((t) => u.adopt(c, t) >= 0.3)) return;
+    const add = (c.research.points || 0) * p.atomResearchShare / 12;
+    if (add <= 0) return;
+    c.atom = c.atom || { progress: 0, started: w.year };
+    c.atom.progress += add;
+    u.cause(c, 'research', '原子彈計畫', add, `戰時另外撥出的研究：${war.name}`);
+    if (c.atom.progress >= p.atomCost) {
+      c.atom.done = true; c.atom.year = w.year;
+      const first = !w.atomFirst;
+      if (first) w.atomFirst = { by: c.id, year: w.year };
+      Events.log(w, ctx, {
+        type: 'tech', techId: 'atom', first, crisis: first, title: first ? `${c.name}製造出世界上第一顆原子彈` : `${c.name}也製造出原子彈`, countries: [c.id], level: first ? 3 : 2, major: c.id === w.focus,
+        text: '戰爭期間的原子彈計畫完成。之後是否動用，取決於戰局與敵國有沒有原子彈；你可以用神之手「化解核危機」讓這個國家較不願意動用。',
+        causes: [`${war.name}已經打了 ${war.months} 個月`, `從 ${c.atom.started} 年開始投入戰時研究，累積 ${c.atom.progress.toFixed(0)}（需要 ${p.atomCost}）`, `教育 ${c.demo.edu.toFixed(0)}、已掌握電氣化與無線電`]
+      });
+    }
+  };
+  Events.defs.push({
+    id: 'atomicbomb', type: 'conditional', name: '投下原子彈', cooldown: 60,
+    check(w, c) {
+      const en = atomEnemies(w, c);
+      return cond([
+        [w.rules.nukes !== false, '世界上可以製造核武'],
+        [!!(c.atom && c.atom.done), '已經製造出原子彈'],
+        [en.length > 0, en.length ? `正在和沒有原子彈的國家交戰（${en.map(([x]) => w.countries[x].name).slice(0, 3).join('、')}）` : '正在和沒有原子彈的國家交戰']
+      ]);
+    },
+    // 神之手「化解核危機」會降低這個國家動用原子彈的機率
+    prob: (w, c) => w.params.events.atomUseChance * (c.divine && c.divine.calm && c.divine.calm.until > w.tick ? c.divine.calm.mult : 1),
+    apply(w, c, ctx, ev) {
+      const p = w.params.events, u = U();
+      const en = atomEnemies(w, c).sort((a, b) => u.popTotal(w.countries[b[0]]) - u.popTotal(w.countries[a[0]]) || (a[0] < b[0] ? -1 : 1));
+      const [tid, war] = en[0];
+      const T = w.countries[tid];
+      const dead = u.popTotal(T) * p.atomDeath;
+      const k = T.pop.c1 + T.pop.c2 + T.pop.c0;
+      for (const key of ['c0', 'c1', 'c2']) T.pop[key] = Math.max(0.001, T.pop[key] - dead * T.pop[key] / k);
+      u.cause(T, 'population', '死亡', -dead, `原子彈轟炸：${c.name}`);
+      war.casualties[tid] = (war.casualties[tid] || 0) + dead;
+      const sign = war.attackers.includes(c.id) ? 1 : -1;
+      war.score = u.clamp(war.score + sign * p.atomScore, -100, 100);
+      T.pol.exhaustion = u.clamp(T.pol.exhaustion + p.atomExhaustion, 0, 100);
+      u.cause(T, 'stability', '遭到原子彈轟炸', -8);
+      T.pol.stability = u.clamp(T.pol.stability - 8, 0, 100);
+      for (const x of u.ids(w)) if (x !== c.id && x !== tid) WS.Diplomacy.remember(w, x, c.id, p.atomRelation, `${c.name}投下原子彈`);
+      WS.Diplomacy.remember(w, tid, c.id, p.atomRelation * 2, `${c.name}的原子彈轟炸`);
+      ev.title = `${c.name}對${T.name}投下原子彈`;
+      ev.countries = [c.id, tid];
+      ev.crisis = true;
+      ev.atomTarget = tid;
+      return [`${T.name}約 ${u.fmt(dead, 2)} 百萬人死亡（人口的 ${(p.atomDeath * 100).toFixed(1)}%）`, `${war.name}戰局往${c.name}一方移動 ${p.atomScore} 分`, `${T.name}戰爭疲憊 +${p.atomExhaustion}、穩定度 −8`, '其他國家對使用國的觀感變差'];
+    }
+  });
+
   const SUBJECT_SKIP = ['revolution', 'coup', 'warlordism', 'reunification', 'democratization', 'secession'];
   const PREFIX = /^(英屬|法屬|荷屬|美屬|比屬|德屬|葡屬|西屬|義屬|日屬)/;
 
@@ -338,6 +410,7 @@
       const c = w.countries[id];
       if (!c.alive) continue;
       c.cool = c.cool || {};
+      Events.atomProgram(w, c, ctx);
       // 到期的制度改革
       for (const p of c.pending.slice()) {
         if (p.due > w.tick) continue;

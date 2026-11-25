@@ -53,6 +53,7 @@
         '擴張野心': r.base < 0 && (A.goal === 'expand' || B.goal === 'expand') ? dp.ambition : 0,
         '和平合作方向': A.goal === 'peace' && B.goal === 'peace' ? 15 : 0
       };
+      if (w.rules.language === true) parts['共同語言'] = w.params.rules.languageRelation;
       let target = 0;
       for (const k in parts) target += parts[k];
       if (r.war) target = -90;
@@ -63,6 +64,7 @@
       r.trust = U.clamp(r.trust + ((50 + r.rel / 2) - r.trust) * 0.02, 0, 100);
       let tt = r.war ? 0 : U.clamp(0.1 + 0.4 * Math.min(A.econ.openness, B.econ.openness) + r.rel / 250, 0, 1);
       if (w.rules.currency === false) tt *= 0.7;
+      if (w.rules.language === true) tt = Math.min(1, tt * w.params.rules.languageTrade);
       r.trade += (tt - r.trade) * dp.tradeAdjust;
       if (r.alliance && r.rel < 0) {
         r.alliance = false;

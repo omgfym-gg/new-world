@@ -735,3 +735,7 @@ html:not([lang^="zh"]):not([lang="ja"]) body[data-ui="paper"] .sys-id::after { c
 .support-links .btn small { display: block; color: var(--muted); font-size: 12px; }
 .meter.save-meter { grid-template-columns: 72px 1fr auto; }
 .meter.save-meter .num { white-space: nowrap; }
+
+/* 更多世界規則（收合） */
+.more-rules { margin-top: 6px; }
+.more-rules > summary { cursor: pointer; padding: 8px 0; color: var(--blue); font-size: 14px; list-style-position: inside; }

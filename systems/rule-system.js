@@ -26,6 +26,7 @@
   Rules.conversionSteps = function (key, value) {
     const d = WS.Data.rules[key];
     if (d.type === 'bool') return (value ? d.onConversion : d.offConversion) || [];
+    if (d.conversion && d.conversion[value]) return d.conversion[value];
     return ['相關系統的計算倍率改為「' + Rules.describe(key, value) + '」'];
   };
 
@@ -58,6 +59,36 @@
         c.name = c.name.replace(/地區$/, '');
         c.regimeLabel = c.name + '（' + U.regime(w, c.regime).name + '）';
         c.pol.legitimacy = 40;
+      }
+    }
+    // 地球沒有石油與煤：儲量藏起來（之後恢復規則時還原）
+    if (w.rules.fossil === false && (changedKey === 'fossil' || changedKey == null)) {
+      for (const id of ids) {
+        const r = w.countries[id].res;
+        if (r.fossilHidden) continue;
+        r.fossilHidden = { coal: r.coal, oil: r.oil };
+        r.coal = 0; r.oil = 0;
+      }
+    }
+    if (w.rules.fossil !== false && changedKey === 'fossil') {
+      for (const id of ids) {
+        const r = w.countries[id].res;
+        if (!r.fossilHidden) continue;
+        r.coal = r.fossilHidden.coal; r.oil = r.fossilHidden.oil;
+        delete r.fossilHidden;
+      }
+    }
+    // 各國政體：把所有獨立國家改成同一種政體（一次轉換，之後仍照常演變）
+    const gov = w.rules.government;
+    if (gov && gov !== 'natural' && w.rules.states !== false && (changedKey === 'government' || changedKey == null)) {
+      const to = gov === 'democracy' ? 'republic' : 'monarchy';
+      for (const id of ids) {
+        const c = w.countries[id];
+        if (c.overlord || c.regime === to || c.regime === 'commune') continue;
+        c.regime = to;
+        c.regimeLabel = c.name + '（' + U.regime(w, to).name + '）';
+        U.cause(c, 'legitimacy', '世界規則：各國政體改變', 50 - c.pol.legitimacy, U.regime(w, to).name);
+        c.pol.legitimacy = 50;
       }
     }
     if (w.rules.war === false || w.rules.states === false) {

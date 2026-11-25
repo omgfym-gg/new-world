@@ -131,9 +131,10 @@
       risk.push('之後 AI 能力仍可能繼續成長，拉開差距；實際成效有運氣成分（世界種子）');
     }
     if (kind === 'calm' && c) {
-      checks.push([!!WS.Future && WS.Future.isNuke(c, w), `${c.name}是擁核國`]);
+      checks.push([(!!WS.Future && WS.Future.isNuke(c, w)) || !!(c.atom && c.atom.done), `${c.name}擁有原子彈或核武`]);
       checks.push([!(st.calm && st.calm.until > w.tick), '這個國家沒有正在進行的核危機化解']);
       info.push(`${p.calmYears} 年內，${c.name}捲入的核危機或戰爭中，動用核武的機率降到原本的 ${(p.calmMult * 100).toFixed(0)}–${(p.calmMult * 200).toFixed(0)}%`);
+      info.push('也包括在戰爭中投下原子彈');
       info.push('戰爭本身還是可能發生，由引擎決定');
       risk.push('只影響這個國家；其他擁核國仍可能動用核武');
       risk.push('實際效果有運氣成分（世界種子）');

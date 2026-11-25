@@ -24,6 +24,10 @@ function collect(scale = 1) {
   };
   run({ mode: 'country', focus: 'CHN', scenario: '1911' }, Math.round(60 * scale));
   run({ mode: 'global', scenario: '1911w', seed: 'i18n-w' }, Math.round(120 * scale));
+  // 世界規則（2026-11-25 新增）的文字：因果帳、轉換步驟
+  run({ mode: 'global', scenario: '1911', seed: 'i18n-r1', rules: { work: 'postwork', lifespan: 'ageless', religion: 'theocracy', birth: 'one', fossil: false, language: true, gender: true, government: 'monarchy' } }, Math.round(15 * scale));
+  run({ mode: 'global', scenario: '1911', seed: 'i18n-r2', rules: { work: 'ubi', lifespan: 'long', religion: 'none', birth: 'more', nukes: false, government: 'democracy' } }, Math.round(15 * scale));
+  for (const k in WS.Data.rules) { const d = WS.Data.rules[k]; for (const v of d.type === 'bool' ? [true, false] : d.choices.map((c) => c[0])) for (const st of WS.Rules.conversionSteps(k, v)) all.add(st); }
   const a = run({ mode: 'global', scenario: 'bc10000', seed: 'i18n-a' }, 0);
   while (a.world.year < 1820) { a.advanceYears(200, { stopOnMajor: false }); strings(a.world, all); }
   if (a.toModern) { a.toModern(); for (let y = 0; y < 60 * scale; y++) a.advanceYears(1, { stopOnMajor: false }); strings(a.world, all); }

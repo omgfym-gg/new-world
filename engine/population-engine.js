@@ -44,7 +44,7 @@
     const frontier = Population._frontier != null ? Population._frontier : Population.medFrontier(w);
     const gap = Math.max(0, frontier - Population.medLevel(c));
     const absorb = p.medAbsorbBase + (1 - p.medAbsorbBase) * c.pol.admin / 100;
-    return p.medDiffusion * p.medTechWeight * gap * absorb;
+    return p.medDiffusion * p.medTechWeight * gap * absorb * (w.rules.language === true ? w.params.rules.languageMed : 1);
   };
 
   // 世界醫療前沿（各國醫療科技普及程度的最大值）
@@ -52,6 +52,29 @@
     let frontier = 0;
     for (const id of U().ids(w)) frontier = Math.max(frontier, Population.medLevel(w.countries[id]));
     return frontier;
+  };
+
+  // 世界規則對生育的倍數（宗教、性別平等、生育政策；預設為 1）
+  Population.ruleFert = function (w) {
+    const r = w.params.rules, R = w.rules;
+    let m = 1;
+    const why = [];
+    if (R.religion === 'none') { m *= r.noReligionFert; why.push('沒有宗教'); }
+    if (R.religion === 'theocracy') { m *= r.theocracyFert; why.push('政教合一'); }
+    if (R.gender === true) { m *= r.genderFert; why.push('性別平等'); }
+    if (R.birth === 'one') { m *= r.birthOne; why.push('全球一胎化'); }
+    if (R.birth === 'more') { m *= r.birthMore; why.push('鼓勵生育'); }
+    return { m, why: why.join('、') };
+  };
+  // 世界規則對教育推廣的倍數
+  Population.ruleEdu = function (w) {
+    const r = w.params.rules, R = w.rules;
+    let m = 1;
+    if (R.religion === 'none') m *= r.noReligionEdu;
+    if (R.religion === 'theocracy') m *= r.theocracyEdu;
+    if (R.gender === true) m *= r.genderEdu;
+    if (R.work === 'postwork') m *= r.postworkLearning;
+    return m;
   };
 
   Population.step = function (w, ids, ctx) {
@@ -64,6 +87,10 @@
     const u = U();
     const p = w.params.population;
     const rationing = w.rules.currency === false;
+    const rf = Population.ruleFert(w);
+    const life = w.rules.lifespan === 'long' ? w.params.rules.longMortality : w.rules.lifespan === 'ageless' ? w.params.rules.agelessMortality : null;
+    const lifeWhy = w.rules.lifespan === 'long' ? '長壽' : '人類不會變老';
+    const eduRule = Population.ruleEdu(w);
     for (const id of ids) {
       const c = w.countries[id];
       const d = c.demo;
@@ -76,7 +103,8 @@
       // 生育率向「轉型完成後的低生育水準」(fertMin) 收斂，各國起點不同、終點相近
       d.fert = Math.min(d.fertBase, p.fertMin) + Math.max(0, d.fertBase - p.fertMin) * Math.min(1.3, ff);
       const fertile = c.pop.c1 + c.pop.c2 * p.fertileWeight25to64;
-      const births = fertile * d.fert * dt * (1 - p.shortageBirthPenalty * shortage) * (1 - p.warBirthPenalty * atWar);
+      const births0 = fertile * d.fert * dt * (1 - p.shortageBirthPenalty * shortage) * (1 - p.warBirthPenalty * atWar);
+      const births = births0 * rf.m;
 
       const mortMult = d.mortScale * (1.15 - d.health) / (1.15 - d.health0);
       const foodMult = p.shortageDeathBoost * shortage * (rationing ? 0.7 : 1);
@@ -85,14 +113,14 @@
       const deaths = [0, 0, 0, 0];
       KEYS.forEach((k, i) => {
         // 醫療進步對各年齡層的效果不同：嬰幼兒死亡下降最多，老年死亡下降較少
-        const ageMult = d.mortScale * (1 - p.healthAgeEffect[i] * (1 - mortMult / d.mortScale));
+        const ageMult = d.mortScale * (1 - p.healthAgeEffect[i] * (1 - mortMult / d.mortScale)) * (life ? life[i] : 1);
         const b = c.pop[k] * p.baseMortality[i] * ageMult * dt;
         deaths[i] = b * (1 + foodMult + conflictMult);
         baseD += b; foodD += b * foodMult; conflictD += b * conflictMult;
       });
 
       // 老化流動
-      const flow = [c.pop.c0 * p.agingRate[0] * dt, c.pop.c1 * p.agingRate[1] * dt, c.pop.c2 * p.agingRate[2] * dt];
+      const flow = [c.pop.c0 * p.agingRate[0] * dt, c.pop.c1 * p.agingRate[1] * dt, c.pop.c2 * p.agingRate[2] * dt * (w.rules.lifespan === 'ageless' ? w.params.rules.agelessAging : 1)];
       c.pop.c0 += births - deaths[0] - flow[0];
       c.pop.c1 += flow[0] - deaths[1] - flow[1];
       c.pop.c2 += flow[1] - deaths[2] - flow[2];
@@ -100,8 +128,9 @@
       for (const k of KEYS) c.pop[k] = Math.max(0.001, c.pop[k]);
 
       d.births = births; d.deaths = baseD + foodD + conflictD;
-      u.cause(c, 'population', '出生', births, d.health < 0.3 ? '高生育率社會' : '一般生育');
-      u.cause(c, 'population', '死亡', -baseD, '一般死亡');
+      u.cause(c, 'population', '出生', births0, d.health < 0.3 ? '高生育率社會' : '一般生育');
+      if (rf.m !== 1) u.cause(c, 'population', '世界規則改變生育', births - births0, rf.why);
+      u.cause(c, 'population', '死亡', -baseD, life ? `一般死亡（${lifeWhy}）` : '一般死亡');
       if (foodD) u.cause(c, 'population', '死亡', -foodD, '糧食短缺');
       if (foodD && WS.Future && w.future) WS.Future.noteFamine(w, foodD, foodD * (c.res.foodClimate || 0));   // 只做紀錄
       if (conflictD) u.cause(c, 'population', '死亡', -conflictD, '社會動亂');
@@ -109,12 +138,12 @@
       // 教育：取決於教育支出
       const gdp = Math.max(1e-6, c.econ.gdp);
       const eduShare = (c.fiscal.amounts.education || 0) / gdp;
-      const gEdu = p.eduGainPerGdpShare * eduShare * (1 - d.edu / 100);
-      const gUrban = p.eduUrban * d.urban * (1 - d.edu / 100);
+      const gEdu = p.eduGainPerGdpShare * eduShare * (1 - d.edu / 100) * eduRule;
+      const gUrban = p.eduUrban * d.urban * (1 - d.edu / 100) * eduRule;
       const lEdu = p.eduDecay * d.edu / 50;
       d.edu = u.clamp(d.edu + (gEdu + gUrban - lEdu) * dt, 1, 100);
       u.cause(c, 'education', '教育支出', gEdu * dt, '佔 GDP ' + (eduShare * 100).toFixed(2) + '%');
-      u.cause(c, 'education', '城市生活與社會擴散', gUrban * dt);
+      u.cause(c, 'education', '城市生活與社會擴散', gUrban * dt, eduRule !== 1 ? `世界規則：教育推廣 ×${eduRule.toFixed(2)}` : null);
       u.cause(c, 'education', '人口更替與知識流失', -lEdu * dt);
 
       // 醫療水準
