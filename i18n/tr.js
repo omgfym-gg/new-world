@@ -3209,6 +3209,7 @@
     "人口快速增加，之後要面對糧食與能源是否足夠": "Nüfus hızla artar, ardından yiyecek ve enerjinin yetip yetmeyeceği sorunu gelir",
     "宗教": "Din",
     "社會": "Toplum",
+    "語言": "Dil",
     "依歷史": "Tarihteki gibi",
     "沒有宗教": "Din yok",
     "政教合一": "Teokrasi",

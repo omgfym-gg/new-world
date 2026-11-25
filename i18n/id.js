@@ -3209,6 +3209,7 @@
     "人口快速增加，之後要面對糧食與能源是否足夠": "Penduduk bertambah cepat, lalu harus menghadapi cukup tidaknya pangan dan energi",
     "宗教": "Agama",
     "社會": "Masyarakat",
+    "語言": "Bahasa",
     "依歷史": "Sesuai sejarah",
     "沒有宗教": "Tanpa agama",
     "政教合一": "Teokrasi",
