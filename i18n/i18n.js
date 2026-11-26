@@ -187,7 +187,7 @@
             re += '([\\s\\S]*?)'; order.push(m[2]);
             // 「第 {1} 城」的位置只放數字
             const at = src.indexOf(part), prev = src[at - 1] || '', next = src[at + 1] || '';
-            numOnly.push(/第 $/.test(prev) && /^ [\u3400-\u9fff]/.test(next));
+            numOnly.push(/第 ?$/.test(prev) && /^ ?[\u3400-\u9fff]/.test(next));
             // 緊貼中文的位置（「{1}戰爭」「{0}屬地」）只放一個名稱，不放「甲、乙」這種清單
             single.push(/^[\u3400-\u9fff]/.test(next));
           }
@@ -238,9 +238,10 @@
     for (const p of C.pats) {
       if (!weak && p.weak) continue;
       if (p.longest && !s.includes(p.longest)) continue;
+      const good = (mm) => mm && mm.slice(1).every(balanced) && !p.numOnly.some((x, i) => x && HAN.test(mm[i + 1])) && !p.single.some((x, i) => x && topList(mm[i + 1]));
       let m = p.re.exec(s);
-      if (m && !m.slice(1).every(balanced)) m = p.reG.exec(s); // 短的擷取括號不成對時，改試長的
-      if (!m || !m.slice(1).every(balanced) || p.numOnly.some((x, i) => x && HAN.test(m[i + 1])) || p.single.some((x, i) => x && topList(m[i + 1]))) continue;
+      if (!good(m)) m = p.reG.exec(s); // 短的擷取不合（括號不成對、數字位置有字）時，改試長的（例如「歐洲第 1 城國第87任領導人」）
+      if (!good(m)) continue;
       const vals = {}, raw = {};
       p.order.forEach((o, i) => { raw[o] = m[i + 1]; vals[o] = o[0] === '#' ? MARK + m[i + 1] + END : trShape(m[i + 1], depth + 1); });
       return p.v.replace(/\{(#?\d+)(:abbr)?\}/g, (x, o, ab) => (ab ? abbr(raw[o]) : vals[o] != null ? vals[o] : x));
@@ -304,7 +305,9 @@
     const pm = lastGroup(core);
     if (pm && balanced(pm[1]) && balanced(pm[2])) {
       const x = pm[1] ? trShape(pm[1], depth + 1) : '', y = trShape(pm[2], depth + 1);
-      if (!HAN.test(x + y)) return lead + tidy(x + punct('（') + y + punct('）')).replace(/\s+$/, '') + tail;
+      // 日文譯文本來就有漢字：改看兩邊是不是都翻過了
+      const done = I.lang === 'ja' ? (!HAN.test(pm[1]) || x !== pm[1]) && (!HAN.test(pm[2]) || y !== pm[2]) : !HAN.test(x + y);
+      if (done) return lead + tidy(x + punct('（') + y + punct('）')).replace(/\s+$/, '') + tail;
     }
     // 拆句：依序用句號、分號、逗號、冒號…拆開
     for (const re of SPLITS) {

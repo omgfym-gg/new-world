@@ -3,6 +3,7 @@
 // 抓出執行時才拼起來的句子。檢查的畫面：
 //   1. 1911 年的世界：對武昌起義做「如果？」，看平行世界比較頁
 //   2. 走到「人類走向星際」結局的世界：各分頁、平面地圖、結局報告
+//   2b. 遠古世界（西元前 3000 年）、1801 年、接到近代後走到結局的世界：各分頁、事件、存檔清單
 //   3. 走到核子寒冬結局的全世界劇本（回溯＋神之手）：結局報告與「沒有你的世界」重跑（較慢，只跑 --cf 指定的語言，預設 en）
 // 用法：node tools/i18n-ui-check.js [語言...] [--cf=en,ja]（不指定語言＝全部 16 種）
 const path = require('path');
@@ -55,8 +56,18 @@ function worlds(needCf) {
     c.divine('health', 'CHN');
     run(c, 2600);
   }
-  console.log(`準備世界：${((Date.now() - t) / 1000).toFixed(0)} 秒（結局：${b.w.future.ended && b.w.future.ended.title} ${b.w.year}${c ? `；${c.w.future.ended && c.w.future.ended.title} ${c.w.year}` : ''}）`);
-  return { early: a.serialize(), stars: b.serialize(), nuke: c && c.serialize() };
+  // 遠古世界：西元前 3000 年左右（城市、政體、地名），再一路推到 1801 年、接到近代、推到結局
+  const an = new WS.WorldEngine();
+  an.create({ scenario: 'bc10000', seed: 'anc-ui' });
+  while (an.w.year < -3000) an.advance(50, { stopOnMajor: false });
+  const anc = an.serialize();
+  while (an.w.year < 1801) an.advance(50, { stopOnMajor: false });
+  const anc1801 = an.serialize();
+  const br = an.toModern();
+  if (br && br.ok === false) throw new Error('接到近代失敗：' + br.reason);
+  run(an, 2700);
+  console.log(`準備世界：${((Date.now() - t) / 1000).toFixed(0)} 秒（結局：${b.w.future.ended && b.w.future.ended.title} ${b.w.year}${c ? `；${c.w.future.ended && c.w.future.ended.title} ${c.w.year}` : ''}；遠古接近代：${an.w.future.ended ? an.w.future.ended.title : '未結束'} ${an.w.year}）`);
+  return { early: a.serialize(), stars: b.serialize(), nuke: c && c.serialize(), anc, anc1801, bridged: an.serialize() };
 }
 
 (async () => {
@@ -88,6 +99,7 @@ function worlds(needCf) {
         else if (lg === 'en' && /(^|[^\d.,])1 (?!people|percent)[a-z]+s\b/.test(s)) out.push(w + '｜單複數｜' + s.slice(0, 400));
         else if (gdpw && /\bGDP\b/.test(s)) out.push(w + '｜GDP｜' + s.slice(0, 400));
         else if (!lg.startsWith('zh') && /(^|[^\d/])\d{1,2}[/.][12]\d{3}(?![\d/])/.test(s)) out.push(w + '｜日期｜' + s.slice(0, 400)); // 3/1916 這種月份寫法
+        else if (/(^|[\s(（])-\d{3,5}\.\d{2}・/.test(s)) out.push(w + '｜負年份｜' + s.slice(0, 400)); // 遠古事件寫成 -5279.01
       }
       return out;
     }, [where, lang, BAD[lang] ? BAD[lang].source : null, YEARWORD[lang] || null, GDPW[lang] || null]);
@@ -121,6 +133,19 @@ function worlds(needCf) {
     await click('tab', 'overview'); await click('map-view', 'flat'); await settle(); found.push(...await grab('平面地圖'));
     await click('map-zoom', 'europe'); await settle(); found.push(...await grab('放大歐洲')); await click('map-zoom', '');
     await click('ending'); await settle(); found.push(...await grab('結局（星際）'));
+    // 遠古世界：各分頁、地區頁、事件視窗、存檔清單（自動存檔名稱要翻譯）
+    await click('close-modal'); await load(W.anc); await settle();
+    for (const tab of ['overview', 'country', 'world', 'history', 'explain', 'system']) { await click('tab', tab); await settle(); found.push(...await grab('遠古 ' + tab)); }
+    const aev = await p.evaluate(() => { const w = window.WS.App.world(); const e = w.events.slice().reverse().find((x) => x.type === 'city'); return e && e.id; });
+    if (aev) { await click('event', null, { id: aev }); await settle(); found.push(...await grab('遠古事件')); await click('close-modal'); }
+    await p.evaluate(() => WS.Save.write(WS.App.world(), WS.App.world().name + '・' + WS.App.world().branch.name + '・' + WS.Ancient.yearLabel(WS.App.world().year) + '（遠古）', { auto: true })).catch(() => {});
+    await click('tab', 'overview'); await click('tab', 'system'); await p.waitForTimeout(800); found.push(...await grab('遠古存檔清單'));
+    found.push(...(await p.evaluate(() => { const i = document.getElementById('save-name'); return i ? [i.value] : []; })).filter((v) => { const re = BAD[lang] || (lang.startsWith('zh') ? null : /[㐀-鿿]/); return !!re && re.test(v); }).map((v) => '存檔名稱輸入框｜' + v));
+    await load(W.anc1801); await settle(); found.push(...await grab('遠古 1801'));
+    // 從遠古接到近代、走到結局的世界
+    await load(W.bridged); await settle();
+    for (const tab of ['overview', 'country', 'world', 'history', 'explain', 'system']) { await click('tab', tab); await settle(); found.push(...await grab('接近代 ' + tab)); }
+    await click('ending'); await settle(); found.push(...await grab('接近代結局'));
     // 3. 核子寒冬結局＋「沒有你的世界」
     if (W.nuke && cfLangs.includes(lang)) {
       await click('close-modal'); await load(W.nuke); await settle();
