@@ -278,6 +278,30 @@ test('自然語言：「沒有資本主義、人們不需要工作、人類不�
   const r = WS.Rules.parseNL('如果沒有資本主義、沒有貨幣、人們不需要工作、人類不會變老、全世界說同一種語言、地球沒有石油、核武從未出現');
   assert.deepStrictEqual(r.set, { currency: false, capitalism: false, work: 'postwork', lifespan: 'ageless', language: true, fossil: false, nukes: false });
 });
+test('自然語言：「和平」「教育」「減少軍事擴張」轉成文明方向；常見英文說法也認得；範例都辨識得到', () => {
+  let r = WS.Rules.parseNL('所有國家優先發展和平與教育，減少軍事擴張');
+  assert.strictEqual(r.direction, 'peace');
+  assert.ok(r.notes.length === 1, '提到兩種方向時要說明只選第一個');
+  assert.strictEqual(WS.Rules.parseNL('和平').direction, 'peace');
+  assert.strictEqual(WS.Rules.parseNL('重視教育').direction, 'tech');
+  assert.strictEqual(WS.Rules.parseNL('科技停滯').direction, null);
+  assert.deepStrictEqual(WS.Rules.parseNL('科技停滯').set, { techSpeed: 0.5 });
+  assert.strictEqual(WS.Rules.parseNL('隨便寫寫').matched.length, 0);
+  r = WS.Rules.parseNL("No money, no capitalism, and people don't need to work");
+  assert.deepStrictEqual(r.set, { currency: false, capitalism: false, work: 'postwork' });
+  for (const x of WS.Data.nlExamples) assert.ok(WS.Rules.parseNL(x).matched.length >= 1, x);
+  // 英文的範例與關鍵字清單也要辨識得到（英文玩家照著打）
+  const ctx = { WS: {} }; ctx.window = ctx;
+  require('vm').runInNewContext(require('fs').readFileSync(require('path').join(__dirname, '..', 'i18n/en.js'), 'utf8'), ctx);
+  const en = ctx.WS.I18n.DATA.en.dict;
+  for (const x of WS.Data.nlExamples) assert.deepStrictEqual(WS.Rules.parseNL(en[x]).matched, WS.Rules.parseNL(x).matched, en[x]);
+  const kw = en[WS.Data.nlKeywords].split(', ');
+  const miss = kw.filter((k) => !WS.Rules.parseNL(k).matched.length);
+  assert.deepStrictEqual(miss, []);
+  // 文明方向會進世界設定，各國目標跟著改
+  const e = make({ mode: 'global', seed: 'nl', direction: r.direction || WS.Rules.parseNL('和平').direction });
+  assert.ok(WS.util.ids(e.world).every((id) => e.world.countries[id].goal === 'peace'));
+});
 test('原子彈：戰時計畫完成後可能投下，「如果？」可以阻止；核武從未出現時不會有', () => {
   const setup = (rules) => {
     const e = make({ mode: 'global', seed: 'atom', rules });

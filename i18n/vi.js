@@ -3524,6 +3524,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regions have it",
-    "已掌握的地區": "Số vùng đã có"
+    "已掌握的地區": "Số vùng đã có",
+    "世界歷史模擬遊戲": "MÔ PHỎNG LỊCH SỬ THẾ GIỚI",
+    "語言檔暫時載入失敗。": "Chưa tải được tệp ngôn ngữ.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Lựa chọn của bạn đã được lưu: hãy lưu game rồi tải lại trang để chuyển sang {0}.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Đã áp dụng vào “Hướng đi của văn minh” ở trên và các quy tắc bên dưới. Hãy kiểm tra lại.",
+    "可以辨識的說法：{0}。": "Các cách nói nhận diện được: {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "Bạn cũng có thể chạm vào một ví dụ ở trên hoặc dùng các tùy chọn quy tắc bên dưới.",
+    "用關鍵字轉換，不呼叫外部 AI": "Chuyển đổi bằng từ khóa, không dùng AI bên ngoài",
+    "試試看：": "Thử xem:",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Ví dụ: mọi quốc gia ưu tiên hòa bình và giáo dục, giảm bành trướng quân sự.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Hướng đi của văn minh → Hòa bình trước (các nước hướng tới hòa bình và hợp tác)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Hướng đi của văn minh → Công nghệ trước (các nước coi trọng khoa học và giáo dục)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Hướng đi của văn minh → Chia sẻ tài nguyên (chia sẻ lương thực và năng lượng toàn cầu)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "Mọi quốc gia ưu tiên hòa bình và giáo dục, giảm bành trướng quân sự",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Cả thế giới nói chung một ngôn ngữ, cấm vũ khí hạt nhân và con người không già đi",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "hòa bình, công nghệ, giáo dục, chia sẻ tài nguyên, cấm chiến tranh, không có tiền, không có chủ nghĩa tư bản, không có quốc gia, không cần làm việc, thu nhập cơ bản, không có dầu mỏ, không già đi, trường thọ, không có tôn giáo, một ngôn ngữ, bình đẳng giới, một con, cấm hạt nhân, tất cả dân chủ",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Câu này nhắc đến nhiều hơn một hướng phát triển văn minh. Mỗi lần chỉ chọn được một, nên đã dùng hướng được nhắc đến đầu tiên; bạn có thể đổi ở “Hướng đi của văn minh” phía trên.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Không có tiền, không có chủ nghĩa tư bản, và mọi người không cần làm việc"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

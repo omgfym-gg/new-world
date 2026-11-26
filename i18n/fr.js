@@ -3524,6 +3524,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regions have it",
-    "已掌握的地區": "Régions qui la maîtrisent"
+    "已掌握的地區": "Régions qui la maîtrisent",
+    "世界歷史模擬遊戲": "SIMULATION DE L'HISTOIRE DU MONDE",
+    "語言檔暫時載入失敗。": "Impossible de charger le fichier de langue pour l'instant.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Ton choix est enregistré : sauvegarde la partie puis recharge la page pour passer en {0}.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Appliqué à « Orientation de la civilisation » ci-dessus et aux règles ci-dessous. Vérifie.",
+    "可以辨識的說法：{0}。": "Expressions reconnues : {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "Tu peux aussi toucher un exemple ci-dessus ou utiliser les options de règles ci-dessous.",
+    "用關鍵字轉換，不呼叫外部 AI": "Conversion par mots-clés, sans IA externe",
+    "試試看：": "Essaie :",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Par exemple : tous les pays privilégient la paix et l'éducation et réduisent l'expansion militaire.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Orientation de la civilisation → La paix d'abord (les pays visent la paix et la coopération)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Orientation de la civilisation → La technologie d'abord (les pays misent sur la science et l'éducation)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Orientation de la civilisation → Partage des ressources (nourriture et énergie partagées dans le monde)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "Tous les pays privilégient la paix et l'éducation et réduisent l'expansion militaire",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Le monde entier parle une seule langue, les armes nucléaires sont interdites et les humains ne vieillissent pas",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "paix, technologie, éducation, partage des ressources, interdire la guerre, pas d'argent, pas de capitalisme, pas de nations, plus besoin de travailler, revenu universel, pas de pétrole, ne pas vieillir, longévité, pas de religion, une seule langue, égalité des sexes, enfant unique, interdire le nucléaire, tous démocratiques",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "La phrase mentionne plusieurs orientations de la civilisation. Une seule est possible, la première citée a donc été retenue ; tu peux la changer dans « Orientation de la civilisation » ci-dessus.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Pas d'argent, pas de capitalisme, et personne n'a besoin de travailler"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
