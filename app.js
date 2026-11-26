@@ -23,6 +23,24 @@
     try { const st = WS.Save.storage(); if (st) st.setItem(PAUSE_KEY, v); } catch (e) { /* 無法儲存時只在這次有效 */ }
   }
   S.pauseMode = loadPauseMode(); engine.pauseMode = S.pauseMode;
+  // 自動播放速度（玩家偏好，存在這台裝置上；只決定畫面多快推進，不影響世界怎麼演變，所以不寫進 commandLog）
+  // ms：近代每推進一個月等多久；遠古每一期用一半
+  const AUTO_SPEEDS = { slow: { ms: 1000, name: '慢', icon: '🐢' }, normal: { ms: 400, name: '標準', icon: '🚶' }, fast: { ms: 160, name: '快', icon: '🏃' }, max: { ms: 40, name: '極快', icon: '🚀' } };
+  const AUTO_SPEED_KEY = 'ws.autoSpeed';
+  function loadAutoSpeed() {
+    try { const st = WS.Save.storage(); const v = st && st.getItem(AUTO_SPEED_KEY); return AUTO_SPEEDS[v] ? v : 'normal'; } catch (e) { return 'normal'; }
+  }
+  S.autoSpeed = loadAutoSpeed();
+  function setAutoSpeed(v) {
+    if (!AUTO_SPEEDS[v]) return;
+    S.autoSpeed = v;
+    try { const st = WS.Save.storage(); if (st) st.setItem(AUTO_SPEED_KEY, v); } catch (e) { /* 無法儲存時只在這次有效 */ }
+    if (S.auto) { stopAuto(); startAuto(); }
+  }
+  function autoSpeedBtn() {
+    const d = AUTO_SPEEDS[S.autoSpeed];
+    return `<button class="btn small" data-act="auto-speed" title="自動播放速度（點一下切換）" aria-label="自動播放速度：${d.name}">${d.icon} ${d.name}</button>`;
+  }
   S.uiTheme = WS.EraTheme.pref();
   // 會轉的地球（只畫圖）：點國家＝打開該國資料；點標籤＝看事件原因或戰場畫面
   const globe = window.WSGlobe ? WSGlobe.get() : null;
@@ -50,6 +68,7 @@
   }
   // 未來時代事件 → 動畫種類
   function futureVariant(e) {
+    if (e.fk === 'nukewarn') return null;   // 核戰危機只是警告，不畫核爆
     if (e.fk) return e.fk;
     if (/火星/.test(e.title)) return 'mars';
     if (/星際/.test(e.title)) return 'stars';
@@ -584,8 +603,8 @@
           ${w.mode === 'country' ? `<select data-act="focus" aria-label="觀察國家" style="width:auto;min-height:40px">${ids.map((id) => `<option value="${id}" ${id === w.focus ? 'selected' : ''}>${esc(w.countries[id].name)}</option>`).join('')}</select>` : ''}
         </div>
         <div class="controls">
-          ${ended() ? `<button class="btn small gold" data-act="ending">世界已終結・看結局報告</button>` : `${Object.entries(SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.speed === k ? 'on' : ''}" data-act="advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}
-          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>`}
+          ${ended() ? `<button class="btn small gold" data-act="ending">世界已終結・看結局報告</button>` : `<button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>${autoSpeedBtn()}
+          ${Object.entries(SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.speed === k ? 'on' : ''}" data-act="advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}`}
         </div>
       </div>
       <div class="content">${tabContent()}</div>
@@ -2103,8 +2122,8 @@
           <span class="spacer"></span>
         </div>
         <div class="controls">
+          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>${autoSpeedBtn()}
           ${Object.entries(A_SPEEDS).map(([k, [, l]]) => `<button class="btn small ${S.aSpeed === k ? 'on' : ''}" data-act="a-advance" data-v="${k}" ${running ? 'disabled' : ''}>＋${l}</button>`).join('')}
-          <button class="btn small run" data-act="auto">${running ? '⏸ 暫停' : '▶ 自動'}</button>
         </div>
       </div>
       <div class="content">${tab()}</div>
@@ -2155,6 +2174,11 @@
   function toggleAuto() {
     if (S.auto) { stopAuto(); autosave(); render(); return; }
     if (ended()) { endingModal(); return; }
+    startAuto();
+    render();
+  }
+  function startAuto() {
+    const ms = AUTO_SPEEDS[S.autoSpeed].ms * (isAnc() ? 0.5 : 1);
     S.auto = setInterval(() => {
       const res = engine.advance(1);
       if (W().month === 1 && (!isAnc() || W().tick % 40 === 0)) autosave(true);
@@ -2165,8 +2189,7 @@
       // 遠古世界走到近代門檻：暫停，問玩家要不要進入近代（只問一次）
       if (bridgeDue()) { stopAuto(); render(); bridgeModal(); return; }
       if (modal.hidden && !userBusy()) render();
-    }, 160);
-    render();
+    }, ms);
   }
 
   function switchWorld(w2, msg) {
@@ -2279,6 +2302,7 @@
       }
       case 'advance': S.speed = v; doAdvance(SPEEDS[v][0]); break;
       case 'auto': toggleAuto(); break;
+      case 'auto-speed': { const ks = Object.keys(AUTO_SPEEDS); setAutoSpeed(ks[(ks.indexOf(S.autoSpeed) + 1) % ks.length]); render(); toast(`自動播放速度：${AUTO_SPEEDS[S.autoSpeed].name}`); break; }
       case 'to-modern': toModern(); break;
       case 'ancient': startAncient('遠古-' + Date.now().toString(36)); toast('《人類的黎明》：每條世界線都不一樣（種子已記錄在「系統」頁的開發者資訊）'); break;
       case 'a-advance': {

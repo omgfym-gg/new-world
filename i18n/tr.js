@@ -3327,6 +3327,20 @@
     "{0}改為「{1}」": "{0} \"{1}\" oldu",
     "規則衝突，沒有改變": "Kurallar çelişiyor; hiçbir şey değişmedi",
     "{0}擁有原子彈或核武": "{0} atom bombasına ya da nükleer silaha sahip",
-    "也包括在戰爭中投下原子彈": "Savaşta atom bombası atmayı da kapsar"
+    "也包括在戰爭中投下原子彈": "Savaşta atom bombası atmayı da kapsar",
+    "慢": "Yavaş",
+    "標準": "Normal",
+    "快": "Hızlı",
+    "極快": "En hızlı",
+    "自動播放速度（點一下切換）": "Otomatik oynatma hızı (değiştirmek için dokun)",
+    "自動播放速度：{0}": "Otomatik hız: {0}",
+    "核戰危機：擁核國{0}與{1}正在交戰": "Nükleer kriz: nükleer güçler {0} ve {1} savaşta",
+    "核戰危機：擁核國{0}與{1}關係極度緊張": "Nükleer kriz: nükleer güçler {0} ile {1} arasında gerilim çok yüksek",
+    "{0}：交戰雙方都擁有核武": "{0}: iki tarafın da nükleer silahı var",
+    "{0}：交戰國中有一方擁有核武": "{0}: taraflardan birinin nükleer silahı var",
+    "兩國關係 {0}（越低越危險）": "İki ülkenin ilişkisi: {0} (düştükçe daha tehlikeli)",
+    "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Böyle giderse gelecek ocaktaki kontrolde nükleer silah kullanılma olasılığı yaklaşık {0} (uyarı eşiği {1})",
+    "這是警告，還沒有發生核子交火": "Bu bir uyarıdır; henüz nükleer saldırı olmadı",
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Olasılığı düşürmek için Tanrı'nın Eli \"Nükleer krizi yatıştır\"ı kullanabilir ya da önce kaydedebilirsin"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

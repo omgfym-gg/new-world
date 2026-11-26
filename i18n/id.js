@@ -3327,6 +3327,20 @@
     "{0}改為「{1}」": "{0} menjadi \"{1}\"",
     "規則衝突，沒有改變": "Aturan bertentangan; tidak ada yang berubah",
     "{0}擁有原子彈或核武": "{0} punya bom atom atau senjata nuklir",
-    "也包括在戰爭中投下原子彈": "Termasuk menjatuhkan bom atom dalam perang"
+    "也包括在戰爭中投下原子彈": "Termasuk menjatuhkan bom atom dalam perang",
+    "慢": "Lambat",
+    "標準": "Normal",
+    "快": "Cepat",
+    "極快": "Tercepat",
+    "自動播放速度（點一下切換）": "Kecepatan putar otomatis (ketuk untuk ganti)",
+    "自動播放速度：{0}": "Kecepatan otomatis: {0}",
+    "核戰危機：擁核國{0}與{1}正在交戰": "Krisis nuklir: kekuatan nuklir {0} dan {1} sedang berperang",
+    "核戰危機：擁核國{0}與{1}關係極度緊張": "Krisis nuklir: ketegangan ekstrem antara kekuatan nuklir {0} dan {1}",
+    "{0}：交戰雙方都擁有核武": "{0}: kedua pihak memiliki senjata nuklir",
+    "{0}：交戰國中有一方擁有核武": "{0}: salah satu pihak memiliki senjata nuklir",
+    "兩國關係 {0}（越低越危險）": "Hubungan kedua negara: {0} (makin rendah makin berbahaya)",
+    "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Jika tidak berubah, peluang senjata nuklir dipakai pada pemeriksaan Januari depan sekitar {0} (ambang peringatan {1})",
+    "這是警告，還沒有發生核子交火": "Ini peringatan: belum ada serangan nuklir",
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Kamu bisa memakai Tangan Tuhan \"Redakan krisis nuklir\" untuk menurunkan peluangnya, atau simpan dulu"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -3332,6 +3332,20 @@
     "{0}改為「{1}」": "{0} changed to \"{1}\"",
     "規則衝突，沒有改變": "Rules conflict; nothing changed",
     "{0}擁有原子彈或核武": "{0} has the atomic bomb or nuclear weapons",
-    "也包括在戰爭中投下原子彈": "This includes dropping the atomic bomb in war"
+    "也包括在戰爭中投下原子彈": "This includes dropping the atomic bomb in war",
+    "慢": "Slow",
+    "標準": "Normal",
+    "快": "Fast",
+    "極快": "Fastest",
+    "自動播放速度（點一下切換）": "Autoplay speed (tap to change)",
+    "自動播放速度：{0}": "Autoplay speed: {0}",
+    "核戰危機：擁核國{0}與{1}正在交戰": "Nuclear crisis: nuclear powers {0} and {1} are at war",
+    "核戰危機：擁核國{0}與{1}關係極度緊張": "Nuclear crisis: tensions between nuclear powers {0} and {1} are extreme",
+    "{0}：交戰雙方都擁有核武": "{0}: both sides have nuclear weapons",
+    "{0}：交戰國中有一方擁有核武": "{0}: one side has nuclear weapons",
+    "兩國關係 {0}（越低越危險）": "Relations between the two: {0} (lower is more dangerous)",
+    "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "At the current course, the chance of nuclear weapons being used at next January's check is about {0} (warning threshold {1})",
+    "這是警告，還沒有發生核子交火": "This is a warning. No nuclear exchange has happened yet",
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "You can use the Hand of God \"Defuse a nuclear crisis\" to lower the chance of nuclear use, or save first"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
