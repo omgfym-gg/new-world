@@ -434,13 +434,15 @@
   };
 
   // ---- 9. 社群：城市與遷徙 ----
-  // 新城市的名字：依序取第一個「年代已到」且目前沒有在用的當地地名（西元前 3000 年不會出現羅馬）；
+  // 新城市的名字：依序取第一個「年代範圍包含今年」且目前沒有在用的當地地名（西元前 3000 年不會出現羅馬）；
   // 都不合適時用「某地第 n 城」。只決定名稱，不影響任何數值。舊存檔的地名沒有年份，視為隨時可用。
   A.placeFrom = (p) => (Array.isArray(p) ? p[1] : -Infinity);
+  A.placeTo = (p) => (Array.isArray(p) && p[2] != null ? p[2] : Infinity);
+  A.placeOk = (p, y) => A.placeFrom(p) <= y && y <= A.placeTo(p);   // 這一年能不能用這個地名（在它真實存在的年代範圍內）
   A.placeText = (p) => (Array.isArray(p) ? p[0] : p);
   A.placeName = function (w, r) {
     const used = new Set(r.cities.map((c) => c.name));
-    for (const p of r.places || []) if (A.placeFrom(p) <= w.year && !used.has(A.placeText(p))) return A.placeText(p);
+    for (const p of r.places || []) if (A.placeOk(p, w.year) && !used.has(A.placeText(p))) return A.placeText(p);
     let k = r.cities.length + 1;
     while (used.has(`${r.short}第 ${k} 城`)) k++;
     return `${r.short}第 ${k} 城`;
@@ -448,6 +450,16 @@
   A.cities = function (w, r, ctx) {
     const pp = w.params.ancient.pop;
     const n = Math.floor(r.pop.U / pp.cityPop);
+    // 城市延續到地名的年代之後（例如上山文化結束了，城市還在）：改用當時合適的地名，舊名留在 formerNames（只改名稱）；
+    // 「某地第 n 城」這種暫用名稱，等到有合適的當地地名時改成那個名字（例如後來的長安）
+    for (const c of r.cities) {
+      const p = (r.places || []).find((x) => A.placeText(x) === c.name);
+      if (p && w.year <= A.placeTo(p)) continue;
+      const nm = A.placeName(w, r);
+      if (!p && !(r.places || []).some((x) => A.placeText(x) === nm)) continue; // 暫用名稱沒有更好的地名可換
+      if (p) (c.formerNames || (c.formerNames = [])).push(c.name);
+      c.name = nm; c.namedAt = w.year;
+    }
     while (r.cities.length < Math.min(n, 12)) {
       w.counters.city++;
       const name = A.placeName(w, r);

@@ -1548,14 +1548,16 @@ test('遠古事件年份翻譯後仍是實際年份；城市名稱不會早於�
   const e = makeA('cities');
   while (e.world.year < -2000) e.advance(50, { stopOnMajor: false });
   const w = e.world, D = {};
-  for (const d of WS.Data.ancientRegions) for (const [n, y] of d.places) D[d.id + n] = y;
+  for (const d of WS.Data.ancientRegions) for (const [n, y, z] of d.places) D[d.id + n] = [y, z == null ? Infinity : z];
   let n = 0;
   for (const id of WS.Ancient.ids(w)) for (const c of w.ancient.regions[id].cities) {
     if (D[id + c.name] == null) continue;
     n++;
-    assert.ok(D[id + c.name] <= c.founded, `${c.name} 在 ${c.founded} 年出現，早於 ${D[id + c.name]}`);
+    const at = c.namedAt != null ? c.namedAt : c.founded;
+    assert.ok(D[id + c.name][0] <= at && at <= D[id + c.name][1], `${c.name} 在 ${at} 年出現，不在 ${D[id + c.name]}`);
   }
-  assert.ok(n > 0, '有城市用到當地地名');
+  assert.ok(n > 0, "有城市用到當地地名");
+  for (const id of WS.Ancient.ids(w)) for (const c of w.ancient.regions[id].cities) if (D[id + c.name]) assert.ok(w.year <= D[id + c.name][1], `${c.name} 到 ${w.year} 年還在用，超過 ${D[id + c.name][1]}`);
   assert.ok(!WS.Ancient.ids(w).some((id) => w.ancient.regions[id].cities.some((c) => c.name === '羅馬')), '西元前 2000 年前不會有羅馬');
 });
 test('自動存檔名稱分段翻譯；玩家自己取的存檔名稱不翻譯', () => {

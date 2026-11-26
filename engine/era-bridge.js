@@ -53,7 +53,7 @@
       const rng = new WS.RNG(WS.hashSeed(w.seed + '/bridge/' + id));
       const wt = []; for (let i = 0; i < n; i++) wt.push(0.5 + rng.next());
       const tot = wt.reduce((s, x) => s + x, 0);
-      const names = r.cities.map((c) => c.name).concat((r.places || []).filter((p) => A.placeFrom(p) <= w.year).map(A.placeText)).filter((x, i, arr) => arr.indexOf(x) === i);
+      const names = r.cities.map((c) => c.name).concat((r.places || []).filter((p) => A.placeOk(p, w.year)).map(A.placeText)).filter((x, i, arr) => arr.indexOf(x) === i);
       const literate = A.knows(w, r, 'writing');
       const spread = Math.max(2, Math.min(9, Math.sqrt(r.area) * 1.6));
       for (let i = 0; i < n; i++) {

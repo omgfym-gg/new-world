@@ -1614,7 +1614,7 @@
     const adv = w.difficulty === 'advanced';
     return `
       <div class="card"><h3>存檔</h3>
-        <div class="row"><input type="text" id="save-name" value="${esc(genSaveName(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div class="row"><input type="text" id="save-name" value="${esc(saveNameShown(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
@@ -1717,7 +1717,7 @@
     if (shares.city > 0.002) {
       const names = r.cities.slice(0, 3).map((c) => c.name).join('、');
       const life = [feat.currency ? '用貨幣在市集買賣' : '在市集以物易物', feat.writing ? '書吏用文字記帳' : null].filter(Boolean).join('、');
-      items.push(['🏛', `${pct(shares.city)} 的人住在城市（${r.cities.length} 座${names ? '：' + names : ''}）：${life}`]);
+      items.push(['🏛', r.cities.length === 1 ? `${pct(shares.city)} 的人住在城市（只有一座：${names}）：${life}` : `${pct(shares.city)} 的人住在城市（${r.cities.length} 座${names ? '：' + names : ''}）：${life}`]);
     }
     if (metal) items.push(['⚒', `工匠在冶煉${metal}，打造工具與武器`]);
     if (pol) items.push(['👑', `受「${pol.name}」統治（${PT[pol.type] ? PT[pol.type].name : ''}）`]);
@@ -1925,7 +1925,7 @@
         <div class="card"><h3>生活方式 ${why('population')}</h3>
           ${meter('狩獵採集', share('F'))}${meter('農民', share('A'))}${meter('城市', share('U'), 'urban', id)}
           <p class="dim">約 ${bands.toLocaleString()} 個遊獵群（每群約 ${P.pop.bandSize} 人）・約 ${villages.toLocaleString()} 個村落（每村約 ${P.pop.villageSize} 人）</p>
-          <p>城市：${r.cities.length ? r.cities.map((c) => `${esc(c.name)}<span class="dim">（${esc(yl(c.founded))}）</span>`).join('、') : '<span class="dim">尚無</span>'}</p>
+          <p>城市：${r.cities.length ? r.cities.map((c) => `${esc(c.name)}<span class="dim">（${esc(yl(c.founded))}${c.formerNames && c.formerNames.length ? '・舊稱 ' + esc(c.formerNames.join('、')) : ''}）</span>`).join('、') : '<span class="dim">尚無</span>'}</p>
           ${r.cap ? `<p class="dim">野生食物約可養活 ${fPeople(r.cap.forage)}${r.cap.farm > 0 ? `・農地約可養活 ${fPeople(r.cap.farm)}（農耕經驗加成 +${(A.knowBonus(w, r) * 100).toFixed(0)}%）` : ''}</p>` : '<p class="dim">推進時間後會算出這裡的野生食物與農地可以養活多少人。</p>'}
         </div>
         <div class="card"><h3>地理條件</h3>
@@ -1950,7 +1950,7 @@
       const n = ids.filter((id) => A.knows(w, w.ancient.regions[id], d.id)).length;
       const req = d.req.concat(d.reqAny ? ['（' + d.reqAny.map((x) => T[x].name).join('或') + '）'] : []).map((x) => (T[x] ? T[x].name : x));
       return `<div class="policy"><div><b>${esc(d.name)}</b>${fi && fi.region ? ` <span class="tag gold">${esc(w.ancient.regions[fi.region].name)}・${esc(yl(fi.year))}</span>` : fi ? ' <span class="tag">起點前已有</span>' : ' <span class="tag">尚未出現</span>'}
-        <small>${req.length ? '需要：' + esc(req.join('、')) + '・' : ''}${n} 個地區已掌握${d.ref ? '・史實參考：' + esc(d.ref) : ''}</small></div></div>`;
+        <small>${req.length ? '<span>需要：' + esc(req.join('、')) + '</span>・' : ''}<span>${n} 個地區已掌握</span>${d.ref ? '・<span>史實參考</span>：<span>' + esc(d.ref) + '</span>' : ''}</small></div></div>`;
     }).join('')}</div>`).join('') + '<p class="dim">史實參考年代只用來對照，引擎不會照著發生。地理條件不足的地區不會自行發明，但可能經交流引進。</p>';
   }
   function ancientHistoryTab() {
@@ -1988,7 +1988,7 @@
   function ancientSystemTab() {
     const w = W(), saves = WS.Save.list();
     return `<div class="card"><h3>存檔</h3>
-        <div class="row"><input type="text" id="save-name" value="${esc(genSaveName(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div class="row"><input type="text" id="save-name" value="${esc(saveNameShown(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
@@ -2260,6 +2260,8 @@
     const y = w.era === 'ancient' ? WS.Ancient.yearLabel(w.year) : w.year + ' 年';
     return w.name + '・' + w.branch.name + '・' + y + (tag ? '（' + tag + '）' : '');
   }
+  // 輸入框的預設名稱顯示成玩家的語言；沒改就存原文（之後換語言也能翻譯），改了才算玩家自己取的名字
+  function saveNameShown(w) { const g = genSaveName(w); return WS.I18n && WS.I18n.lang !== WS.I18n.SOURCE ? String(g).split('・').map((x) => WS.I18n.tx(x)).join('・') : g; }
   function saveTitle(s) {
     if (s.custom) return `<span translate="no">${esc(s.name)}</span>`;
     return String(s.name).split('・').map((x) => `<span>${esc(x)}</span>`).join('・');
@@ -2423,7 +2425,7 @@
       case 'compare-clear': S.compare = null; render(); break;
       case 'save': {
         toast('儲存中…');
-        WS.Save.write(W(), document.getElementById('save-name').value, { custom: document.getElementById('save-name').value.trim() !== genSaveName(W()) }).then((r) => {
+        (() => { const v = document.getElementById('save-name').value.trim(), same = !v || v === saveNameShown(W()) || v === genSaveName(W()); return WS.Save.write(W(), same ? genSaveName(W()) : v, { custom: !same }); })().then((r) => {
           if (r.ok) toast(`已儲存（${WS.Save.mb(r.bytes)}${r.compact ? '，空間不足改存精簡版：只留最近 5 年的詳細原因' : ''}）${r.pruned && r.pruned.length ? `；清掉了 ${r.pruned.length} 個最舊的自動保存` : ''}`, 4500);
           else openModal(`<h2>存檔失敗</h2><p>${esc(r.reason)}</p><div class="row"><button class="btn primary" data-act="export">備份存檔到裝置</button><button class="btn" data-act="close-modal">關閉</button></div>`);
           render();

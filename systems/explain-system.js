@@ -207,7 +207,7 @@
     // 3. 城市
     if (r.cities.length) {
       qs.push({ q: '為什麼會有城市？', metric: 'urban', scope: 10,
-        a: `城市人口約 ${Math.round(r.pop.U * 1e6).toLocaleString()} 人（${r.cities.length} 座：${r.cities.map((c) => c.name).join('、')}）。城市靠農民的剩餘糧食養活工匠、祭司、官吏與商人；` +
+        a: (r.cities.length === 1 ? `城市人口約 ${Math.round(r.pop.U * 1e6).toLocaleString()} 人（只有一座城市：${r.cities[0].name}）。` : `城市人口約 ${Math.round(r.pop.U * 1e6).toLocaleString()} 人（${r.cities.length} 座：${r.cities.map((c) => c.name).join('、')}）。`) + `城市靠農民的剩餘糧食養活工匠、祭司、官吏與商人；` +
           `${A.knows(w, r, 'accounting') ? '有記帳能力，能管理大量剩餘' : '還沒有記帳，只能支持小型城鎮'}${r.polity ? `，政體「${w.ancient.polities[r.polity].name}」的貢賦也支持城市` : ''}。` });
     } else {
       const why = [];
