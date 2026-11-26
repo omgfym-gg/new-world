@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Ya en guerra",
     "已執行：": "Hecho: ",
     "已套用到下方規則，請確認。": "Aplicado a las reglas de abajo; revísalas.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Guardado: {0} guardados manuales ({1}), {2} autoguardados ({3}; se conservan como máximo {4}, se borran primero los más antiguos), «Continuar» {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Guardado — partidas manuales: {0} ({1}); autoguardados: {2} ({3}; se conservan como máximo {4}, se borran primero los más antiguos); «Continuar»: {5}.",
     "已完成研究「{0}」": "Investigación de «{0}» completada",
     "已施展：": "Reparto:",
     "已有官僚行政": "Ya tiene administración burocrática",
@@ -1341,7 +1341,7 @@
     "已有記帳（陶籌與印章），能管理貢賦": "Ya tiene contabilidad (fichas y sellos) y puede gestionar tributos",
     "已有貨幣（文字、青銅、交流程度足夠）": "Tiene dinero (escritura, bronce e intercambio suficiente)",
     "已檢查 {0} 期，發現 {1} 個問題（自動修正並記錄）。": "Se revisaron {0} periodos y se hallaron {1} problemas (corregidos automáticamente y registrados).",
-    "已清除 {0} 個自動保存": "Se eliminaron {0} autoguardados",
+    "已清除 {0} 個自動保存": "Autoguardados eliminados: {0}",
     "已產生檔案": "Archivo creado",
     "已發明「{0}」": "Inventó «{0}»",
     "已結束": "Terminado",
@@ -3139,8 +3139,8 @@
     "：每年很小的自然機率；行星防禦普及後可以偏轉。": ": una probabilidad natural muy pequeña cada año; cuando la defensa planetaria está extendida, los asteroides pueden desviarse.",
     "；{0} 年超過 {1}°C（{2}）": "; superó {1} °C en {0} ({2})",
     "；{0}從 {1} 年（{2}）開始相差超過 1%": "; {0} difiere más de un 1 % desde {1} ({2})",
-    "；清掉了 {0} 個最舊的自動保存": "; se borraron los {0} guardados automáticos más antiguos",
-    "；為了騰出空間，清掉了 {0} 個最舊的自動保存": "; para liberar espacio, se borraron los {0} guardados automáticos más antiguos",
+    "；清掉了 {0} 個最舊的自動保存": "; autoguardados más antiguos eliminados: {0}",
+    "；為了騰出空間，清掉了 {0} 個最舊的自動保存": "; para liberar espacio se eliminaron los autoguardados más antiguos: {0}",
     "｜其他候選：": " | Otros candidatos: ",
     "📰 {0} 年頭條：{1}{2}；其他 {3} 件事收進年度摘要": "📰 Titulares de {0}: {1}{2}; otros {3} eventos van al resumen anual",
     "🔇 關閉": "🔇 Apagado",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Relaciones entre ambos: {0} (cuanto más bajo, más peligroso)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Si nada cambia, la probabilidad de uso de armas nucleares en la comprobación del próximo enero es de aprox. {0} (umbral de aviso {1})",
     "這是警告，還沒有發生核子交火": "Es un aviso: todavía no ha habido ningún intercambio nuclear",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Puedes usar la Mano de Dios «Desactivar una crisis nuclear» para reducir la probabilidad, o guardar primero"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Puedes usar la Mano de Dios «Desactivar una crisis nuclear» para reducir la probabilidad, o guardar primero",
+    "日報": "Diario"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Zaten savaşta",
     "已執行：": "Tamamlandı: ",
     "已套用到下方規則，請確認。": "Aşağıdaki kurallara uygulandı; lütfen kontrol et.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Kaydedilen: {0} elle kayıt ({1}), {2} otomatik kayıt ({3}; en fazla {4} tutulur, en eskisi önce silinir), \"Devam et\" {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Kaydedilen — elle kayıtlar: {0} ({1}); otomatik kayıtlar: {2} ({3}; en fazla {4} tutulur, en eskisi önce silinir); \"Devam et\": {5}.",
     "已完成研究「{0}」": "\"{0}\" araştırması tamamlandı",
     "已施展：": "Kadro:",
     "已有官僚行政": "Zaten bürokratik yönetimi var",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "İki ülkenin ilişkisi: {0} (düştükçe daha tehlikeli)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Böyle giderse gelecek ocaktaki kontrolde nükleer silah kullanılma olasılığı yaklaşık {0} (uyarı eşiği {1})",
     "這是警告，還沒有發生核子交火": "Bu bir uyarıdır; henüz nükleer saldırı olmadı",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Olasılığı düşürmek için Tanrı'nın Eli \"Nükleer krizi yatıştır\"ı kullanabilir ya da önce kaydedebilirsin"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Olasılığı düşürmek için Tanrı'nın Eli \"Nükleer krizi yatıştır\"ı kullanabilir ya da önce kaydedebilirsin",
+    "日報": "Gazetesi"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

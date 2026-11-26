@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Đã đang chiến tranh",
     "已執行：": "Xong: ",
     "已套用到下方規則，請確認。": "Đã áp dụng vào các quy tắc bên dưới; vui lòng kiểm tra.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Đã lưu: {0} bản lưu thủ công ({1}), {2} bản lưu tự động ({3}; giữ tối đa {4}, bản cũ nhất bị xóa trước), \"Tiếp tục\" {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Đã lưu — bản lưu thủ công: {0} ({1}); bản lưu tự động: {2} ({3}; giữ tối đa {4}, bản cũ nhất bị xóa trước); \"Tiếp tục\": {5}.",
     "已完成研究「{0}」": "Đã nghiên cứu xong \"{0}\"",
     "已施展：": "Dùng:",
     "已有官僚行政": "Đã có hành chính quan liêu",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Quan hệ hai nước: {0} (càng thấp càng nguy hiểm)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Nếu cứ thế này, xác suất dùng vũ khí hạt nhân ở lần xét tháng Một tới khoảng {0} (ngưỡng cảnh báo {1})",
     "這是警告，還沒有發生核子交火": "Đây là cảnh báo: chưa có cuộc tấn công hạt nhân nào",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Bạn có thể dùng Bàn tay Thượng đế “Hóa giải khủng hoảng hạt nhân” để giảm xác suất, hoặc lưu trước"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Bạn có thể dùng Bàn tay Thượng đế “Hóa giải khủng hoảng hạt nhân” để giảm xác suất, hoặc lưu trước",
+    "日報": "Nhật báo"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

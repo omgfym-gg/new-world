@@ -1361,6 +1361,26 @@ test('多國語言：樣板、名稱、數字單位都會翻譯；原文不變',
   I.setLang('zh-CN');
   assert.strictEqual(I.tx('戰爭爆發：鄂圖曼－義大利戰爭'), '战争爆发：奥斯曼－意大利战争');
 });
+test('多國語言：月份寫成各語言的月份名稱、簡體不混繁體字、存檔時間不寫「上午」', () => {
+  const I = loadLang();
+  I.setLang('en');
+  assert.strictEqual(I.tx('1916 年 3 月'), 'Mar 1916', '不要寫成 3/1916');
+  assert.strictEqual(I.tx('分岔於 1920 年 5 月。'), 'Diverged in May 1920.');
+  I.setLang('es');
+  assert.strictEqual(I.tx('1916 年 3 月'), 'mar 1916');
+  I.setLang('th');
+  assert.ok(/1916/.test(I.tx('1916 年 3 月')), '泰文用西元年，不用佛曆');
+  I.setLang('ru');
+  assert.ok(!/\.\./.test(I.tx('分岔於 1920 年 5 月。')), '俄文「г.」後面不重複句號');
+  I.setLang('zh-CN');
+  assert.strictEqual(I.tx('說明與回饋・工作謀生・壽命・各說各的語言'), '说明与反馈・工作谋生・寿命・各说各的语言');
+  // 畫面上的繁體字都在簡體字表裡（字表以外的字繁簡相同）
+  const fs = require('fs'), path = require('path');
+  const src = ['app.js', 'ui/notice.js', 'systems/rule-system.js', 'data/definitions.js'].map((f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')).join('');
+  for (const ch of '說謀壽語饋與們個這為') assert.ok(!I.tx(ch).includes(ch) || !src.includes(ch), `簡體字表缺「${ch}」`);
+  // 存檔時間不用瀏覽器的 toLocaleString（會依系統語言寫出「上午」）
+  assert.ok(!/new Date\(s\.saved\)\.toLocaleString/.test(fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8')));
+});
 test('多國語言：字典的譯文沒有多出原文沒有的 {n}', () => {
   const I = loadLang();
   for (const lang of Object.keys(I.DATA).filter((l) => I.DATA[l].dict)) for (const [k, v] of Object.entries(I.DATA[lang].dict)) {

@@ -272,6 +272,8 @@
   // ---------- 格式 ----------
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fPop = (p) => (p >= 100 ? (p / 100).toFixed(2) + ' 億' : p.toFixed(1) + ' 百萬');
+  // 存檔時間：用各語言都看得懂的 2026-11-26 10:06（瀏覽器的 toLocaleString 會跟著系統語言寫出「上午」）
+  const stamp = (iso) => { const d = new Date(iso); if (isNaN(d)) return ''; const p2 = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
   const fGdp = (g) => (g * 10 >= 10000 ? (g / 1000).toFixed(2) + ' 兆' : Math.round(g * 10).toLocaleString() + ' 億');
   const sg = (v, d = 1) => (v >= 0 ? '+' : '') + v.toFixed(d);
   const cls = (v) => (v > 0 ? 'good' : v < 0 ? 'bad' : '');
@@ -596,7 +598,7 @@
     app.innerHTML = `
       <div class="topbar">
         <div class="topbar-row">
-          <div class="sys-id"><i></i>TERRA-3</div>
+          <div class="sys-id"><i></i>TERRA-3<span class="mast"> 日報</span></div>
           <div class="date num">${w.year} 年 ${w.month} 月<small>${esc(w.branch.name)}</small></div>
           <span class="spacer"></span>
           <div class="seg">${[['country', '國家'], ['global', '全球']].map(([v, l]) => `<button data-act="mode" data-v="${v}" class="${w.mode === v ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -1615,7 +1617,7 @@
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year}.${s.month}・${s.mode === 'country' ? '國家模式' : '全球模式'}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year} 年 ${s.month} 月・${s.mode === 'country' ? '國家模式' : '全球模式'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。每次推進後會自動存到「繼續遊戲」。</p>'}</div>
       </div>
       <div class="grid g2">
@@ -1989,7 +1991,7 @@
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + '.' + s.month}・${new Date(s.saved).toLocaleString()}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + ' 年 ' + s.month + ' 月'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
       <div class="card"><h3>介面</h3>${langSetting()}${themeSetting()}</div>
@@ -2117,7 +2119,7 @@
     app.innerHTML = `
       <div class="topbar">
         <div class="topbar-row">
-          <div class="sys-id"><i></i>TERRA-0</div>
+          <div class="sys-id"><i></i>TERRA-0<span class="mast"> 日報</span></div>
           <div class="date num">${esc(yl(w.year))}<small>${esc(w.branch.name)}・每期 ${AN().dtFor(w)} 年</small></div>
           <span class="spacer"></span>
         </div>

@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Sudah berperang",
     "已執行：": "Selesai: ",
     "已套用到下方規則，請確認。": "Diterapkan ke aturan di bawah; silakan periksa.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Tersimpan: {0} simpanan manual ({1}), {2} simpan otomatis ({3}; paling banyak {4} disimpan, yang tertua dihapus duluan), \"Lanjutkan\" {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Tersimpan — simpanan manual: {0} ({1}); simpan otomatis: {2} ({3}; paling banyak {4} disimpan, yang tertua dihapus duluan); \"Lanjutkan\": {5}.",
     "已完成研究「{0}」": "Riset \"{0}\" selesai",
     "已施展：": "Dipakai:",
     "已有官僚行政": "Sudah memiliki administrasi birokrasi",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Hubungan kedua negara: {0} (makin rendah makin berbahaya)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Jika tidak berubah, peluang senjata nuklir dipakai pada pemeriksaan Januari depan sekitar {0} (ambang peringatan {1})",
     "這是警告，還沒有發生核子交火": "Ini peringatan: belum ada serangan nuklir",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Kamu bisa memakai Tangan Tuhan \"Redakan krisis nuklir\" untuk menurunkan peluangnya, atau simpan dulu"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Kamu bisa memakai Tangan Tuhan \"Redakan krisis nuklir\" untuk menurunkan peluangnya, atau simpan dulu",
+    "日報": "Harian"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
