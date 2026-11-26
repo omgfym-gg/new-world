@@ -1336,7 +1336,7 @@
     "已在戰爭中": "Already at war",
     "已執行：": "Done: ",
     "已套用到下方規則，請確認。": "Applied to the rules below; please check.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Saved: {0} manual saves ({1}), {2} autosaves ({3}; at most {4} kept, oldest cleared first), \"Continue\" {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Saved — manual saves: {0} ({1}); autosaves: {2} ({3}; at most {4} kept, oldest cleared first); \"Continue\": {5}.",
     "已完成研究「{0}」": "Research on \"{0}\" completed",
     "已施展：": "Cast:",
     "已有官僚行政": "Already has bureaucratic administration",
@@ -3346,6 +3346,7 @@
     "兩國關係 {0}（越低越危險）": "Relations between the two: {0} (lower is more dangerous)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "At the current course, the chance of nuclear weapons being used at next January's check is about {0} (warning threshold {1})",
     "這是警告，還沒有發生核子交火": "This is a warning. No nuclear exchange has happened yet",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "You can use the Hand of God \"Defuse a nuclear crisis\" to lower the chance of nuclear use, or save first"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "You can use the Hand of God \"Defuse a nuclear crisis\" to lower the chance of nuclear use, or save first",
+    "日報": "Daily"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

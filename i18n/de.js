@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Bereits im Krieg",
     "已執行：": "Erledigt: ",
     "已套用到下方規則，請確認。": "Auf die Regeln unten angewendet; bitte prüfen.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Gespeichert: {0} manuelle Spielstände ({1}), {2} automatische ({3}; höchstens {4}, die ältesten werden zuerst gelöscht), „Fortsetzen“ {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Gespeichert — manuelle Spielstände: {0} ({1}); automatische: {2} ({3}; höchstens {4}, die ältesten werden zuerst gelöscht); „Fortsetzen“: {5}.",
     "已完成研究「{0}」": "Forschung „{0}“ abgeschlossen",
     "已施展：": "Besetzung:",
     "已有官僚行政": "Hat bereits eine bürokratische Verwaltung",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Beziehungen der beiden: {0} (je niedriger, desto gefährlicher)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Bleibt alles so, liegt die Wahrscheinlichkeit eines Atomwaffeneinsatzes bei der Prüfung im nächsten Januar bei etwa {0} (Warnschwelle {1})",
     "這是警告，還沒有發生核子交火": "Dies ist eine Warnung – noch hat kein Atomschlag stattgefunden",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Mit der Hand Gottes „Atomkrise entschärfen“ kannst du das Risiko senken – oder vorher speichern"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Mit der Hand Gottes „Atomkrise entschärfen“ kannst du das Risiko senken – oder vorher speichern",
+    "日報": "Tageblatt"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

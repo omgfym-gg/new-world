@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Déjà en guerre",
     "已執行：": "Fait : ",
     "已套用到下方規則，請確認。": "Appliqué aux règles ci-dessous ; vérifiez-les.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Enregistré : {0} sauvegardes manuelles ({1}), {2} sauvegardes automatiques ({3} ; {4} au plus, les plus anciennes effacées d'abord), « Continuer » {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Enregistré — sauvegardes manuelles : {0} ({1}) ; sauvegardes automatiques : {2} ({3} ; {4} au plus, les plus anciennes effacées d'abord) ; « Continuer » : {5}.",
     "已完成研究「{0}」": "Recherche « {0} » achevée",
     "已施展：": "Distribution :",
     "已有官僚行政": "Possède déjà une administration bureaucratique",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Relations entre les deux : {0} (plus c'est bas, plus c'est dangereux)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Si rien ne change, la probabilité d'emploi de l'arme nucléaire lors du tirage de janvier prochain est d'environ {0} (seuil d'alerte {1})",
     "這是警告，還沒有發生核子交火": "Ceci est un avertissement : aucun échange nucléaire n'a encore eu lieu",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Vous pouvez utiliser la Main de Dieu « Désamorcer une crise nucléaire » pour réduire ce risque, ou sauvegarder d'abord"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Vous pouvez utiliser la Main de Dieu « Désamorcer une crise nucléaire » pour réduire ce risque, ou sauvegarder d'abord",
+    "日報": "Quotidien"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -122,14 +122,44 @@
       .replace(/\u0004(.)\u0005/g, (m, c) => '{' + (c.charCodeAt(0) - 65) + '}');
   };
 
+  // 「{0} 年 {1} 月」譯成「{1}/{0}」（3/1916）不易看懂：改成各語言的月份名稱（Mar 1916、mar 1916、März 1916）
+  const MON_A = '\u0006', MON_B = '\u0007';
+  function monthMark(k, v) {
+    const m = k.match(/\{(\d+)\} 年 \{(\d+)\} 月/);
+    if (!m) return v;
+    const y = '{' + m[1] + '}', mo = '{' + m[2] + '}';
+    for (const sep of ['/', '.']) if (v.indexOf(mo + sep + y) >= 0) return v.split(mo + sep + y).join(MON_A + mo + MON_B + y + MON_A);
+    return v;
+  }
+  const MON_RE = /\u0006\s*(\d{1,2})\s*\u0007\s*(\d{1,5})\s*\u0006/g;
+  const monFmt = {};
+  function fmtMonth(s, lang) {
+    if (s.indexOf(MON_A) < 0) return s;
+    return s.replace(MON_RE, (x, mo, y) => {
+      mo = +mo; y = +y;
+      if (mo >= 1 && mo <= 12 && y >= 1 && root.Intl && Intl.DateTimeFormat) {
+        try {
+          // 一律用西曆與阿拉伯數字（泰文預設是佛曆）
+          const f = monFmt[lang] || (monFmt[lang] = new Intl.DateTimeFormat(I.LANGS[lang].html + '-u-ca-gregory-nu-latn', { year: 'numeric', month: 'short', timeZone: 'UTC' }));
+          const d = new Date(Date.UTC(2000, mo - 1, 15)); d.setUTCFullYear(y);
+          const o = f.format(d);
+          return /\.$/.test(o) ? o + '\u0008' : o; // 「1916 г.」後面又接句號時只留一個
+        } catch (e) { /* 舊瀏覽器：用下面的寫法 */ }
+      }
+      return mo + '/' + y;
+    }).replace(/\u0008\./g, '').replace(/[\u0006\u0007\u0008]/g, '');
+  }
+  I._fmtMonth = fmtMonth;
+
   function compile(lang) {
     const fb = I.LANGS[lang] && I.LANGS[lang].fb;
     const D = Object.assign({}, fb && I.DATA[fb] ? I.DATA[fb].dict : {}, (I.DATA[lang] && I.DATA[lang].dict) || {});
     const exact = new Map(), pats = [];
     for (const k0 in D) {
-      const v = D[k0];
+      let v = D[k0];
       if (v == null) continue;
       const k = I.normKey(k0);
+      v = monthMark(k, v);
       if (!/\{#?\d+\}/.test(k)) { exact.set(k, v); continue; }
       // 樣板：{n} → 擷取；字面數字 {#n} → 數字記號
       const order = [], numOnly = [], single = [];
@@ -344,7 +374,7 @@
     if (!compiled) compiled = compile(I.lang);
     const [sh, nums] = shape(s);
     const out = trShape(sh, 0);
-    let r = gdpWord(out.replace(tokRe, (m, i) => { const n = nums[+i]; return n ? fmtNum(n[0], n[1], I.lang) : m; }));
+    let r = gdpWord(fmtMonth(out.replace(tokRe, (m, i) => { const n = nums[+i]; return n ? fmtNum(n[0], n[1], I.lang) : m; }), I.lang));
     if (I.misses && I.lang === 'en' && HAN.test(r)) I.misses.add(s); // 檢查工具用：記下沒翻完的句子
     return r;
   };
@@ -391,11 +421,13 @@
   const ATTRS = ['title', 'placeholder', 'aria-label', 'alt'];
   const SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, NOSCRIPT: 1 };
 
+  // 只有「GDP」沒有中文的文字（表頭、按鈕）也要換成該語言的縮寫（PIB、BIP…）
+  const needGdp = (v) => v.indexOf('GDP') >= 0 && !!(I.LANGS[I.lang] && I.LANGS[I.lang].gdp);
   function doText(n) {
     const v = n.nodeValue;
     if (DONE.get(n) === v) return;
     const src = v;
-    if (!HAN.test(src)) return;
+    if (!HAN.test(src) && !needGdp(src)) return;
     ORIG.set(n, src);
     const out = I.tx(src);
     DONE.set(n, out);
@@ -407,7 +439,7 @@
       const v = el.getAttribute(a), keep = 'data-i18n-' + a;
       const done = el.getAttribute(keep + '-out');
       if (done === v) continue;
-      if (!HAN.test(v)) continue;
+      if (!HAN.test(v) && !needGdp(v)) continue;
       el.setAttribute(keep, v);
       const out = I.tx(v);
       el.setAttribute(keep + '-out', out);

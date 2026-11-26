@@ -18,6 +18,16 @@ const langs = args.filter((a) => !a.startsWith('--')).length ? args.filter((a) =
 const BAD = {
   ja: /[這們為與經點會歷產區對將應從邊讓說爭戰權總變數當處發體氣觸聯傳來沒鄰國你]|預計/
 };
+// 簡體中文：字表（i18n/zh-cn.js）裡的繁體字不該出現在畫面上
+{
+  const zc = require('fs').readFileSync(path.join(__dirname, '..', 'i18n', 'zh-cn.js'), 'utf8').match(/chars: "([^"]*)"/)[1];
+  const a = [...zc], t = [];
+  for (let i = 0; i < a.length; i += 2) if (a[i] !== a[i + 1]) t.push(a[i]);
+  BAD['zh-CN'] = new RegExp('[' + t.join('') + ']');
+}
+// 各語言的 GDP 縮寫（畫面上不該再出現英文 GDP）
+const GDPW = {};
+for (const m of require('fs').readFileSync(path.join(__dirname, '..', 'i18n', 'i18n.js'), 'utf8').matchAll(/^\s+'?([\w-]+)'?: \{ name.*gdp: '([^']+)'/gm)) GDPW[m[1]] = m[2];
 // 西元年後面接「年」字的直譯（例如 2119 year、1911 año），以及數量 1 用複數
 const YEARWORD = { en: 'years?', es: 'años?', pt: 'anos?', it: 'anni|anno', fr: 'ans?', de: 'Jahre?n?', id: 'tahun' };
 
@@ -63,7 +73,7 @@ function worlds(needCf) {
     await p.waitForFunction((l) => window.WS && WS.App && WS.I18n && WS.I18n.lang === l, lang === 'zh-CN' ? 'zh-CN' : lang, { timeout: 15000 });
     const load = (j) => p.evaluate((x) => WS.App.load(JSON.parse(x)), j);
     const click = (act, v, extra) => p.evaluate(([a, v2, ex]) => { const el = document.createElement('button'); el.dataset.act = a; if (v2 != null) el.dataset.v = v2; Object.assign(el.dataset, ex || {}); el.hidden = true; document.body.appendChild(el); el.click(); el.remove(); }, [act, v, extra]);
-    const grab = (where) => p.evaluate(([w, lg, bad, yw]) => {
+    const grab = (where) => p.evaluate(([w, lg, bad, yw, gdpw]) => {
       const re = bad ? new RegExp(bad) : lg.startsWith('zh') ? null : /[㐀-鿿]/;
       const yr = yw ? new RegExp(`(^|[^\\d])[12]\\d{3} (${yw})\\b`) : null;
       const out = [];
@@ -76,11 +86,18 @@ function worlds(needCf) {
         if (re && re.test(s)) out.push(w + '｜' + s.slice(0, 400));
         else if (yr && yr.test(s)) out.push(w + '｜年份｜' + s.slice(0, 400));
         else if (lg === 'en' && /(^|[^\d.,])1 (?!people|percent)[a-z]+s\b/.test(s)) out.push(w + '｜單複數｜' + s.slice(0, 400));
+        else if (gdpw && /\bGDP\b/.test(s)) out.push(w + '｜GDP｜' + s.slice(0, 400));
+        else if (!lg.startsWith('zh') && /(^|[^\d/])\d{1,2}[/.][12]\d{3}(?![\d/])/.test(s)) out.push(w + '｜日期｜' + s.slice(0, 400)); // 3/1916 這種月份寫法
       }
       return out;
-    }, [where, lang, BAD[lang] ? BAD[lang].source : null, YEARWORD[lang] || null]);
+    }, [where, lang, BAD[lang] ? BAD[lang].source : null, YEARWORD[lang] || null, GDPW[lang] || null]);
     const settle = () => p.waitForTimeout(350);
     const found = [];
+    // 0. 開始畫面、自訂世界（含更多世界規則）、遊戲介紹、意見回饋
+    found.push(...await grab('開始畫面'));
+    for (const act of ['intro', 'feedback', 'support']) { await click(act); await settle(); found.push(...await grab(act)); await click('close-modal'); }
+    await click('custom-world'); await settle(); await click('more-rules'); await settle(); found.push(...await grab('自訂世界'));
+    await click('home').catch(() => {}); await settle();
     // 1. 「如果？」平行世界比較頁
     await load(W.early); await settle();
     const ev = await p.evaluate(() => { const w = window.WS.App.world(); const e = w.events.find((x) => /武昌/.test(x.title)) || w.events.find((x) => x.level >= 3 && x.type !== 'system'); return e && e.id; });
@@ -98,6 +115,9 @@ function worlds(needCf) {
     // 2. 走到星際結局的世界
     await load(W.stars); await settle();
     for (const tab of ['overview', 'country', 'world', 'history', 'explain', 'system']) { await click('tab', tab); await settle(); found.push(...await grab(tab)); }
+    // 存檔清單（存檔時間不能出現「上午／下午」）
+    await p.evaluate(() => WS.Save.write(WS.App.world(), 'test')).catch(() => {});
+    await click('tab', 'overview'); await click('tab', 'system'); await p.waitForTimeout(800); found.push(...await grab('存檔清單'));
     await click('tab', 'overview'); await click('map-view', 'flat'); await settle(); found.push(...await grab('平面地圖'));
     await click('map-zoom', 'europe'); await settle(); found.push(...await grab('放大歐洲')); await click('map-zoom', '');
     await click('ending'); await settle(); found.push(...await grab('結局（星際）'));

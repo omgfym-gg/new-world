@@ -1333,7 +1333,7 @@
     "已在戰爭中": "Già in guerra",
     "已執行：": "Fatto: ",
     "已套用到下方規則，請確認。": "Applicato alle regole qui sotto; controllale.",
-    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Salvato: {0} salvataggi manuali ({1}), {2} automatici ({3}; al massimo {4}, i più vecchi eliminati per primi), «Continua» {5}.",
+    "已存：手動存檔 {0} 個（{1}）、自動保存 {2} 個（{3}，最多保留 {4} 個，越舊的越先清掉）、「繼續遊戲」{5}。": "Salvato — salvataggi manuali: {0} ({1}); automatici: {2} ({3}; al massimo {4}, i più vecchi eliminati per primi); «Continua»: {5}.",
     "已完成研究「{0}」": "Ricerca «{0}» completata",
     "已施展：": "Personaggi:",
     "已有官僚行政": "Ha già un'amministrazione burocratica",
@@ -3341,6 +3341,7 @@
     "兩國關係 {0}（越低越危險）": "Relazioni tra i due: {0} (più è basso, più è pericoloso)",
     "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Se nulla cambia, la probabilità di uso di armi nucleari alla verifica del prossimo gennaio è di circa {0} (soglia di allarme {1})",
     "這是警告，還沒有發生核子交火": "È un avvertimento: non c'è ancora stato alcuno scambio nucleare",
-    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Puoi usare la Mano di Dio «Disinnesca una crisi nucleare» per ridurre il rischio, oppure salvare prima"
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Puoi usare la Mano di Dio «Disinnesca una crisi nucleare» per ridurre il rischio, oppure salvare prima",
+    "日報": "Quotidiano"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
