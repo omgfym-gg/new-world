@@ -687,7 +687,7 @@
     "全世界研究投入每年約 {0}（{1} {2}；最便宜的一項新技術要 {3}）": "Belanja riset dunia sekitar {0} per tahun ({1} {2}; teknologi baru termurah berbiaya {3})",
     "全國收成 ×{0}，持續到 {1} 年 1 月": "Panen nasional ×{0}, sampai Januari {1}",
     "全息螢幕": "Hologram",
-    "全球": "Global",
+    "全球": "Dunia",
     "全球共享糧食與能源": "Pangan dan energi dibagi secara global",
     "全球平均收成最低只剩正常的 {0}%（{1} 年），低緯度地區最嚴重": "Rata-rata panen dunia turun hingga {0}% dari normal ({1}), terburuk di lintang rendah",
     "全球平均收成（%，100＝沒有受暖化或寒冬影響）": "Rata-rata panen dunia (%, 100 = tidak terpengaruh pemanasan atau musim dingin)",
@@ -3524,6 +3524,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regions have it",
-    "已掌握的地區": "Wilayah yang menguasainya"
+    "已掌握的地區": "Wilayah yang menguasainya",
+    "世界歷史模擬遊戲": "SIMULASI SEJARAH DUNIA",
+    "語言檔暫時載入失敗。": "File bahasa belum bisa dimuat.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Pilihanmu sudah disimpan: simpan permainan lalu muat ulang halaman untuk beralih ke {0}.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Diterapkan ke “Arah peradaban” di atas dan aturan di bawah. Silakan periksa.",
+    "可以辨識的說法：{0}。": "Ungkapan yang dikenali: {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "Kamu juga bisa mengetuk contoh di atas atau memakai pilihan aturan di bawah.",
+    "用關鍵字轉換，不呼叫外部 AI": "Diubah lewat kata kunci, tanpa AI eksternal",
+    "試試看：": "Coba:",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Contoh: semua negara mengutamakan perdamaian dan pendidikan serta mengurangi ekspansi militer.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Arah peradaban → Perdamaian dulu (negara-negara mengejar perdamaian dan kerja sama)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Arah peradaban → Teknologi dulu (negara-negara mengutamakan sains dan pendidikan)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Arah peradaban → Berbagi sumber daya (pangan dan energi dibagi ke seluruh dunia)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "Semua negara mengutamakan perdamaian dan pendidikan serta mengurangi ekspansi militer",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Seluruh dunia memakai satu bahasa, senjata nuklir dilarang, dan manusia tidak menua",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "perdamaian, teknologi, pendidikan, berbagi sumber daya, larang perang, tanpa uang, tanpa kapitalisme, tanpa negara, tak perlu bekerja, pendapatan dasar, tanpa minyak, tidak menua, umur panjang, tanpa agama, satu bahasa, kesetaraan gender, satu anak, larang nuklir, semua demokrasi",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Kalimat ini menyebut lebih dari satu arah peradaban. Hanya satu yang bisa dipilih, jadi yang pertama disebut yang dipakai; kamu bisa mengubahnya di “Arah peradaban” di atas.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Tanpa uang, tanpa kapitalisme, dan orang tidak perlu bekerja"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

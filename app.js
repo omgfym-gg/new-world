@@ -322,7 +322,7 @@
       <div class="start">
         <div class="globe-slot hero" id="globe-slot"><div class="hud-tag tl">TERRA-3 · 觀測中</div><div class="hud-tag br">文明調整台 v1</div></div>
         <div class="brand">
-          <div class="en">DIMENSION EARTH · WORLD SIMULATOR</div>
+          <div class="en">${/^zh/.test(WS.I18n.lang) ? 'DIMENSION EARTH · WORLD SIMULATOR' : '世界歷史模擬遊戲'}</div>
           <h1>維度世界</h1>
           <p>玩家設定世界，模擬器創造歷史，玩家觀察並改變歷史。</p>
         </div>
@@ -414,9 +414,18 @@
   }
   // 語言（只改畫面文字，不影響世界）：開始畫面的小選單用各語言自己的名稱，不翻譯
   function setLanguage(v) {
-    const I = WS.I18n;
+    const I = WS.I18n, want = v === 'auto' ? I.detect() : v;
+    if (v === I.pref() && want === I.lang) return;   // change 與 input 都會觸發，只做一次
     I.setPref(v);
-    I.switchTo(v === 'auto' ? I.detect() : v, (got) => { render(); toast('🌐 ' + I.LANGS[got].name); });
+    I.switchTo(want, (got, ok) => {
+      if (ok === false) {
+        // 字典載不到：還沒開始世界就直接重新載入；世界進行中不重新載入（避免沒存檔的進度不見）
+        if (!engine.world) { location.reload(); return; }
+        toast(`語言檔暫時載入失敗。已記住你的選擇，存檔後重新整理頁面就會換成 ${I.LANGS[want].name}。`, 6000);
+        return;
+      }
+      render(); toast('🌐 ' + I.LANGS[got].name);
+    });
   }
   // 語言選單（選項用各語言自己的名稱，不翻譯）
   function langSelect(withAuto) {
@@ -492,9 +501,10 @@
         </div>
         ${!country ? `<div class="card">
           <h3>用一句話描述你想要的世界</h3>
-          <textarea id="nl" placeholder="例如：如果沒有資本主義、沒有貨幣、人們不需要工作，而且人類不會變老。">${esc(S.nl)}</textarea>
-          <div class="row" style="margin-top:8px"><button class="btn small" data-act="nl-parse">轉換成世界規則</button><span class="dim">第一版用關鍵字轉換，不呼叫外部 AI</span></div>
-          ${S.nlResult ? `<div style="margin-top:10px">${S.nlResult.matched.length ? `<div>辨識到的規則：</div><ul class="list-plain">${S.nlResult.matched.map((m) => `<li>${esc(m)}</li>`).join('')}</ul><span class="dim">已套用到下方規則，請確認。沒有辨識到的部分不會影響模擬。</span>` : '<span class="bad">沒有辨識到可執行的規則。請改用下方規則選項。</span>'}</div>` : ''}
+          <textarea id="nl" placeholder="例如：所有國家優先發展和平與教育，減少軍事擴張。">${esc(S.nl)}</textarea>
+          <div class="row" style="margin-top:8px"><button class="btn small" data-act="nl-parse">轉換成世界規則</button><span class="dim">用關鍵字轉換，不呼叫外部 AI</span></div>
+          <div class="nl-examples"><span class="dim">試試看：</span>${WS.Data.nlExamples.map((x, i) => `<button class="btn small nl-ex" data-act="nl-example" data-i="${i}">${esc(x)}</button>`).join('')}</div>
+          ${S.nlResult ? `<div style="margin-top:10px">${S.nlResult.matched.length ? `<div>辨識到的規則：</div><ul class="list-plain">${S.nlResult.matched.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>${(S.nlResult.notes || []).map((n) => `<p class="dim">${esc(n)}</p>`).join('')}<span class="dim">已套用到上方「文明方向」與下方規則，請確認。沒有辨識到的部分不會影響模擬。</span>` : `<span class="bad">沒有辨識到可執行的規則。</span><p class="dim">可以辨識的說法：${esc(WS.Data.nlKeywords)}。也可以直接點上面的範例，或改用下方規則選項。</p>`}</div>` : `<p class="dim">可以辨識的說法：${esc(WS.Data.nlKeywords)}。</p>`}
         </div>` : ''}
         ${showRules ? `<div class="card"><h3>世界規則</h3>${rulesEditor(s.rules)}</div>` : ''}
         ${s.depth === 'advanced' ? `<div class="card"><h3>進階：隨機種子</h3>
@@ -2303,11 +2313,21 @@
         const c = WS.Data.ruleConflicts.find((x) => x.id === t.dataset.id);
         Object.assign(S.setup.rules, c.options[+t.dataset.i].set); renderSetup(); break;
       }
+      case 'nl-example':
       case 'nl-parse': {
-        S.nl = document.getElementById('nl').value;
-        S.nlResult = WS.Rules.parseNL(S.nl);
+        // 範例：畫面上顯示的是玩家語言的翻譯，轉換時用中文原句（引擎的關鍵字是中文）
+        let src;
+        if (t.dataset.act === 'nl-example') {
+          src = WS.Data.nlExamples[+t.dataset.i];
+          S.nl = t.textContent.trim(); S.nlExample = { shown: S.nl, src };
+        } else {
+          S.nl = document.getElementById('nl').value;
+          src = S.nlExample && S.nlExample.shown === S.nl.trim() ? S.nlExample.src : S.nl;
+        }
+        S.nlResult = WS.Rules.parseNL(src);
         Object.assign(S.setup.rules, S.nlResult.set);
-        if (S.nlResult.matched.length) { S.setup.civil = 'custom'; S.setup.ruleMode = 'modify'; }
+        if (S.nlResult.direction) S.setup.direction = S.nlResult.direction;
+        if (Object.keys(S.nlResult.set).length) { S.setup.civil = 'custom'; S.setup.ruleMode = 'modify'; }
         renderSetup(); break;
       }
       case 'start-sim': {
@@ -2442,6 +2462,8 @@
     }
   });
 
+  // 語言選單：有些瀏覽器或輔助工具只送出 input、不送 change，兩個都聽（setLanguage 會略過重複）
+  document.addEventListener('input', (ev) => { const t = ev.target; if (t.dataset && t.dataset.act === 'lang-select') setLanguage(t.value); });
   document.addEventListener('change', (ev) => {
     const t = ev.target;
     if (t.dataset.act === 'set-select') { S.setup[t.dataset.k] = t.value; renderSetup(); }

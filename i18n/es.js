@@ -687,7 +687,7 @@
     "全世界研究投入每年約 {0}（{1} {2}；最便宜的一項新技術要 {3}）": "El gasto mundial en investigación es de unos {0} al año ({1} {2}; la tecnología nueva más barata cuesta {3})",
     "全國收成 ×{0}，持續到 {1} 年 1 月": "Cosecha nacional ×{0}, hasta enero de {1}",
     "全息螢幕": "Holograma",
-    "全球": "Global",
+    "全球": "Mundo",
     "全球共享糧食與能源": "Alimentos y energía compartidos en todo el mundo",
     "全球平均收成最低只剩正常的 {0}%（{1} 年），低緯度地區最嚴重": "La cosecha media mundial cayó hasta el {0} % de lo normal ({1}), peor en latitudes bajas",
     "全球平均收成（%，100＝沒有受暖化或寒冬影響）": "Cosecha media mundial (%, 100 = sin efecto del calentamiento o el invierno)",
@@ -3524,6 +3524,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regiones lo tienen",
-    "已掌握的地區": "Regiones que lo tienen"
+    "已掌握的地區": "Regiones que lo tienen",
+    "世界歷史模擬遊戲": "SIMULACIÓN DE HISTORIA MUNDIAL",
+    "語言檔暫時載入失敗。": "No se pudo cargar el archivo de idioma.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Tu elección quedó guardada: guarda la partida y recarga la página para cambiar a {0}.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Aplicado a «Rumbo de la civilización» arriba y a las reglas de abajo. Revísalo.",
+    "可以辨識的說法：{0}。": "Expresiones que se reconocen: {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "También puedes tocar un ejemplo de arriba o usar las opciones de reglas de abajo.",
+    "用關鍵字轉換，不呼叫外部 AI": "Conversión por palabras clave, sin IA externa",
+    "試試看：": "Prueba:",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Por ejemplo: todos los países priorizan la paz y la educación y reducen la expansión militar.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Rumbo de la civilización → Paz primero (los países buscan paz y cooperación)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Rumbo de la civilización → Tecnología primero (los países valoran la ciencia y la educación)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Rumbo de la civilización → Recursos compartidos (alimentos y energía compartidos en todo el mundo)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "Todos los países priorizan la paz y la educación y reducen la expansión militar",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Todo el mundo habla un mismo idioma, se prohíben las armas nucleares y los humanos no envejecen",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "paz, tecnología, educación, recursos compartidos, prohibir la guerra, sin dinero, sin capitalismo, sin naciones, no hace falta trabajar, renta básica, sin petróleo, no envejecer, longevidad, sin religión, un mismo idioma, igualdad de género, hijo único, prohibir armas nucleares, todos democráticos",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "La frase menciona más de un rumbo de la civilización. Solo se puede elegir uno, así que se usó el primero; puedes cambiarlo en «Rumbo de la civilización» arriba.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Sin dinero, sin capitalismo, y la gente no necesita trabajar"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

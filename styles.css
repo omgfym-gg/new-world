@@ -60,6 +60,8 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .btn.gold { border-color: var(--gold); }
 .btn.small { min-height: 34px; padding: 6px 10px; font-size: 13px; border-radius: 10px; }
 .btn[disabled] { opacity: .4; cursor: not-allowed; }
+.nl-examples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.nl-examples .nl-ex { text-align: left; white-space: normal; height: auto; }
 .btn:focus-visible, .seg button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .card { background: linear-gradient(180deg, rgba(17, 33, 66, .85), rgba(13, 24, 48, .85)); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
@@ -99,6 +101,11 @@ textarea { min-height: 80px; resize: vertical; }
 .spacer { flex: 1; }
 .controls { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
 .controls .btn { flex: 0 0 auto; }
+@media (max-width: 480px) {
+  /* 手機：推進按鈕放不下時換行，不要藏在看不到的橫向捲動裡 */
+  .controls { flex-wrap: wrap; overflow-x: visible; gap: 5px; }
+  .controls .btn.small { padding: 5px 8px; font-size: 12px; min-height: 32px; }
+}
 .btn.run { border-color: var(--good); }
 .btn.on { border-color: var(--gold); color: var(--gold); }
 

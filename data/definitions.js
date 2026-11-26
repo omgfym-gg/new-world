@@ -260,29 +260,43 @@
   ];
 
   // 自然語言 → 規則（第一版：關鍵字解析，不依賴外部 AI）
+  // 一句話轉規則：只用關鍵字比對（中文為主，也認得常見英文說法），不呼叫外部 AI
   WS.Data.nlPatterns = [
-    { re: /(沒有|無|取消|廢除|不使用)貨幣/, set: { currency: false }, text: '貨幣制度 → 關閉' },
-    { re: /(沒有|無|取消|廢除)資本主義|非資本主義/, set: { capitalism: false }, text: '資本主義 → 關閉' },
-    { re: /(沒有|無|取消|廢除)國家/, set: { states: false }, text: '國家制度 → 關閉' },
-    { re: /(禁止|沒有|無|取消)戰爭|和平世界/, set: { war: false }, text: '戰爭 → 禁止' },
-    { re: /共同管理|資源共享|共享資源|共同分配/, set: { resourceSharing: true }, text: '資源 → 全球共享' },
-    { re: /科技.{0,4}(加速|快速|提前|飛躍)/, set: { techSpeed: 1.5 }, text: '科技發展 → 加速' },
-    { re: /科技.{0,4}(停滯|緩慢|減慢)/, set: { techSpeed: 0.5 }, text: '科技發展 → 緩慢' },
-    { re: /(自由|開放)移民/, set: { migration: 2 }, text: '移民 → 自由' },
-    { re: /(禁止|封閉)移民/, set: { migration: 0 }, text: '移民 → 禁止' },
-    { re: /(不需要|不用|不必|免於)(工作|上班|勞動)|後工作|機器.{0,6}(代替|取代).{0,4}(人|工作)/, set: { work: 'postwork' }, text: '工作 → 人們不需要工作' },
-    { re: /基本收入|UBI/i, set: { work: 'ubi' }, text: '工作 → 全民基本收入' },
-    { re: /(沒有|無|不存在|沒了)(石油|煤|化石燃料)/, set: { fossil: false }, text: '石油與煤 → 地球沒有石油與煤' },
-    { re: /(不會|不再|永不)(變老|衰老|老)|長生不老|永保青春/, set: { lifespan: 'ageless' }, text: '壽命 → 人類不會變老' },
-    { re: /長壽|活到\s*\d{3}/, set: { lifespan: 'long' }, text: '壽命 → 長壽' },
-    { re: /(沒有|無|取消|廢除|不存在)宗教/, set: { religion: 'none' }, text: '宗教 → 沒有宗教' },
-    { re: /政教合一|神權/, set: { religion: 'theocracy' }, text: '宗教 → 政教合一' },
-    { re: /(同|一)(一)?種語言|共同語言|語言.{0,2}(相同|統一)/, set: { language: true }, text: '語言 → 全世界說同一種語言' },
-    { re: /性別平等|男女平等|女性.{0,6}(平等|一樣)/, set: { gender: true }, text: '性別平等 → 女性從一開始就與男性平等' },
-    { re: /一胎/, set: { birth: 'one' }, text: '生育 → 全球一胎化' },
-    { re: /鼓勵生育|多生/, set: { birth: 'more' }, text: '生育 → 鼓勵生育' },
-    { re: /(沒有|無|禁止|不存在)(核武|核彈|原子彈)|無核|(核武|核彈|原子彈).{0,2}(從未|沒有)(出現|發明)/, set: { nukes: false }, text: '核武 → 核武從未出現' },
-    { re: /(全|都)(是|為|改為)?民主|民主.{0,2}世界/, set: { government: 'democracy' }, text: '各國政體 → 全部改為民主共和' },
-    { re: /(全|都)(是|為|改為)?(君主|帝制|王國)/, set: { government: 'monarchy' }, text: '各國政體 → 全部改為君主專制' }
+    { re: /(沒有|無|取消|廢除|不使用|不用)(貨幣|錢)|\b(no|without|abolish(ed)?)\s+(money|currency)/i, set: { currency: false }, text: '貨幣制度 → 關閉' },
+    { re: /(沒有|無|取消|廢除)資本主義|非資本主義|\b(no|without|abolish(ed)?)\s+capitalism/i, set: { capitalism: false }, text: '資本主義 → 關閉' },
+    { re: /(沒有|無|取消|廢除)國家|\b(no|without)\s+(nations|countries|states)\b/i, set: { states: false }, text: '國家制度 → 關閉' },
+    { re: /(禁止|沒有|無|取消|廢除|消滅)戰爭|和平世界|\b(no|ban|without|end)\s+(more\s+)?wars?\b|\bworld peace/i, set: { war: false }, text: '戰爭 → 禁止' },
+    { re: /共同管理|資源共享|共享資源|共同分配|\bshar(e|ed|ing)\s+(all\s+)?(the\s+)?resources|\bresource\s+sharing/i, set: { resourceSharing: true }, text: '資源 → 全球共享' },
+    { re: /科技.{0,4}(加速|快速|提前|飛躍)|\b(faster|rapid|accelerat\w*)\s+(technology|tech|progress)/i, set: { techSpeed: 1.5 }, text: '科技發展 → 加速' },
+    { re: /科技.{0,4}(停滯|緩慢|減慢)|\b(slow|slower|stagnant)\s+(technology|tech|progress)/i, set: { techSpeed: 0.5 }, text: '科技發展 → 緩慢' },
+    { re: /(自由|開放)移民|\b(free|open)\s+(migration|immigration|borders)/i, set: { migration: 2 }, text: '移民 → 自由' },
+    { re: /(禁止|封閉)移民|\b(no|ban(ned)?)\s+(migration|immigration)|\bclosed\s+borders/i, set: { migration: 0 }, text: '移民 → 禁止' },
+    { re: /(不需要|不用|不必|免於)(工作|上班|勞動)|後工作|機器.{0,6}(代替|取代).{0,4}(人|工作)|\b(no one|nobody|people don'?t|do not|don'?t)\s+(needs?\s+to\s+|have\s+to\s+)?work|\bpost-?work|\bno\s+(more\s+)?(work|jobs)\b|\bno\s+need\s+to\s+work/i, set: { work: 'postwork' }, text: '工作 → 人們不需要工作' },
+    { re: /基本收入|UBI|\bbasic\s+income/i, set: { work: 'ubi' }, text: '工作 → 全民基本收入' },
+    { re: /(沒有|無|不存在|沒了)(石油|煤|化石燃料)|\b(no|without)\s+(oil|coal|fossil)/i, set: { fossil: false }, text: '石油與煤 → 地球沒有石油與煤' },
+    { re: /(不會|不再|永不)(變老|衰老|老)|長生不老|永保青春|\b(never|don'?t|do not|stop)\s+(grow\s+old|age|aging)|\bageless|\bimmortal/i, set: { lifespan: 'ageless' }, text: '壽命 → 人類不會變老' },
+    { re: /長壽|活到\s*\d{3}|\blong(er)?\s+(lives|life|lifespans?)|\blongevity/i, set: { lifespan: 'long' }, text: '壽命 → 長壽' },
+    { re: /(沒有|無|取消|廢除|不存在)宗教|\b(no|without)\s+religions?/i, set: { religion: 'none' }, text: '宗教 → 沒有宗教' },
+    { re: /政教合一|神權|\btheocra/i, set: { religion: 'theocracy' }, text: '宗教 → 政教合一' },
+    { re: /(同|一)(一)?種語言|共同語言|語言.{0,2}(相同|統一)|\b(one|same|single|common)\s+language/i, set: { language: true }, text: '語言 → 全世界說同一種語言' },
+    { re: /性別平等|男女平等|女性.{0,6}(平等|一樣)|\bgender\s+equal|\bequal(ity)?\s+(for\s+)?women/i, set: { gender: true }, text: '性別平等 → 女性從一開始就與男性平等' },
+    { re: /一胎|\bone[-\s]child/i, set: { birth: 'one' }, text: '生育 → 全球一胎化' },
+    { re: /鼓勵生育|多生|\b(more\s+(babies|children)|encourage\w*\s+(births?|children))/i, set: { birth: 'more' }, text: '生育 → 鼓勵生育' },
+    { re: /(沒有|無|禁止|不存在)(核武|核彈|原子彈)|無核|(核武|核彈|原子彈).{0,2}(從未|沒有)(出現|發明)|\b(no|ban|without)\s+(nukes|nuclear\s+(weapons|bombs?)|atom(ic)?\s+bombs?)/i, set: { nukes: false }, text: '核武 → 核武從未出現' },
+    { re: /(全|都)(是|為|改為)?民主|民主.{0,2}世界|\ball\s+(countries\s+|nations\s+)?(are\s+|become\s+)?democra/i, set: { government: 'democracy' }, text: '各國政體 → 全部改為民主共和' },
+    { re: /(全|都)(是|為|改為)?(君主|帝制|王國)|\ball\s+(countries\s+|nations\s+)?(are\s+|become\s+)?(monarch|kingdom)/i, set: { government: 'monarchy' }, text: '各國政體 → 全部改為君主專制' }
   ];
+  // 一句話裡的「文明方向」（全球模式：各國優先目標）。一次只能選一種，用最先提到的
+  WS.Data.nlDirections = [
+    { dir: 'peace', re: /和平|反戰|裁軍|(減少|降低|縮減|停止|不要|不再|避免|放棄)(軍事|軍備|擴張|戰爭|侵略|打仗)|不(擴張|侵略|打仗)|\bpeace|\bdisarm|\b(less|reduce\w*|no)\s+(military|expansion|conquest)/i, text: '文明方向 → 和平優先（各國以和平合作為目標）' },
+    { dir: 'tech', re: /科技(?!.{0,4}(停滯|緩慢|減慢))|教育|科學|知識|研究|學校|\b(technology|science|education|knowledge|research|schools?)\b/i, text: '文明方向 → 科技優先（各國重視科技與教育）' },
+    { dir: 'sharing', re: /共享|共同分配|互助|\bshar(e|ed|ing)\b|\bmutual\s+aid/i, text: '文明方向 → 資源共享（開啟全球糧食與能源共享）' }
+  ];
+  // 開始畫面「用一句話描述你想要的世界」的範例（點一下就套用）
+  WS.Data.nlExamples = [
+    '所有國家優先發展和平與教育，減少軍事擴張',
+    '沒有貨幣、沒有資本主義，人們不需要工作',
+    '全世界說同一種語言，禁止核武，人類不會變老'
+  ];
+  WS.Data.nlKeywords = '和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主';
 })(typeof window !== 'undefined' ? window : globalThis);

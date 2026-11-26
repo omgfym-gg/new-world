@@ -525,24 +525,25 @@
   // 字典檔的網址也帶上版本號（index.html 裡 i18n.js?v=…），更新後瀏覽器才不會用舊的暫存檔
   const ver = (() => { const s = doc.currentScript && doc.currentScript.src; const m = s && s.match(/\?v=[\w-]+/); return m ? m[0] : ''; })();
   const files = (lang) => [I.LANGS[lang].fb, lang].filter((l) => l && l !== I.SOURCE && !I.DATA[l]).map((l) => base + I.LANGS[l].file + '.js' + ver);
-  I.load = function (lang, cb) {
+  // 載入失敗時（網路慢、暫存的版本號對不上）換不帶版本號的網址再試一次
+  I.load = function (lang, cb, retried) {
     const todo = files(lang);
     if (!todo.length) { cb && cb(I.ready(lang)); return; }
     const s = doc.createElement('script');
-    s.src = todo[0];
+    s.src = retried ? todo[0].replace(/\?v=[\w-]+$/, '') + '?r=' + Date.now() : todo[0];
     s.onload = () => I.load(lang, cb);
-    s.onerror = () => cb && cb(false);
+    s.onerror = () => { s.remove(); if (!retried) I.load(lang, cb, true); else cb && cb(false); };
     doc.head.appendChild(s);
   };
-  // 切換語言：載入字典後重新翻譯整個畫面
+  // 切換語言：載入字典後立刻重新翻譯整個畫面（不用重新載入）。字典載不到時維持目前語言，cb 第二個參數是 false
   I.switchTo = function (lang, cb) {
     I.load(lang, (ok) => {
-      if (!ok) lang = I.SOURCE;
+      if (!ok) { cb && cb(I.lang, false); return; }
       I.restore();
       I.setLang(lang);
       walk(doc.body);
       doTitle();
-      cb && cb(lang);
+      cb && cb(lang, true);
     });
   };
 

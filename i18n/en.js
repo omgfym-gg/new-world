@@ -3529,6 +3529,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regions have it",
-    "已掌握的地區": "Regions that have it"
+    "已掌握的地區": "Regions that have it",
+    "世界歷史模擬遊戲": "WORLD HISTORY SIMULATION",
+    "語言檔暫時載入失敗。": "The language file couldn't be loaded right now.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Your choice has been saved: save your game and refresh the page to switch to {0}.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Applied to “Civilization direction” above and the rules below. Please check.",
+    "可以辨識的說法：{0}。": "Recognized phrases: {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "You can also tap an example above, or use the rule options below.",
+    "用關鍵字轉換，不呼叫外部 AI": "Converted by keywords, no external AI",
+    "試試看：": "Try:",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "e.g. All countries put peace and education first and reduce military expansion.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Civilization direction → Peace first (countries aim for peace and cooperation)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Civilization direction → Technology first (countries value science and education)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Civilization direction → Resource sharing (global food and energy sharing on)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "All countries put peace and education first and reduce military expansion",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Everyone speaks one language, no nuclear weapons, and humans never grow old",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "peace, technology, education, resource sharing, ban war, no money, no capitalism, no nations, no need to work, basic income, no oil, never age, longevity, no religion, one language, gender equality, one-child, ban nukes, all democracies",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "The sentence mentions more than one civilization direction. Only one can be chosen, so the first one mentioned was used; you can change it under “Civilization direction” above.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "No money, no capitalism, and people don't need to work"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -10,10 +10,21 @@
   // 自然語言 → 規則（第一版：關鍵字比對；之後可接 AI，但 AI 只能產生同樣格式的規則建議）
   Rules.parseNL = function (text) {
     const set = {}, matched = [];
+    text = String(text || '');
     for (const p of WS.Data.nlPatterns) {
       if (p.re.test(text)) { Object.assign(set, p.set); matched.push(p.text); }
     }
-    return { set, matched };
+    // 文明方向：一次只能一種，取句子裡最先提到的
+    const dirs = [];
+    for (const d of WS.Data.nlDirections || []) {
+      const m = d.re.exec(text);
+      if (m) dirs.push({ d, at: m.index });
+    }
+    dirs.sort((a, b) => a.at - b.at);
+    const direction = dirs.length ? dirs[0].d.dir : null;
+    if (direction) matched.push(dirs[0].d.text);
+    const notes = dirs.length > 1 ? ['句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。'] : [];
+    return { set, matched, direction, notes };
   };
 
   Rules.describe = function (key, value) {

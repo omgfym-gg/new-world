@@ -687,7 +687,7 @@
     "全世界研究投入每年約 {0}（{1} {2}；最便宜的一項新技術要 {3}）": "Die weltweiten Forschungsausgaben betragen etwa {0} pro Jahr ({1} {2}; die billigste neue Technologie kostet {3})",
     "全國收成 ×{0}，持續到 {1} 年 1 月": "Landesernte ×{0}, bis Januar {1}",
     "全息螢幕": "Hologramm",
-    "全球": "Global",
+    "全球": "Welt",
     "全球共享糧食與能源": "Nahrung und Energie weltweit geteilt",
     "全球平均收成最低只剩正常的 {0}%（{1} 年），低緯度地區最嚴重": "Die weltweite Durchschnittsernte fiel auf bis zu {0} % des Normalwerts ({1}), am stärksten in niedrigen Breiten",
     "全球平均收成（%，100＝沒有受暖化或寒冬影響）": "Weltweite Durchschnittsernte (%, 100 = nicht von Erwärmung oder Winter beeinflusst)",
@@ -3524,6 +3524,23 @@
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
     "{0} 個地區已掌握": "{0} regions have it",
-    "已掌握的地區": "Regionen, die es beherrschen"
+    "已掌握的地區": "Regionen, die es beherrschen",
+    "世界歷史模擬遊戲": "WELTGESCHICHTE-SIMULATION",
+    "語言檔暫時載入失敗。": "Die Sprachdatei konnte gerade nicht geladen werden.",
+    "已記住你的選擇，存檔後重新整理頁面就會換成 {0}。": "Deine Auswahl ist gespeichert: Speichere das Spiel und lade die Seite neu, um zu {0} zu wechseln.",
+    "已套用到上方「文明方向」與下方規則，請確認。": "Auf „Richtung der Zivilisation“ oben und die Regeln unten angewendet. Bitte prüfen.",
+    "可以辨識的說法：{0}。": "Erkannte Begriffe: {0}.",
+    "也可以直接點上面的範例，或改用下方規則選項。": "Du kannst auch oben auf ein Beispiel tippen oder die Regeloptionen unten verwenden.",
+    "用關鍵字轉換，不呼叫外部 AI": "Umwandlung per Stichwort, ohne externe KI",
+    "試試看：": "Probier mal:",
+    "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Zum Beispiel: Alle Länder stellen Frieden und Bildung an erste Stelle und verringern militärische Expansion.",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Richtung der Zivilisation → Frieden zuerst (Länder streben Frieden und Zusammenarbeit an)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Richtung der Zivilisation → Technik zuerst (Länder setzen auf Wissenschaft und Bildung)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Richtung der Zivilisation → Ressourcen teilen (weltweites Teilen von Nahrung und Energie)",
+    "所有國家優先發展和平與教育，減少軍事擴張": "Alle Länder stellen Frieden und Bildung an erste Stelle und verringern militärische Expansion",
+    "全世界說同一種語言，禁止核武，人類不會變老": "Die ganze Welt spricht eine Sprache, Atomwaffen sind verboten und Menschen altern nicht",
+    "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "Frieden, Technik, Bildung, Ressourcen teilen, Krieg verbieten, kein Geld, kein Kapitalismus, keine Staaten, nicht arbeiten müssen, Grundeinkommen, kein Öl, nicht altern, Langlebigkeit, keine Religion, eine Sprache, Gleichberechtigung, Ein-Kind, Atomwaffen verbieten, alle demokratisch",
+    "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Der Satz nennt mehr als eine Richtung der Zivilisation. Es geht nur eine, daher wurde die zuerst genannte gewählt; du kannst sie oben unter „Richtung der Zivilisation“ ändern.",
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Kein Geld, kein Kapitalismus, und niemand muss arbeiten"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
