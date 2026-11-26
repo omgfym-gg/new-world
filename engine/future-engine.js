@@ -210,10 +210,40 @@
     return Math.max(0.5, Math.round(15 * Math.exp(-40 * (r + warm)) * 2) / 2);
   };
 
+  // ---------- 核戰預警（每月檢查，只讀風險、不改變世界） ----------
+  // 動用核武的機率在每年一月判定。當今年的機率升到門檻以上時，先發出一則危機事件：
+  // 自動播放會停下來，讓玩家在判定前有機會用神之手「化解核危機」或先存檔。
+  // 同一段危機期間每隔 nukeWarnEvery 年最多警告一次（風險突然大增時例外）；風險降回門檻的一半以下後，下次升高會再警告。
+  Future.nukeWarning = function (w, ids, ctx) {
+    const F = w.future, p = P(w);
+    if (!F || !F.nukes.length || !(p.nukeWarnFrom > 0)) return;
+    const r = Future.risks(w, ids);
+    const W0 = F.nukeWarn || null;
+    if (W0 && r.nuclear < p.nukeWarnFrom / 2 && w.year - W0.y >= 1) { F.nukeWarn = null; return; }
+    if (r.nuclear < p.nukeWarnFrom) return;
+    // 已經警告過：要隔 nukeWarnEvery 年，或風險比上次警告時高出 nukeWarnJump 倍（例如擁核國開戰）才再警告
+    if (W0 && w.year - W0.y < p.nukeWarnEvery && r.nuclear < W0.q * p.nukeWarnJump) return;
+    const top = r.detail.nuclear.slice().sort((a, b) => b.q - a.q || (a.a + a.d < b.a + b.d ? -1 : 1))[0];
+    if (!top || !w.countries[top.a] || !w.countries[top.d]) return;
+    F.nukeWarn = { y: w.year, m: w.month, q: r.nuclear };
+    const nm = (x) => w.countries[x].name;
+    const war = top.war ? w.wars.find((x) => x.id === top.war) : null;
+    const pct = (q) => (q * 100).toFixed(q < 0.01 ? 2 : 1) + '%';
+    WS.Events.log(w, ctx, {
+      type: 'future', fk: 'nukewarn', level: 3, crisis: true, countries: [top.a, top.d],
+      title: war ? `核戰危機：擁核國${nm(top.a)}與${nm(top.d)}正在交戰` : `核戰危機：擁核國${nm(top.a)}與${nm(top.d)}關係極度緊張`,
+      causes: [war ? (war.attackers.concat(war.defenders).filter((x) => r.detail.nukes.includes(x)).length > 1 ? `${war.name}：交戰雙方都擁有核武` : `${war.name}：交戰國中有一方擁有核武`) : `兩國關係 ${U().relation(w, top.a, top.d).rel.toFixed(0)}（越低越危險）`,
+        `照目前情勢，明年一月判定時動用核武的機率約 ${pct(r.nuclear)}（警告門檻 ${pct(p.nukeWarnFrom)}）`],
+      effects: ['這是警告，還沒有發生核子交火', '可以用神之手「化解核危機」降低動用核武的機率，或先存檔']
+    });
+  };
+
   // ---------- 每年一月：未來時代的判定 ----------
   Future.step = function (w, ids, ctx) {
     const F = Future.ensure(w);
-    if (F.ended || w.month !== 1) return;
+    if (F.ended) return;
+    // 二到十二月：只檢查要不要發出核戰預警（一月的判定之後才算「明年」的風險）
+    if (w.month !== 1) { Future.nukeWarning(w, ids, ctx); return; }
     const p = P(w), u = U();
     const rng = new WS.RNG(F.rng);
     const ev = (o) => WS.Events.log(w, ctx, Object.assign({ type: 'future', level: 2 }, o));

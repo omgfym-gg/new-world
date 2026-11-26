@@ -1464,6 +1464,34 @@ test('支持作者：只顯示 https 贊助連結，不改世界', () => {
   P.links().forEach((l) => assert.ok(/^https:\/\//.test(l.url)));
 });
 
+test('核戰預警：擁核國關係極差時先警告並暫停自動播放，只是提醒、不改變世界', () => {
+  const setup = (warn) => {
+    const e = make({ mode: 'global', intervention: 'occasional' });
+    const w = e.world;
+    if (!warn) w.params.future.nukeWarnFrom = 0;
+    w.month = 2;
+    WS.Future.ensure(w);
+    for (const id of ['USA', 'JPN']) for (const t of ['nuclear', 'rocketry']) w.countries[id].tech[t] = { progress: 1, adoption: 1 };
+    WS.util.relation(w, 'USA', 'JPN').rel = -100;
+    w.future.nukes = ['USA', 'JPN'];
+    return e;
+  };
+  const a = setup(true), b = setup(false);
+  const r = a.advance(1);
+  assert.ok(r.stopped, '要暫停');
+  const ev = r.events.find((x) => x.fk === 'nukewarn');
+  assert.ok(ev && ev.crisis, '要有核戰危機警告');
+  assert.ok(ev.countries.includes('USA') && ev.countries.includes('JPN'));
+  a.advance(11, { stopOnMajor: false });
+  b.advance(12, { stopOnMajor: false });
+  // 同一段危機不重複警告；只有情勢突然惡化（例如兩國開戰）才會再警告一次
+  const warns = a.world.events.filter((x) => x.fk === 'nukewarn');
+  assert.ok(warns.length <= 2, '同一段危機不重複警告');
+  if (warns.length === 2) assert.ok(/正在交戰/.test(warns[1].title), '第二次警告只在情勢突然惡化時');
+  assert.strictEqual(b.world.events.filter((x) => x.fk === 'nukewarn').length, 0);
+  assert.strictEqual(JSON.stringify(a.world.countries), JSON.stringify(b.world.countries), '有沒有警告，世界都一樣');
+});
+
 test('資安：程式庫與 itch 壓縮檔沒有密碼、金鑰或機密設定檔', () => {
   const fs = require('fs');
   const path = require('path');

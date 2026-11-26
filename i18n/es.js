@@ -3327,6 +3327,20 @@
     "{0}改為「{1}」": "{0} pasa a «{1}»",
     "規則衝突，沒有改變": "Las reglas chocan; no cambió nada",
     "{0}擁有原子彈或核武": "{0} tiene la bomba atómica o armas nucleares",
-    "也包括在戰爭中投下原子彈": "Incluye lanzar la bomba atómica en una guerra"
+    "也包括在戰爭中投下原子彈": "Incluye lanzar la bomba atómica en una guerra",
+    "慢": "Lenta",
+    "標準": "Normal",
+    "快": "Rápida",
+    "極快": "Máxima",
+    "自動播放速度（點一下切換）": "Velocidad de reproducción automática (toca para cambiar)",
+    "自動播放速度：{0}": "Velocidad automática: {0}",
+    "核戰危機：擁核國{0}與{1}正在交戰": "Crisis nuclear: las potencias nucleares {0} y {1} están en guerra",
+    "核戰危機：擁核國{0}與{1}關係極度緊張": "Crisis nuclear: la tensión entre las potencias nucleares {0} y {1} es extrema",
+    "{0}：交戰雙方都擁有核武": "{0}: ambos bandos tienen armas nucleares",
+    "{0}：交戰國中有一方擁有核武": "{0}: uno de los bandos tiene armas nucleares",
+    "兩國關係 {0}（越低越危險）": "Relaciones entre ambos: {0} (cuanto más bajo, más peligroso)",
+    "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Si nada cambia, la probabilidad de uso de armas nucleares en la comprobación del próximo enero es de aprox. {0} (umbral de aviso {1})",
+    "這是警告，還沒有發生核子交火": "Es un aviso: todavía no ha habido ningún intercambio nuclear",
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Puedes usar la Mano de Dios «Desactivar una crisis nuclear» para reducir la probabilidad, o guardar primero"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

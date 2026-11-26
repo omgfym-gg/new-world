@@ -3327,6 +3327,20 @@
     "{0}改為「{1}」": "{0} đổi thành \"{1}\"",
     "規則衝突，沒有改變": "Quy tắc mâu thuẫn; không có gì thay đổi",
     "{0}擁有原子彈或核武": "{0} có bom nguyên tử hoặc vũ khí hạt nhân",
-    "也包括在戰爭中投下原子彈": "Bao gồm cả việc ném bom nguyên tử trong chiến tranh"
+    "也包括在戰爭中投下原子彈": "Bao gồm cả việc ném bom nguyên tử trong chiến tranh",
+    "慢": "Chậm",
+    "標準": "Bình thường",
+    "快": "Nhanh",
+    "極快": "Nhanh nhất",
+    "自動播放速度（點一下切換）": "Tốc độ tự chạy (chạm để đổi)",
+    "自動播放速度：{0}": "Tốc độ tự chạy: {0}",
+    "核戰危機：擁核國{0}與{1}正在交戰": "Khủng hoảng hạt nhân: hai cường quốc hạt nhân {0} và {1} đang giao chiến",
+    "核戰危機：擁核國{0}與{1}關係極度緊張": "Khủng hoảng hạt nhân: quan hệ giữa hai cường quốc hạt nhân {0} và {1} cực kỳ căng thẳng",
+    "{0}：交戰雙方都擁有核武": "{0}: cả hai bên đều có vũ khí hạt nhân",
+    "{0}：交戰國中有一方擁有核武": "{0}: một bên có vũ khí hạt nhân",
+    "兩國關係 {0}（越低越危險）": "Quan hệ hai nước: {0} (càng thấp càng nguy hiểm)",
+    "照目前情勢，明年一月判定時動用核武的機率約 {0}（警告門檻 {1}）": "Nếu cứ thế này, xác suất dùng vũ khí hạt nhân ở lần xét tháng Một tới khoảng {0} (ngưỡng cảnh báo {1})",
+    "這是警告，還沒有發生核子交火": "Đây là cảnh báo: chưa có cuộc tấn công hạt nhân nào",
+    "可以用神之手「化解核危機」降低動用核武的機率，或先存檔": "Bạn có thể dùng Bàn tay Thượng đế “Hóa giải khủng hoảng hạt nhân” để giảm xác suất, hoặc lưu trước"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
