@@ -199,7 +199,7 @@
       const lits = src.filter((p) => !/^\{#?\d+\}$/.test(p)).join(''), litLen = lits.length, hanLen = (lits.match(/[\u3400-\u9fff]/g) || []).length;
       pats.push({ re: new RegExp(re + '$'), reG: new RegExp(re.replace(/\(\[\\s\\S\]\*\?\)/g, '([\\s\\S]*)') + '$'), order, numOnly, single, v, longest, litLen, weak: hanLen <= 1 || (order.length === 1 && hanLen <= 2 && /[\u3400-\u9fff]\{\d+\}|\{\d+\}[\u3400-\u9fff]/.test(k)) || litLen <= 2 });
     }
-    pats.sort((a, b) => b.litLen - a.litLen || a.order.length - b.order.length); // 字面一樣長時，佔位符少的優先（「{0} 個地區已掌握」先於「{0}{1} 個地區已掌握{2}」）
+    pats.sort((a, b) => b.litLen - a.litLen);
     return { exact, pats };
   }
 
@@ -305,7 +305,9 @@
     const pm = lastGroup(core);
     if (pm && balanced(pm[1]) && balanced(pm[2])) {
       const x = pm[1] ? trShape(pm[1], depth + 1) : '', y = trShape(pm[2], depth + 1);
-      if (!HAN.test(x + y)) return lead + tidy(x + punct('（') + y + punct('）')).replace(/\s+$/, '') + tail;
+      // 日文譯文本來就有漢字：改看兩邊是不是都翻過了
+      const done = I.lang === 'ja' ? (!HAN.test(pm[1]) || x !== pm[1]) && (!HAN.test(pm[2]) || y !== pm[2]) : !HAN.test(x + y);
+      if (done) return lead + tidy(x + punct('（') + y + punct('）')).replace(/\s+$/, '') + tail;
     }
     // 拆句：依序用句號、分號、逗號、冒號…拆開
     for (const re of SPLITS) {

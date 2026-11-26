@@ -1950,7 +1950,7 @@
       const n = ids.filter((id) => A.knows(w, w.ancient.regions[id], d.id)).length;
       const req = d.req.concat(d.reqAny ? ['（' + d.reqAny.map((x) => T[x].name).join('或') + '）'] : []).map((x) => (T[x] ? T[x].name : x));
       return `<div class="policy"><div><b>${esc(d.name)}</b>${fi && fi.region ? ` <span class="tag gold">${esc(w.ancient.regions[fi.region].name)}・${esc(yl(fi.year))}</span>` : fi ? ' <span class="tag">起點前已有</span>' : ' <span class="tag">尚未出現</span>'}
-        <small>${req.length ? '<span>需要：' + esc(req.join('、')) + '</span>・' : ''}<span>${n} 個地區已掌握</span>${d.ref ? '・<span>史實參考</span>：<span>' + esc(d.ref) + '</span>' : ''}</small></div></div>`;
+        <small>${req.length ? '<span>需要：' + esc(req.join('、')) + '</span>・' : ''}<span>已掌握的地區</span>：${n}${d.ref ? '・<span>史實參考</span>：<span>' + esc(d.ref) + '</span>' : ''}</small></div></div>`;
     }).join('')}</div>`).join('') + '<p class="dim">史實參考年代只用來對照，引擎不會照著發生。地理條件不足的地區不會自行發明，但可能經交流引進。</p>';
   }
   function ancientHistoryTab() {

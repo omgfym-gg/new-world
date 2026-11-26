@@ -3523,6 +3523,7 @@
     "{0}第 {1} 區國": "{0} State {1}",
     "{0}第 {1} 區諸部": "{0} District {1} tribes",
     "舊稱 {0}": "formerly {0}",
-    "{0} 個地區已掌握": "{0} regions have it"
+    "{0} 個地區已掌握": "{0} regions have it",
+    "已掌握的地區": "Regiões que a dominam"
   } };
 })(typeof window !== 'undefined' ? window : globalThis);
