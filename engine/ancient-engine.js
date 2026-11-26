@@ -116,7 +116,7 @@
       const r = {};
       for (const k of GEO) r[k] = d[k];
       Object.assign(r, {
-        links: u.clone(d.links), climate: d.climate ? u.clone(d.climate) : null, places: d.places.slice(), placeIdx: 0,
+        links: u.clone(d.links), climate: d.climate ? u.clone(d.climate) : null, places: u.clone(d.places), placeIdx: 0,
         pop: { F: d.start.pop, A: 0, U: 0 }, stock: 0, know: 0, fs: 1, clim: 1, harvest: 1, exchange: 10, tech: {}, polity: null, cities: [],
         prod: { forage: 0, farm: 0, need: 0, aid: 0 }, caps: {}, era: '', cool: {}, flags: {}, causes: { cur: {}, years: [] }
       });
@@ -434,12 +434,23 @@
   };
 
   // ---- 9. 社群：城市與遷徙 ----
+  // 新城市的名字：依序取第一個「年代已到」且目前沒有在用的當地地名（西元前 3000 年不會出現羅馬）；
+  // 都不合適時用「某地第 n 城」。只決定名稱，不影響任何數值。舊存檔的地名沒有年份，視為隨時可用。
+  A.placeFrom = (p) => (Array.isArray(p) ? p[1] : -Infinity);
+  A.placeText = (p) => (Array.isArray(p) ? p[0] : p);
+  A.placeName = function (w, r) {
+    const used = new Set(r.cities.map((c) => c.name));
+    for (const p of r.places || []) if (A.placeFrom(p) <= w.year && !used.has(A.placeText(p))) return A.placeText(p);
+    let k = r.cities.length + 1;
+    while (used.has(`${r.short}第 ${k} 城`)) k++;
+    return `${r.short}第 ${k} 城`;
+  };
   A.cities = function (w, r, ctx) {
     const pp = w.params.ancient.pop;
     const n = Math.floor(r.pop.U / pp.cityPop);
     while (r.cities.length < Math.min(n, 12)) {
       w.counters.city++;
-      const name = r.places[r.placeIdx] || `${r.short}第 ${r.placeIdx + 1} 城`;
+      const name = A.placeName(w, r);
       r.placeIdx++;
       const city = { id: 'C' + String(w.counters.city).padStart(3, '0'), name, founded: w.year };
       r.cities.push(city);

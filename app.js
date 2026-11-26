@@ -432,7 +432,7 @@
     const I = WS.I18n;
     if (!I) return '';
     const pref = I.pref();
-    return `<div class="field"><label>語言 · Language</label><div translate="no">${langSelect(true)}</div>
+    return `<div class="field"><label>🌐 語言</label><div translate="no">${langSelect(true)}</div>
       <span class="dim">${pref === 'auto' ? `目前依裝置語言自動選擇（${I.LANGS[I.lang].name}）。` : ''}只改畫面文字，不影響世界與存檔。</span></div>`;
   }
 
@@ -645,6 +645,7 @@
     return a[n - 1] - a[n - 2];
   }
   function eventItem(e) {
+    if (isAnc()) return aEventItem(e); // 遠古一期好幾年，日期寫成「西元前 … 年」
     const cl = (e.type === 'war' ? 'war ' : '') + (e.level >= 3 ? 'l3 ' : '') + (e.type === 'historical-missed' ? 'missed ' : '') + (e.type === 'whatif' ? 'wi' : '');
     const can = WS.WhatIf.options(W(), e).length > 0;
     return `<li class="${cl}" data-act="event" data-id="${e.id}">${can ? `<button class="wi-chip" data-act="whatif" data-id="${e.id}" aria-label="如果這件事改寫了？">如果？</button>` : ''}<div class="when">${e.y}.${String(e.m).padStart(2, '0')}・${typeLabel(e.type)}</div>${esc(e.title)}</li>`;
@@ -964,7 +965,7 @@
         <div class="row">${engine.snapshots.map((s, i) => `<button class="btn small" data-act="rewind" data-i="${i}">${s.year} 年</button>`).join('')}</div>
         <h3 style="margin-top:14px">歷史比較</h3>
         <p class="dim">選一個已儲存的世界線，以實際模擬數據對照（比較${w.mode === 'country' ? esc(w.countries[w.focus].name) : '各國'}的上方指標）。</p>
-        <div class="row">${saves.length ? saves.slice(0, 10).map((s) => `<button class="btn small" data-act="compare" data-id="${s.id}">${esc(s.name)}・${esc(s.branch)}・${s.year}</button>`).join('') : '<span class="dim">先到「系統」頁儲存不同的世界線。</span>'}</div>
+        <div class="row">${saves.length ? saves.slice(0, 10).map((s) => `<button class="btn small" data-act="compare" data-id="${s.id}">${saveTitle(s)}・${esc(s.branch)}・${s.year}</button>`).join('') : '<span class="dim">先到「系統」頁儲存不同的世界線。</span>'}</div>
       </div>
       <div class="card"><h3>事件時間線</h3>
         ${seg2('hist-filter', S.histFilter, [['major', '重大事件'], ['focus', '本國'], ['all', '全部']])}
@@ -1613,11 +1614,11 @@
     const adv = w.difficulty === 'advanced';
     return `
       <div class="card"><h3>存檔</h3>
-        <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + w.year)}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div class="row"><input type="text" id="save-name" value="${esc(genSaveName(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year} 年 ${s.month} 月・${s.mode === 'country' ? '國家模式' : '全球模式'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${saveTitle(s)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year} 年 ${s.month} 月・${s.mode === 'country' ? '國家模式' : '全球模式'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.compact ? '・精簡版' : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。每次推進後會自動存到「繼續遊戲」。</p>'}</div>
       </div>
       <div class="grid g2">
@@ -1987,11 +1988,11 @@
   function ancientSystemTab() {
     const w = W(), saves = WS.Save.list();
     return `<div class="card"><h3>存檔</h3>
-        <div class="row"><input type="text" id="save-name" value="${esc(w.name + '・' + w.branch.name + '・' + yShort(w.year))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
+        <div class="row"><input type="text" id="save-name" value="${esc(genSaveName(w))}" style="flex:1;min-width:180px"><button class="btn" data-act="save">儲存</button></div>
         <div id="save-usage" style="margin-top:8px">${saveUsageHtml || '<p class="dim" style="margin:0">計算存檔空間中…</p>'}</div>${(setTimeout(fillSaveUsage, 0), '')}
         <div class="row" style="margin-top:8px"><button class="btn small" data-act="export">備份存檔</button><label class="btn small" style="display:inline-flex;align-items:center">讀取備份<input type="file" id="import" accept="application/json,.json" hidden></label><button class="btn small" data-act="home">回到開始畫面</button></div>
         <p class="dim" style="margin:6px 0 0">「備份存檔」會把這個世界存成一個檔案放到你的裝置上；換手機、清除瀏覽器資料之前，或想把世界分享給朋友時使用。「讀取備份」選那個檔案就能回到這個世界。</p>
-        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${esc(s.name)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + ' 年 ' + s.month + ' 月'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
+        <div style="margin-top:10px">${saves.map((s) => `<div class="policy"><div>${saveTitle(s)}${s.auto ? ' <span class="tag">自動保存</span>' : ''}<small>${esc(s.branch)}・${s.year <= 0 ? esc(yl(s.year)) : s.year + ' 年 ' + s.month + ' 月'}・${stamp(s.saved)}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}</small></div>
           <div class="row"><button class="btn small" data-act="load" data-id="${s.id}">載入</button><button class="btn small" data-act="del-save" data-id="${s.id}">刪除</button></div></div>`).join('') || '<p class="dim">沒有存檔。</p>'}</div></div>
       ${bridgeCard()}
       <div class="card"><h3>介面</h3>${langSetting()}${themeSetting()}</div>
@@ -2104,7 +2105,7 @@
   function toModern() {
     stopAuto(); S.resumeAuto = false;
     const prev = W();
-    const saving = saveParent(prev, prev.name + '・' + prev.branch.name + '・' + prev.year + '（遠古）');
+    const saving = saveParent(prev, genSaveName(prev, '遠古'));
     const res = engine.toModern();
     if (!res.ok) { toast(res.reason); return; }
     S.screen = 'game'; S.tab = 'overview'; S.view = null; S.compare = null; S.speed = 'decade';
@@ -2253,6 +2254,16 @@
         ${u.autoCount ? `<button class="btn small" data-act="clear-auto" style="margin-top:6px">清除全部自動保存（${u.autoCount} 個）</button>` : ''}`;
     }).catch(() => { el.textContent = ''; });
   }
+  // 系統產生的存檔名稱：世界名・世界線・年份（・標記）。每段分開顯示，才能各自翻成玩家的語言；
+  // 玩家自己改過的名稱（custom）照原樣顯示、不翻譯。
+  function genSaveName(w, tag) {
+    const y = w.era === 'ancient' ? WS.Ancient.yearLabel(w.year) : w.year + ' 年';
+    return w.name + '・' + w.branch.name + '・' + y + (tag ? '（' + tag + '）' : '');
+  }
+  function saveTitle(s) {
+    if (s.custom) return `<span translate="no">${esc(s.name)}</span>`;
+    return String(s.name).split('・').map((x) => `<span>${esc(x)}</span>`).join('・');
+  }
   // 進入新世界線前，把原世界線存成「自動保存」：先開始寫入（內容在這一刻固定），寫完再告訴玩家結果
   function saveParent(parent, name) {
     return WS.Save.write(parent, name, { auto: true }).then((r) => {
@@ -2277,7 +2288,7 @@
       case 'new-world': S.setup = newSetup('country'); S.nl = ''; S.nlResult = null; S.screen = 'setup'; render(); break;
       case 'custom-world': S.setup = Object.assign(newSetup('global'), { depth: 'custom', civil: 'custom' }); S.screen = 'setup'; render(); break;
       case 'continue': WS.Save.readAutosave().then((w2) => { if (!w2) { toast('找不到自動存檔'); return; } engine.load(w2); S.screen = 'game'; S.speed = W().speed || 'decade'; render(); }).catch((e) => toast('自動存檔無法讀取：' + e.message)); break;
-      case 'load-menu': openModal(`<h2>載入存檔</h2>${WS.Save.list().map((s) => `<div class="policy"><div>${esc(s.name)}<small>${esc(s.branch)}・${s.year}.${s.month}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.auto ? '・自動保存' : ''}</small></div><button class="btn small" data-act="load" data-id="${s.id}">載入</button></div>`).join('')}`); break;
+      case 'load-menu': openModal(`<h2>載入存檔</h2>${WS.Save.list().map((s) => `<div class="policy"><div>${saveTitle(s)}<small>${esc(s.branch)}・${s.year}.${s.month}${s.bytes ? '・' + WS.Save.mb(s.bytes) : ''}${s.auto ? '・自動保存' : ''}</small></div><button class="btn small" data-act="load" data-id="${s.id}">載入</button></div>`).join('')}`); break;
       case 'set': {
         const s = S.setup;
         s[t.dataset.k] = v;
@@ -2350,7 +2361,7 @@
         if (!whatifValid()) break;
         const parent = W();
         const { res } = S.whatif;
-        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
+        saveParent(parent, genSaveName(parent));
         const cmp = { name: '原世界：' + parent.branch.name, series: parent.series };
         switchWorld(res.world, '現在進入平行世界（原世界存檔中…）');
         engine.snapshots = res.snapshots;
@@ -2387,7 +2398,7 @@
       case 'branch-confirm': {
         const name = (document.getElementById('branch-name').value || '').trim() || '分支 ' + W().year;
         const parent = W();
-        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year + '（分歧點）');
+        saveParent(parent, genSaveName(parent, '分歧點'));
         const nw = engine.createBranch(name, '玩家在 ' + parent.year + ' 年建立分支');
         const keep = engine.snapshots;
         switchWorld(nw, '現在進入新分支「' + name + '」（原世界線存檔中…）');
@@ -2397,7 +2408,7 @@
       case 'rewind': {
         const snap = engine.snapshots[+t.dataset.i];
         const parent = W();
-        saveParent(parent, parent.name + '・' + parent.branch.name + '・' + parent.year);
+        saveParent(parent, genSaveName(parent));
         const yt = isAnc() ? yl(snap.year) : snap.year + ' 年';
         const nw = engine.branchFromSnapshot(+t.dataset.i, '回溯 ' + (isAnc() ? yShort(snap.year) : snap.year), '歷史回溯至 ' + yt);
         const snaps = engine.snapshots.filter((s) => s.year <= snap.year);
@@ -2412,7 +2423,7 @@
       case 'compare-clear': S.compare = null; render(); break;
       case 'save': {
         toast('儲存中…');
-        WS.Save.write(W(), document.getElementById('save-name').value).then((r) => {
+        WS.Save.write(W(), document.getElementById('save-name').value, { custom: document.getElementById('save-name').value.trim() !== genSaveName(W()) }).then((r) => {
           if (r.ok) toast(`已儲存（${WS.Save.mb(r.bytes)}${r.compact ? '，空間不足改存精簡版：只留最近 5 年的詳細原因' : ''}）${r.pruned && r.pruned.length ? `；清掉了 ${r.pruned.length} 個最舊的自動保存` : ''}`, 4500);
           else openModal(`<h2>存檔失敗</h2><p>${esc(r.reason)}</p><div class="row"><button class="btn primary" data-act="export">備份存檔到裝置</button><button class="btn" data-act="close-modal">關閉</button></div>`);
           render();
