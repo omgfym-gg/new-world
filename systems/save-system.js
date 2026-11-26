@@ -181,6 +181,7 @@
       const id = 'S' + Date.now().toString(36) + (++saveSeq).toString(36);   // 存檔編號（不影響模擬）
       const meta = { id, name: slotName || w.name, branch: w.branch.name, branchId: w.branch.id, parent: w.branch.parent, year: w.year, month: w.month, mode: w.mode, focus: w.focus, era: w.era || 'modern', saved: new Date().toISOString(), world_id: w.world_id };
       if (opts.auto) meta.auto = true;
+      if (opts.custom) meta.custom = true;   // 玩家自己取的名字：畫面上照原樣顯示、不翻譯
       return putWithFallback(kv, 'ws.save.' + id, json, id).then((r) => {
         meta.bytes = r.bytes;
         if (r.how === 'compact') meta.compact = true;

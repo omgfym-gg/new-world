@@ -1537,6 +1537,39 @@ test('資安：程式庫與 itch 壓縮檔沒有密碼、金鑰或機密設定�
   assert.ok(line && !/AGENTS|CLAUDE|README|tests|tools|docs|reports|\s\.\s|\s\.[a-z]/i.test(line), 'itch 壓縮檔只能列出遊戲需要的檔案');
 });
 
+test('遠古事件年份翻譯後仍是實際年份；城市名稱不會早於當地歷史（西元前 3000 年沒有羅馬）', () => {
+  const I = loadLang();
+  for (const l of ['en', 'ja', 'es']) {
+    I.setLang(l);
+    const out = I.tx('西元前 5,280 年・科技');
+    assert.ok(/5[,.\s]?280/.test(out) && !/10[,.\s]?000/.test(out), `${l}：${out}`);
+  }
+  I.setLang('zh-TW');
+  const e = makeA('cities');
+  while (e.world.year < -2000) e.advance(50, { stopOnMajor: false });
+  const w = e.world, D = {};
+  for (const d of WS.Data.ancientRegions) for (const [n, y] of d.places) D[d.id + n] = y;
+  let n = 0;
+  for (const id of WS.Ancient.ids(w)) for (const c of w.ancient.regions[id].cities) {
+    if (D[id + c.name] == null) continue;
+    n++;
+    assert.ok(D[id + c.name] <= c.founded, `${c.name} 在 ${c.founded} 年出現，早於 ${D[id + c.name]}`);
+  }
+  assert.ok(n > 0, '有城市用到當地地名');
+  assert.ok(!WS.Ancient.ids(w).some((id) => w.ancient.regions[id].cities.some((c) => c.name === '羅馬')), '西元前 2000 年前不會有羅馬');
+});
+test('自動存檔名稱分段翻譯；玩家自己取的存檔名稱不翻譯', () => {
+  const I = loadLang();
+  I.setLang('en');
+  assert.strictEqual(I.tx('西元 1801 年（遠古）'), '1801 CE (ancient era)');
+  assert.strictEqual(I.tx('1920 年（分歧點）'), '1920 (branch point)');
+  I.setLang('ja');
+  assert.strictEqual(I.tx('🌐 語言'), '🌐 言語');
+  const app = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.js'), 'utf8');
+  assert.ok(/if \(s\.custom\) return `<span translate="no">/.test(app), '玩家取的名稱標成不翻譯');
+  assert.ok(!/語言 · Language/.test(app), '語言標籤不混英文');
+});
+
 // ---------- 輸出 ----------
 Promise.all(pending).then(() => {
   let fail = 0;

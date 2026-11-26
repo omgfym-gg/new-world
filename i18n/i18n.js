@@ -124,6 +124,18 @@
 
   // 「{0} 年 {1} 月」譯成「{1}/{0}」（3/1916）不易看懂：改成各語言的月份名稱（Mar 1916、mar 1916、März 1916）
   const MON_A = '\u0006', MON_B = '\u0007';
+  // 字典鍵裡寫死的數字（例如「西元前 10,000 年・」）會變成樣板，配到別的數字（西元前 5,280 年）：
+  // 譯文裡出現同一個數字時改成 {#n}，顯示實際的數字，不會一律寫成 10,000
+  function numMark(k0, v) {
+    const lits = [];
+    k0.replace(/\{\d+\}/g, '\u0004').replace(NUM_RE, (m, n, u) => { lits.push(u ? null : n); return m; });
+    lits.forEach((n, i) => {
+      if (!n) return;
+      const re = new RegExp(`(^|[^\\d{#,.])${esc(n).replace(/,/g, '[,.\\s\u00a0\u202f]?')}(?![\\d}]|[,.]\\d)`); // 譯文可能寫成 10.000、10 000
+      v = v.replace(re, (m, pre) => pre + '{#' + i + '}');
+    });
+    return v;
+  }
   function monthMark(k, v) {
     const m = k.match(/\{(\d+)\} 年 \{(\d+)\} 月/);
     if (!m) return v;
@@ -160,6 +172,7 @@
       if (v == null) continue;
       const k = I.normKey(k0);
       v = monthMark(k, v);
+      v = numMark(k0, v);
       if (!/\{#?\d+\}/.test(k)) { exact.set(k, v); continue; }
       // 樣板：{n} → 擷取；字面數字 {#n} → 數字記號
       const order = [], numOnly = [], single = [];
