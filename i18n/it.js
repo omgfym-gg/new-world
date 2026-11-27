@@ -3534,13 +3534,18 @@
     "用關鍵字轉換，不呼叫外部 AI": "Conversione per parole chiave, senza IA esterna",
     "試試看：": "Prova:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Per esempio: tutti i paesi danno priorità alla pace e all'istruzione e riducono l'espansione militare.",
-    "文明方向 → 和平優先（各國以和平合作為目標）": "Direzione della civiltà → Prima la pace (i paesi puntano a pace e cooperazione)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Direzione della civiltà → Prima la tecnologia (i paesi puntano su scienza e istruzione)",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Direzione della civiltà → Pace prima di tutto (i paesi puntano a pace e cooperazione)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Direzione della civiltà → Prima la scienza (i paesi puntano su scienza e istruzione)",
     "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Direzione della civiltà → Risorse condivise (cibo ed energia condivisi nel mondo)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Tutti i paesi danno priorità alla pace e all'istruzione e riducono l'espansione militare",
     "全世界說同一種語言，禁止核武，人類不會變老": "Tutto il mondo parla una sola lingua, le armi nucleari sono vietate e gli esseri umani non invecchiano",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "pace, tecnologia, istruzione, risorse condivise, vietare la guerra, niente denaro, niente capitalismo, niente nazioni, non serve lavorare, reddito di base, niente petrolio, non invecchiare, longevità, niente religione, una sola lingua, parità di genere, figlio unico, vietare le armi nucleari, tutti democratici",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "La frase cita più di una direzione della civiltà. Se ne può scegliere solo una, quindi è stata usata la prima; puoi cambiarla in «Direzione della civiltà» qui sopra.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Niente denaro, niente capitalismo, e nessuno ha bisogno di lavorare"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Niente denaro, niente capitalismo, e nessuno ha bisogno di lavorare",
+    "正在切換成 {0}…": "Passaggio a {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "Impossibile caricare il file della lingua, e anche il salvataggio automatico non è riuscito ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Salva manualmente, poi ricarica la pagina per passare a {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Ridurre l'espansione militare → incluso in «Pace prima di tutto»: i paesi puntano di più ad allentare le tensioni e fare la pace, e scelgono meno espansione e guerra",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "«Ridurre l'espansione militare» funziona solo con «Pace prima di tutto»; la direzione attuale non è Pace prima di tutto."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

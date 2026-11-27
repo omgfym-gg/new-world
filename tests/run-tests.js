@@ -282,6 +282,8 @@ test('自然語言：「和平」「教育」「減少軍事擴張」轉成文�
   let r = WS.Rules.parseNL('所有國家優先發展和平與教育，減少軍事擴張');
   assert.strictEqual(r.direction, 'peace');
   assert.ok(r.notes.length === 1, '提到兩種方向時要說明只選第一個');
+  assert.ok(r.matched.some((m) => /^減少軍事擴張 → /.test(m)), '「減少軍事擴張」要列出來');
+  assert.ok(WS.Rules.parseNL('重視教育，減少軍事擴張').notes.some((n) => /減少軍事擴張/.test(n)), '方向不是和平時要說明沒生效');
   assert.strictEqual(WS.Rules.parseNL('和平').direction, 'peace');
   assert.strictEqual(WS.Rules.parseNL('重視教育').direction, 'tech');
   assert.strictEqual(WS.Rules.parseNL('科技停滯').direction, null);

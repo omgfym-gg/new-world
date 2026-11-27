@@ -3535,12 +3535,17 @@
     "試試看：": "Experimente:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Por exemplo: todos os países priorizam a paz e a educação e reduzem a expansão militar.",
     "文明方向 → 和平優先（各國以和平合作為目標）": "Rumo da civilização → Paz em primeiro lugar (os países buscam paz e cooperação)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Rumo da civilização → Tecnologia em primeiro lugar (os países valorizam ciência e educação)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Rumo da civilização → Ciência em primeiro lugar (os países valorizam ciência e educação)",
     "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Rumo da civilização → Recursos compartilhados (alimentos e energia compartilhados no mundo)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Todos os países priorizam a paz e a educação e reduzem a expansão militar",
     "全世界說同一種語言，禁止核武，人類不會變老": "O mundo todo fala uma só língua, as armas nucleares são proibidas e os humanos não envelhecem",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "paz, tecnologia, educação, recursos compartilhados, proibir a guerra, sem dinheiro, sem capitalismo, sem nações, não precisar trabalhar, renda básica, sem petróleo, não envelhecer, longevidade, sem religião, uma só língua, igualdade de gênero, filho único, proibir armas nucleares, todos democráticos",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "A frase menciona mais de um rumo da civilização. Só é possível escolher um, então foi usado o primeiro; você pode mudar em «Rumo da civilização» acima.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Sem dinheiro, sem capitalismo, e as pessoas não precisam trabalhar"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Sem dinheiro, sem capitalismo, e as pessoas não precisam trabalhar",
+    "正在切換成 {0}…": "Mudando para {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "Não foi possível carregar o arquivo de idioma, e o salvamento automático também falhou ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Salve manualmente e recarregue a página para mudar para {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Reduzir a expansão militar → incluído em «Paz em primeiro lugar»: os países priorizam aliviar tensões e fazer a paz, e escolhem menos a expansão e a guerra",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "«Reduzir a expansão militar» só funciona com «Paz em primeiro lugar»; o rumo atual não é Paz em primeiro lugar."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

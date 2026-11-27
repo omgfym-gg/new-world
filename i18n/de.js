@@ -3535,12 +3535,17 @@
     "試試看：": "Probier mal:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Zum Beispiel: Alle Länder stellen Frieden und Bildung an erste Stelle und verringern militärische Expansion.",
     "文明方向 → 和平優先（各國以和平合作為目標）": "Richtung der Zivilisation → Frieden zuerst (Länder streben Frieden und Zusammenarbeit an)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Richtung der Zivilisation → Technik zuerst (Länder setzen auf Wissenschaft und Bildung)",
-    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Richtung der Zivilisation → Ressourcen teilen (weltweites Teilen von Nahrung und Energie)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Richtung der Zivilisation → Wissenschaft zuerst (Länder setzen auf Wissenschaft und Bildung)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Richtung der Zivilisation → Geteilte Ressourcen (weltweites Teilen von Nahrung und Energie)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Alle Länder stellen Frieden und Bildung an erste Stelle und verringern militärische Expansion",
     "全世界說同一種語言，禁止核武，人類不會變老": "Die ganze Welt spricht eine Sprache, Atomwaffen sind verboten und Menschen altern nicht",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "Frieden, Technik, Bildung, Ressourcen teilen, Krieg verbieten, kein Geld, kein Kapitalismus, keine Staaten, nicht arbeiten müssen, Grundeinkommen, kein Öl, nicht altern, Langlebigkeit, keine Religion, eine Sprache, Gleichberechtigung, Ein-Kind, Atomwaffen verbieten, alle demokratisch",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Der Satz nennt mehr als eine Richtung der Zivilisation. Es geht nur eine, daher wurde die zuerst genannte gewählt; du kannst sie oben unter „Richtung der Zivilisation“ ändern.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Kein Geld, kein Kapitalismus, und niemand muss arbeiten"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Kein Geld, kein Kapitalismus, und niemand muss arbeiten",
+    "正在切換成 {0}…": "Wechsle zu {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "Die Sprachdatei konnte nicht geladen werden, und auch das automatische Speichern ist fehlgeschlagen ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Bitte speichere manuell und lade die Seite neu, um zu {0} zu wechseln.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Militärische Expansion verringern → in „Frieden zuerst“ enthalten: Länder setzen stärker auf Entspannung und Frieden und wählen seltener Expansion und Krieg",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "„Militärische Expansion verringern“ wirkt nur mit „Frieden zuerst“; die aktuelle Richtung ist nicht Frieden zuerst."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -3540,12 +3540,17 @@
     "試試看：": "Try:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "e.g. All countries put peace and education first and reduce military expansion.",
     "文明方向 → 和平優先（各國以和平合作為目標）": "Civilization direction → Peace first (countries aim for peace and cooperation)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Civilization direction → Technology first (countries value science and education)",
-    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Civilization direction → Resource sharing (global food and energy sharing on)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Civilization direction → Science first (countries value science and education)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Civilization direction → Shared resources (global food and energy sharing on)",
     "所有國家優先發展和平與教育，減少軍事擴張": "All countries put peace and education first and reduce military expansion",
     "全世界說同一種語言，禁止核武，人類不會變老": "Everyone speaks one language, no nuclear weapons, and humans never grow old",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "peace, technology, education, resource sharing, ban war, no money, no capitalism, no nations, no need to work, basic income, no oil, never age, longevity, no religion, one language, gender equality, one-child, ban nukes, all democracies",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "The sentence mentions more than one civilization direction. Only one can be chosen, so the first one mentioned was used; you can change it under “Civilization direction” above.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "No money, no capitalism, and people don't need to work"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "No money, no capitalism, and people don't need to work",
+    "正在切換成 {0}…": "Switching to {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "The language file couldn't be loaded, and the autosave failed too ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Please save manually, then refresh the page to switch to {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Reduce military expansion → included in “Peace first”: countries focus more on easing tensions and making peace, and choose expansion and war less often",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "“Reduce military expansion” only works with “Peace first”; the current civilization direction is not Peace first."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -292,6 +292,8 @@
     { dir: 'tech', re: /科技(?!.{0,4}(停滯|緩慢|減慢))|教育|科學|知識|研究|學校|\b(technology|science|education|knowledge|research|schools?)\b/i, text: '文明方向 → 科技優先（各國重視科技與教育）' },
     { dir: 'sharing', re: /共享|共同分配|互助|\bshar(e|ed|ing)\b|\bmutual\s+aid/i, text: '文明方向 → 資源共享（開啟全球糧食與能源共享）' }
   ];
+  // 「減少軍事擴張」這類說法：沒有獨立的規則，由「和平優先」處理（各國 AI 更重視緩和緊張、停戰，少選擴張與開戰）
+  WS.Data.nlLessMilitary = /(減少|降低|縮減|停止|不要|不再|避免|放棄)(軍事|軍備|擴張|侵略)|裁軍|不(擴張|侵略)|\bdisarm|\b(less|reduce\w*|no)\s+(military|expansion|conquest)/i;
   // 開始畫面「用一句話描述你想要的世界」的範例（點一下就套用）
   WS.Data.nlExamples = [
     '所有國家優先發展和平與教育，減少軍事擴張',
