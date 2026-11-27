@@ -419,9 +419,17 @@
     I.setPref(v);
     I.switchTo(want, (got, ok) => {
       if (ok === false) {
-        // 字典載不到：還沒開始世界就直接重新載入；世界進行中不重新載入（避免沒存檔的進度不見）
+        // 字典怎樣都載不到：重新整理頁面（開啟時的載入方式不同，一定換得過去）。
+        // 世界進行中：先自動存檔，重新整理後直接回到同一個世界，進度不會不見
         if (!engine.world) { location.reload(); return; }
-        toast(`語言檔暫時載入失敗。已記住你的選擇，存檔後重新整理頁面就會換成 ${I.LANGS[want].name}。`, 6000);
+        stopAuto();
+        toast(`正在切換成 ${I.LANGS[want].name}…`, 4000);
+        const p = WS.Save.autosave(W());
+        Promise.resolve(p).then((r) => {
+          if (r && r.ok === false) { toast(`語言檔暫時載入失敗，自動存檔也沒成功（${r.reason}）。請先手動存檔，再重新整理頁面就會換成 ${I.LANGS[want].name}。`, 8000); return; }
+          try { sessionStorage.setItem('ws.resume', JSON.stringify({ tab: S.tab })); } catch (e) { /* 只是少了自動回到世界 */ }
+          location.reload();
+        });
         return;
       }
       render(); toast('🌐 ' + I.LANGS[got].name);
@@ -2487,5 +2495,16 @@
   WS.App = { load: (w2) => switchWorld(w2, ''), world: () => W() };
   render();
   // 存檔改放大容量的 IndexedDB：啟動時把舊版放在 localStorage 的存檔搬過去（騰出空間），搬完重畫開始畫面
-  WS.Save.init().then(() => { if (S.screen === 'start') render(); }).catch(() => { /* 無法使用時維持原狀 */ });
+  WS.Save.init().then(() => { if (S.screen === 'start') render(); }).catch(() => { /* 無法使用時維持原狀 */ }).then(resumeAfterLangReload);
+  // 換語言時字典載不到、重新整理過：直接回到剛才的世界（剛剛已自動存檔）
+  function resumeAfterLangReload() {
+    let r = null;
+    try { r = JSON.parse(sessionStorage.getItem('ws.resume') || 'null'); sessionStorage.removeItem('ws.resume'); } catch (e) { r = null; }
+    if (!r) return;
+    WS.Save.readAutosave().then((w2) => {
+      if (!w2) return;
+      closeModal(); engine.load(w2); S.screen = 'game'; S.speed = W().speed || 'decade'; if (r.tab) S.tab = r.tab; render();
+      toast('🌐 ' + WS.I18n.LANGS[WS.I18n.lang].name);
+    }).catch(() => { /* 讀不到就停在開始畫面 */ });
+  }
 })();

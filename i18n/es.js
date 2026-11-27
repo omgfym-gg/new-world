@@ -3534,13 +3534,18 @@
     "用關鍵字轉換，不呼叫外部 AI": "Conversión por palabras clave, sin IA externa",
     "試試看：": "Prueba:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Por ejemplo: todos los países priorizan la paz y la educación y reducen la expansión militar.",
-    "文明方向 → 和平優先（各國以和平合作為目標）": "Rumbo de la civilización → Paz primero (los países buscan paz y cooperación)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Rumbo de la civilización → Tecnología primero (los países valoran la ciencia y la educación)",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Rumbo de la civilización → La paz primero (los países buscan paz y cooperación)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Rumbo de la civilización → La ciencia primero (los países valoran la ciencia y la educación)",
     "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Rumbo de la civilización → Recursos compartidos (alimentos y energía compartidos en todo el mundo)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Todos los países priorizan la paz y la educación y reducen la expansión militar",
     "全世界說同一種語言，禁止核武，人類不會變老": "Todo el mundo habla un mismo idioma, se prohíben las armas nucleares y los humanos no envejecen",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "paz, tecnología, educación, recursos compartidos, prohibir la guerra, sin dinero, sin capitalismo, sin naciones, no hace falta trabajar, renta básica, sin petróleo, no envejecer, longevidad, sin religión, un mismo idioma, igualdad de género, hijo único, prohibir armas nucleares, todos democráticos",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "La frase menciona más de un rumbo de la civilización. Solo se puede elegir uno, así que se usó el primero; puedes cambiarlo en «Rumbo de la civilización» arriba.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Sin dinero, sin capitalismo, y la gente no necesita trabajar"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Sin dinero, sin capitalismo, y la gente no necesita trabajar",
+    "正在切換成 {0}…": "Cambiando a {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "No se pudo cargar el archivo de idioma y el autoguardado también falló ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Guarda la partida manualmente y recarga la página para cambiar a {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Reducir la expansión militar → incluido en «La paz primero»: los países priorizan calmar tensiones y firmar la paz, y eligen menos la expansión y la guerra",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "«Reducir la expansión militar» solo funciona con «La paz primero»; el rumbo actual de la civilización no es La paz primero."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

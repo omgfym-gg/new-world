@@ -3535,12 +3535,17 @@
     "試試看：": "Dene:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Örneğin: tüm ülkeler barışa ve eğitime öncelik verir, askeri yayılmayı azaltır.",
     "文明方向 → 和平優先（各國以和平合作為目標）": "Uygarlığın yönü → Önce barış (ülkeler barış ve iş birliğini hedefler)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Uygarlığın yönü → Önce teknoloji (ülkeler bilime ve eğitime önem verir)",
-    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Uygarlığın yönü → Kaynak paylaşımı (dünya çapında gıda ve enerji paylaşımı)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Uygarlığın yönü → Önce bilim (ülkeler bilime ve eğitime önem verir)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Uygarlığın yönü → Paylaşılan kaynaklar (dünya çapında gıda ve enerji paylaşımı)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Tüm ülkeler barışa ve eğitime öncelik verir, askeri yayılmayı azaltır",
     "全世界說同一種語言，禁止核武，人類不會變老": "Tüm dünya tek bir dil konuşur, nükleer silahlar yasaktır ve insanlar yaşlanmaz",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "barış, teknoloji, eğitim, kaynak paylaşımı, savaşı yasakla, para yok, kapitalizm yok, devlet yok, çalışmaya gerek yok, temel gelir, petrol yok, yaşlanmamak, uzun ömür, din yok, tek dil, cinsiyet eşitliği, tek çocuk, nükleer silah yasağı, hepsi demokrasi",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Cümlede birden fazla medeniyet yönü geçiyor. Yalnızca biri seçilebildiği için ilk geçen kullanıldı; yukarıdaki “Uygarlığın yönü” bölümünden değiştirebilirsin.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Para yok, kapitalizm yok ve insanların çalışmasına gerek yok"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Para yok, kapitalizm yok ve insanların çalışmasına gerek yok",
+    "正在切換成 {0}…": "{0} diline geçiliyor…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "Dil dosyası yüklenemedi, otomatik kayıt da başarısız oldu ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Lütfen elle kaydet, sonra sayfayı yenilersen {0} diline geçilir.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Askeri yayılmayı azalt → “Önce barış” içinde: ülkeler gerginliği azaltmaya ve barışa daha çok önem verir, yayılma ve savaşı daha az seçer",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "“Askeri yayılmayı azalt” yalnızca “Önce barış” ile işe yarar; şu anki yön Önce barış değil."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

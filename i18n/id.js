@@ -3534,13 +3534,18 @@
     "用關鍵字轉換，不呼叫外部 AI": "Diubah lewat kata kunci, tanpa AI eksternal",
     "試試看：": "Coba:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Contoh: semua negara mengutamakan perdamaian dan pendidikan serta mengurangi ekspansi militer.",
-    "文明方向 → 和平優先（各國以和平合作為目標）": "Arah peradaban → Perdamaian dulu (negara-negara mengejar perdamaian dan kerja sama)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Arah peradaban → Teknologi dulu (negara-negara mengutamakan sains dan pendidikan)",
-    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Arah peradaban → Berbagi sumber daya (pangan dan energi dibagi ke seluruh dunia)",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Arah peradaban → Perdamaian dahulu (negara-negara mengejar perdamaian dan kerja sama)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Arah peradaban → Sains yang utama (negara-negara mengutamakan sains dan pendidikan)",
+    "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Arah peradaban → Sumber daya bersama (pangan dan energi dibagi ke seluruh dunia)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Semua negara mengutamakan perdamaian dan pendidikan serta mengurangi ekspansi militer",
     "全世界說同一種語言，禁止核武，人類不會變老": "Seluruh dunia memakai satu bahasa, senjata nuklir dilarang, dan manusia tidak menua",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "perdamaian, teknologi, pendidikan, berbagi sumber daya, larang perang, tanpa uang, tanpa kapitalisme, tanpa negara, tak perlu bekerja, pendapatan dasar, tanpa minyak, tidak menua, umur panjang, tanpa agama, satu bahasa, kesetaraan gender, satu anak, larang nuklir, semua demokrasi",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Kalimat ini menyebut lebih dari satu arah peradaban. Hanya satu yang bisa dipilih, jadi yang pertama disebut yang dipakai; kamu bisa mengubahnya di “Arah peradaban” di atas.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Tanpa uang, tanpa kapitalisme, dan orang tidak perlu bekerja"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Tanpa uang, tanpa kapitalisme, dan orang tidak perlu bekerja",
+    "正在切換成 {0}…": "Beralih ke {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "File bahasa tidak bisa dimuat, dan simpan otomatis juga gagal ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Simpan secara manual, lalu muat ulang halaman untuk beralih ke {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Kurangi ekspansi militer → termasuk dalam “Perdamaian dahulu”: negara-negara lebih mengutamakan meredakan ketegangan dan berdamai, serta lebih jarang memilih ekspansi dan perang",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "“Kurangi ekspansi militer” hanya berlaku dengan “Perdamaian dahulu”; arah peradaban saat ini bukan Perdamaian dahulu."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

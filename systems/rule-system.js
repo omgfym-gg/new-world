@@ -24,6 +24,11 @@
     const direction = dirs.length ? dirs[0].d.dir : null;
     if (direction) matched.push(dirs[0].d.text);
     const notes = dirs.length > 1 ? ['句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。'] : [];
+    // 「減少軍事擴張」：列出來，說明它由「和平優先」處理（沒有獨立規則，不會另外改數值）
+    if (WS.Data.nlLessMilitary && WS.Data.nlLessMilitary.test(text) && set.war !== false) {
+      if (direction === 'peace') matched.push('減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰');
+      else notes.push('「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。');
+    }
     return { set, matched, direction, notes };
   };
 

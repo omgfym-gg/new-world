@@ -3534,13 +3534,18 @@
     "用關鍵字轉換，不呼叫外部 AI": "Chuyển đổi bằng từ khóa, không dùng AI bên ngoài",
     "試試看：": "Thử xem:",
     "例如：所有國家優先發展和平與教育，減少軍事擴張。": "Ví dụ: mọi quốc gia ưu tiên hòa bình và giáo dục, giảm bành trướng quân sự.",
-    "文明方向 → 和平優先（各國以和平合作為目標）": "Hướng đi của văn minh → Hòa bình trước (các nước hướng tới hòa bình và hợp tác)",
-    "文明方向 → 科技優先（各國重視科技與教育）": "Hướng đi của văn minh → Công nghệ trước (các nước coi trọng khoa học và giáo dục)",
+    "文明方向 → 和平優先（各國以和平合作為目標）": "Hướng đi của văn minh → Hòa bình trên hết (các nước hướng tới hòa bình và hợp tác)",
+    "文明方向 → 科技優先（各國重視科技與教育）": "Hướng đi của văn minh → Khoa học trên hết (các nước coi trọng khoa học và giáo dục)",
     "文明方向 → 資源共享（開啟全球糧食與能源共享）": "Hướng đi của văn minh → Chia sẻ tài nguyên (chia sẻ lương thực và năng lượng toàn cầu)",
     "所有國家優先發展和平與教育，減少軍事擴張": "Mọi quốc gia ưu tiên hòa bình và giáo dục, giảm bành trướng quân sự",
     "全世界說同一種語言，禁止核武，人類不會變老": "Cả thế giới nói chung một ngôn ngữ, cấm vũ khí hạt nhân và con người không già đi",
     "和平、科技、教育、資源共享、禁止戰爭、沒有貨幣、沒有資本主義、沒有國家、不需要工作、基本收入、沒有石油、不會變老、長壽、沒有宗教、同一種語言、性別平等、一胎化、禁止核武、全部民主": "hòa bình, công nghệ, giáo dục, chia sẻ tài nguyên, cấm chiến tranh, không có tiền, không có chủ nghĩa tư bản, không có quốc gia, không cần làm việc, thu nhập cơ bản, không có dầu mỏ, không già đi, trường thọ, không có tôn giáo, một ngôn ngữ, bình đẳng giới, một con, cấm hạt nhân, tất cả dân chủ",
     "句子裡提到不只一種文明方向，一次只能選一種，已選最先提到的；可以在上方「文明方向」修改。": "Câu này nhắc đến nhiều hơn một hướng phát triển văn minh. Mỗi lần chỉ chọn được một, nên đã dùng hướng được nhắc đến đầu tiên; bạn có thể đổi ở “Hướng đi của văn minh” phía trên.",
-    "沒有貨幣、沒有資本主義，人們不需要工作": "Không có tiền, không có chủ nghĩa tư bản, và mọi người không cần làm việc"
+    "沒有貨幣、沒有資本主義，人們不需要工作": "Không có tiền, không có chủ nghĩa tư bản, và mọi người không cần làm việc",
+    "正在切換成 {0}…": "Đang chuyển sang {0}…",
+    "語言檔暫時載入失敗，自動存檔也沒成功（{0}）。": "Không tải được tệp ngôn ngữ và tự động lưu cũng thất bại ({0}).",
+    "請先手動存檔，再重新整理頁面就會換成 {0}。": "Hãy lưu thủ công rồi tải lại trang để chuyển sang {0}.",
+    "減少軍事擴張 → 已包含在「和平優先」：各國更重視緩和緊張與停戰，較少選擇擴張與開戰": "Giảm bành trướng quân sự → nằm trong “Hòa bình trên hết”: các nước chú trọng giảm căng thẳng và đình chiến hơn, ít chọn bành trướng và chiến tranh hơn",
+    "「減少軍事擴張」要選「和平優先」才會生效；目前的文明方向不是和平優先。": "“Giảm bành trướng quân sự” chỉ có tác dụng với “Hòa bình trên hết”; hướng đi hiện tại không phải Hòa bình trên hết."
   } };
 })(typeof window !== 'undefined' ? window : globalThis);

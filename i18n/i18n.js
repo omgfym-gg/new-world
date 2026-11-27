@@ -525,15 +525,28 @@
   // 字典檔的網址也帶上版本號（index.html 裡 i18n.js?v=…），更新後瀏覽器才不會用舊的暫存檔
   const ver = (() => { const s = doc.currentScript && doc.currentScript.src; const m = s && s.match(/\?v=[\w-]+/); return m ? m[0] : ''; })();
   const files = (lang) => [I.LANGS[lang].fb, lang].filter((l) => l && l !== I.SOURCE && !I.DATA[l]).map((l) => base + I.LANGS[l].file + '.js' + ver);
-  // 載入失敗時（網路慢、暫存的版本號對不上）換不帶版本號的網址再試一次
-  I.load = function (lang, cb, retried) {
+  // 載入一個字典檔：先用 <script>；沒回應（8 秒）或失敗時換不帶版本號的網址再試；
+  // 再不行就用 fetch 讀進來執行（有些瀏覽器環境會擋掉動態加入的 <script>）
+  function loadOne(url) {
+    const tag = (src) => new Promise((res) => {
+      const s = doc.createElement('script');
+      let done = false;
+      const fin = (ok) => { if (done) return; done = true; clearTimeout(t); if (!ok) s.remove(); res(ok); };
+      const t = setTimeout(() => fin(false), 8000);
+      s.onload = () => fin(true);
+      s.onerror = () => fin(false);
+      s.src = src;
+      doc.head.appendChild(s);
+    });
+    const plain = url.replace(/\?v=[\w-]+$/, '');
+    const viaFetch = () => (root.fetch ? root.fetch(plain, { cache: 'no-store' }).then((r) => (r.ok ? r.text() : Promise.reject(new Error(r.status))))
+      .then((code) => { (0, root.Function)(code)(); return true; }).catch(() => false) : Promise.resolve(false));
+    return tag(url).then((ok) => ok || tag(plain + '?r=' + Date.now())).then((ok) => ok || viaFetch());
+  }
+  I.load = function (lang, cb) {
     const todo = files(lang);
     if (!todo.length) { cb && cb(I.ready(lang)); return; }
-    const s = doc.createElement('script');
-    s.src = retried ? todo[0].replace(/\?v=[\w-]+$/, '') + '?r=' + Date.now() : todo[0];
-    s.onload = () => I.load(lang, cb);
-    s.onerror = () => { s.remove(); if (!retried) I.load(lang, cb, true); else cb && cb(false); };
-    doc.head.appendChild(s);
+    loadOne(todo[0]).then((ok) => { if (ok && files(lang).length < todo.length) I.load(lang, cb); else cb && cb(false); });
   };
   // 切換語言：載入字典後立刻重新翻譯整個畫面（不用重新載入）。字典載不到時維持目前語言，cb 第二個參數是 false
   I.switchTo = function (lang, cb) {
